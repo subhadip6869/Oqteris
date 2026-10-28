@@ -42,14 +42,14 @@ graph TD
 
 ## 2. Shared Core Architecture
 
-### 2.1 Shared Document Model (`org.oqteris.core.model`)
+### 2.1 Shared Document Model (`org.originsd.oqteris.core.model`)
 All document types inherit from `AbstractDocumentModel`, which provides standard lifecycle contracts:
 - `DocumentType`: Enumerates `WRITER`, `CALC`, `IMPRESS`, and `PDF`.
 - `DocumentMetadata`: Manages Dublin Core attributes (Title, Subject, Author, Keywords, Created, Modified dates).
 - `DocumentListener`: Observable event notification mechanism alerting views to changes (`onDocumentModified`, `onDocumentSaved`, `onMetadataChanged`).
 - `UndoRedoManager`: Implements the Command pattern. Every mutation (character insertion, cell value edit, shape movement, style change) is encapsulated in a discrete `Command` with reversible `execute()` and `undo()` operations. Supports atomic `CompoundCommand` batches.
 
-### 2.2 Format Importers & Exporters (`org.oqteris.core.io`)
+### 2.2 Format Importers & Exporters (`org.originsd.oqteris.core.io`)
 Document persistence adheres strictly to the Dependency Inversion Principle. Core application engines communicate solely with two generic interfaces:
 - `DocumentImporter<T extends DocumentModel>`:
   - `canImport(File file)`: Validates file extensions and magic headers.
@@ -69,7 +69,7 @@ Document persistence adheres strictly to the Dependency Inversion Principle. Cor
 
 ## 3. Subsystem 1: Word Processor (Oqteris Writer)
 
-### 3.1 Document Object Model (`org.oqteris.writer.model`)
+### 3.1 Document Object Model (`org.originsd.oqteris.writer.model`)
 The Writer DOM represents rich text documents as a structured tree:
 - `WriterDocument`: Top-level document containing global `PageSetup` (Page dimensions, margins, orientation), document elements, and headers/footers.
 - `DocumentElement`: Base interface implemented by:
@@ -79,7 +79,7 @@ The Writer DOM represents rich text documents as a structured tree:
   - `DocumentImage`: Embedded raster image with explicit width, height, and alignment.
   - `PageBreakElement`: Explicit hard page break trigger.
 
-### 3.2 Typography & Independent Layout Engine (`org.oqteris.writer.layout`)
+### 3.2 Typography & Independent Layout Engine (`org.originsd.oqteris.writer.layout`)
 The layout pipeline does not use JavaFX controls (such as `TextArea` or `WebView`) for document composition. It computes mathematical layout independently:
 1. **Font Discovery & Substitution (`FontManager`)**: Discovers installed system fonts and transparently maps proprietary Microsoft Office fonts (e.g. *Calibri*, *Aptos*, *Cambria*, *Consolas*) to available standard cross-platform fallbacks (*Segoe UI*, *DejaVu Sans*, *Liberation Sans*, *Arial*).
 2. **Text Measurement & Word-Breaking**: Splits text runs into whitespace tokens and measures typographic advances via font metrics.
@@ -110,12 +110,12 @@ flowchart TD
 
 ## 4. Subsystem 2: Spreadsheet Editor (Oqteris Calc)
 
-### 4.1 Workbook DOM (`org.oqteris.calc.model`)
+### 4.1 Workbook DOM (`org.originsd.oqteris.calc.model`)
 - `Workbook`: Contains an ordered list of `Worksheet` instances.
 - `Worksheet`: Sparse matrix storage mapping `(row, col)` coordinates to `Cell` objects. Manages row heights, column widths, merged cell regions (`CellRangeAddress`), and grid visibility.
 - `Cell`: Represents individual grid cells with data types (`NUMERIC`, `STRING`, `BOOLEAN`, `FORMULA`, `ERROR`, `BLANK`), raw values, formula expressions, cached evaluated results, and `CellStyle` (font attributes, text alignment, borders, background fills, and number format masks).
 
-### 4.2 Formula Engine & DAG Recalculation (`org.oqteris.calc.formula`)
+### 4.2 Formula Engine & DAG Recalculation (`org.originsd.oqteris.calc.formula`)
 - **Lexer & Parser**: Recursive descent parser converting Excel formulas (e.g. `=IF(SUM(B2:B10) > 1000, AVERAGE(C2:C10) * 1.05, 0)`) into an Abstract Syntax Tree (AST) composed of:
   - `LiteralNode` (numbers, text, booleans)
   - `CellReferenceNode` (absolute/relative cell addresses like `A1`, `$B$4`, `Sheet2!C5`)
@@ -154,7 +154,7 @@ flowchart LR
 
 ## 5. Subsystem 3: Presentation Designer (Oqteris Impress)
 
-### 5.1 Slide DOM (`org.oqteris.presentation.model`)
+### 5.1 Slide DOM (`org.originsd.oqteris.presentation.model`)
 - `Presentation`: Slide deck with dimensions (default: 960x540 widescreen 16:9), active slide tracking, and slide management (add, remove, duplicate, reorder).
 - `Slide`: Individual presentation slide with title, background fill, transition effect (`NONE`, `FADE`, `SLIDE_LEFT`, `SLIDE_RIGHT`, `ZOOM`), and shape list.
 - `SlideShape` Hierarchy:
@@ -180,12 +180,12 @@ flowchart LR
 
 ## 6. Subsystem 4: PDF Viewer & Trust Center
 
-### 6.1 PDF Document Rendering (`org.oqteris.pdf`)
+### 6.1 PDF Document Rendering (`org.originsd.oqteris.pdf`)
 - Integrated with Apache PDFBox 3.x behind strict rendering abstractions (`PdfDocumentModel`, `PdfPageRenderer`, `PdfPageView`).
 - Multi-page continuous view with zoom presets (50%, 75%, 100%, 125%, 150%, 200%, 300%, 400%, Fit Width, Fit Page).
 - Interactive navigation: page thumbnails panel, document bookmarks outline tree, and interactive text search.
 
-### 6.2 Cryptographic Digital Signature Verification (`org.oqteris.crypto`)
+### 6.2 Cryptographic Digital Signature Verification (`org.originsd.oqteris.crypto`)
 The verification engine inspects embedded PDF signature dictionaries conforming to ISO 32000-1 / Adobe PPKLite:
 1. **Byte Range Integrity**:
    - Parses the `/ByteRange [offset1 length1 offset2 length2]` array.

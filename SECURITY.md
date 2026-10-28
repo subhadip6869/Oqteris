@@ -29,7 +29,7 @@ When a user opens a signed PDF document, Oqteris evaluates the signature diction
 
 ## 3. Cryptographic Verification Pipeline
 
-The verification engine (`org.oqteris.crypto.signature.PdfSignatureVerifier`) performs a three-stage verification on every signed PDF:
+The verification engine (`org.originsd.oqteris.crypto.signature.PdfSignatureVerifier`) performs a three-stage verification on every signed PDF:
 
 ```
 [ Stage 1: Byte-Range Tamper Detection ]
@@ -62,7 +62,7 @@ Oqteris maintains an independent, application-managed keystore located at:
 - **Windows**: `%USERPROFILE%\.oqteris\truststore.p12`
 - **Linux**: `$HOME/.oqteris/truststore.p12`
 
-The trust store is managed by `TrustStoreManager` (`org.oqteris.crypto.trust.TrustStoreManager`), which provides:
+The trust store is managed by `TrustStoreManager` (`org.originsd.oqteris.crypto.trust.TrustStoreManager`), which provides:
 - Password-encrypted persistence using industry-standard PKCS#12.
 - Secure certificate storage with alias identifiers, SHA-256 fingerprints, import dates, and user comments.
 - Trust levels:
