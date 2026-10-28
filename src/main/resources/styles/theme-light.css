@@ -34,28 +34,208 @@
     -fx-text-fill: #4f46e5;
 }
 
-/* --- Ribbon Toolbar --- */
-.tool-bar, .ribbon-bar {
+/* --- Ribbon Toolbar (Light Fluent Theme) --- */
+.ribbon {
+    -fx-background: #ffffff !important;
+    -fx-background-color: #ffffff !important;
+    -fx-border-color: #e2e8f0 !important;
+    -fx-border-width: 0 0 1 0 !important;
+}
+
+.ribbon > .outer-container {
+    -fx-background-color: #ffffff !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area {
+    -fx-background-color: #ffffff !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-content-area {
+    -fx-background-color: #e2e8f0, #f8fafc !important;
+    -fx-background-insets: 0, 0 0 1 0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent, transparent, #ffffff !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: transparent, #cbd5e1, #f8fafc !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab > .tab-container > .tab-label {
+    -fx-text-fill: #475569 !important;
+    -fx-font-weight: 500 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected > .tab-container > .tab-label {
+    -fx-text-fill: #4f46e5 !important;
+    -fx-font-weight: bold !important;
+}
+
+.ribbon-group {
+    -fx-border-color: #e2e8f0 !important;
+    -fx-border-width: 0 1 0 0 !important;
+}
+
+.ribbon-group .title {
+    -fx-text-fill: #94a3b8 !important;
+}
+
+.ribbon-group > .ribbon-group-content > .button,
+.ribbon-group > .ribbon-group-content > .toggle-button {
+    -fx-background-color: #ffffff !important;
+    -fx-text-fill: #1e293b !important;
+    -fx-border-color: #cbd5e1 !important;
+    -fx-border-radius: 5px !important;
+    -fx-background-radius: 5px !important;
+}
+
+.ribbon-group > .ribbon-group-content > .button:hover,
+.ribbon-group > .ribbon-group-content > .toggle-button:hover {
+    -fx-background-color: #eef2ff !important;
+    -fx-text-fill: #4f46e5 !important;
+    -fx-border-color: #818cf8 !important;
+}
+
+.ribbon-group > .ribbon-group-content > .toggle-button:selected {
+    -fx-background-color: #e0e7ff !important;
+    -fx-text-fill: #4338ca !important;
+    -fx-border-color: #6366f1 !important;
+    -fx-font-weight: bold !important;
+}
+
+/* --- Document Tabs (Compact) --- */
+.document-tab-pane > .tab-header-area > .tab-header-background,
+.tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: #f1f5f9 !important;
+}
+
+.document-tab-pane > .tab-header-area .tab,
+.tab-pane > .tab-header-area .tab {
+    -fx-background-color: #e2e8f0 !important;
+    -fx-border-color: #cbd5e1 !important;
+    -fx-border-width: 1 1 0 1 !important;
+    -fx-border-radius: 6 6 0 0 !important;
+}
+
+.document-tab-pane > .tab-header-area .tab .tab-label,
+.tab-pane > .tab-header-area .tab .tab-label {
+    -fx-text-fill: #64748b !important;
+}
+
+.document-tab-pane > .tab-header-area .tab:selected,
+.tab-pane > .tab-header-area .tab:selected {
+    -fx-background-color: #ffffff !important;
+    -fx-border-color: #4f46e5 #cbd5e1 transparent #cbd5e1 !important;
+    -fx-border-width: 2 1 0 1 !important;
+}
+
+.document-tab-pane > .tab-header-area .tab:selected .tab-label,
+.tab-pane > .tab-header-area .tab:selected .tab-label {
+    -fx-text-fill: #0f172a !important;
+    -fx-font-weight: bold !important;
+}
+
+/* --- Visible Native-style Scrollbars (Light) --- */
+.scroll-bar {
+    -fx-background-color: #f1f5f9;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0.5px;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0.5px;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #94a3b8;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #64748b;
+}
+
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-background-color: #f1f5f9;
+}
+
+.scroll-bar .increment-button:hover, .scroll-bar .decrement-button:hover {
+    -fx-background-color: #e2e8f0;
+}
+
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+    -fx-background-color: #64748b;
+}
+
+/* --- Search & Formula Bars (Light) --- */
+.editor-search-bar, .editor-formula-bar {
     -fx-background-color: #f8fafc;
     -fx-border-color: #e2e8f0;
     -fx-border-width: 0 0 1 0;
 }
 
-.ribbon-button {
+.coord-field {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 4px;
+    -fx-text-fill: #0f172a;
+}
+
+.sheet-tab-bar {
+    -fx-background-color: #f1f5f9;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1 0 0 0;
+}
+
+.sheet-tab-button {
     -fx-background-color: transparent;
-    -fx-text-fill: #334155;
+    -fx-text-fill: #475569;
     -fx-border-color: transparent;
 }
 
-.ribbon-button:hover {
-    -fx-background-color: #eef2ff;
-    -fx-text-fill: #4f46e5;
-    -fx-border-color: #c7d2fe;
-    -fx-border-radius: 6px;
+.sheet-tab-button:hover {
+    -fx-background-color: #e2e8f0;
+    -fx-text-fill: #0f172a;
 }
 
-.ribbon-button:pressed {
-    -fx-background-color: #e0e7ff;
+.sheet-tab-button-active {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #4f46e5;
+    -fx-border-color: #4f46e5;
+    -fx-border-width: 0 0 2 0;
+}
+
+.sidebar-panel {
+    -fx-background-color: #f8fafc;
+    -fx-background: #f8fafc;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0 1 0 0;
+}
+
+.recent-file-row {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8px;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 8px;
+}
+
+.recent-file-row:hover {
+    -fx-background-color: #eef2ff;
+    -fx-border-color: #c7d2fe;
+}
+
+.recent-file-name {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-text-fill: #0f172a;
+}
+
+.recent-file-path {
+    -fx-font-size: 11px;
+    -fx-text-fill: #64748b;
 }
 
 /* --- Standard Buttons & Inputs --- */
@@ -113,48 +293,12 @@
     -fx-border-color: #94a3b8;
 }
 
-/* --- Document Tabs --- */
-.tab-pane > .tab-header-area > .tab-header-background {
-    -fx-background-color: #f1f5f9;
-}
-
-.tab-pane > .tab-header-area .tab {
-    -fx-background-color: #e2e8f0;
-    -fx-border-color: #cbd5e1;
-    -fx-border-width: 1 1 0 1;
-    -fx-border-radius: 8 8 0 0;
-}
-
-.tab-pane > .tab-header-area .tab .tab-label {
-    -fx-text-fill: #64748b;
-}
-
-.tab-pane > .tab-header-area .tab:selected {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #4f46e5 #cbd5e1 transparent #cbd5e1;
-    -fx-border-width: 2 1 0 1;
-}
-
-.tab-pane > .tab-header-area .tab:selected .tab-label {
-    -fx-text-fill: #0f172a;
-    -fx-font-weight: bold;
-}
-
 /* --- Status Bar --- */
 .status-bar {
     -fx-background-color: #ffffff;
     -fx-border-color: #e2e8f0;
     -fx-border-width: 1 0 0 0;
     -fx-text-fill: #64748b;
-}
-
-/* --- Scrollbar Thumb --- */
-.scroll-bar .thumb {
-    -fx-background-color: #cbd5e1;
-}
-
-.scroll-bar .thumb:hover {
-    -fx-background-color: #94a3b8;
 }
 
 /* --- Welcome / Start Center --- */

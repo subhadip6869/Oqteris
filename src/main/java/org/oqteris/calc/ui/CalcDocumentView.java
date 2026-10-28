@@ -13,12 +13,19 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import org.controlsfx.control.SegmentedButton;
+import org.controlsfx.control.textfield.TextFields;
+import com.pixelduke.control.Ribbon;
+import com.pixelduke.control.ribbon.RibbonGroup;
+import com.pixelduke.control.ribbon.RibbonTab;
+import org.kordamp.ikonli.materialdesign2.*;
 import org.oqteris.calc.formula.FunctionRegistry;
 import org.oqteris.calc.model.*;
 import org.oqteris.calc.model.Cell;
 import org.oqteris.calc.render.SpreadsheetCanvas;
 import org.oqteris.core.model.DocumentModel;
 import org.oqteris.ui.DocumentView;
+import org.oqteris.ui.icon.AppIcons;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,18 +44,18 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
 
     // Formula bar
     private final TextField coordField = new TextField("A1");
-    private final TextField formulaField = new TextField();
+    private final TextField formulaField = TextFields.createClearableTextField();
 
     // Sheet tabs
     private final HBox sheetTabBar = new HBox(4);
 
-    // Contextual ribbon and status
-    private final HBox ribbonBar = new HBox(6);
+    // Ribbon
+    private final Ribbon ribbon = new Ribbon();
     private final Label statusStatsLabel = new Label("Ready");
 
     // Search Bar
     private final HBox searchBar = new HBox(8);
-    private final TextField searchField = new TextField();
+    private final TextField searchField = TextFields.createClearableTextField();
     private final Label searchResultLabel = new Label("");
     private final List<int[]> searchMatches = new ArrayList<>();
     private int currentMatchIndex = 0;
@@ -92,6 +99,11 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
         vScrollBar.setMax(10000);
         vScrollBar.valueProperty().addListener((obs, oldVal, newVal) -> canvas.setScrollOffsets(hScrollBar.getValue(), newVal.doubleValue()));
 
+        canvas.setOnScrollOffsetsChanged((newX, newY) -> {
+            hScrollBar.setValue(newX);
+            vScrollBar.setValue(newY);
+        });
+
         BorderPane gridWithScroll = new BorderPane();
         gridWithScroll.setCenter(canvasContainer);
         gridWithScroll.setRight(vScrollBar);
@@ -111,7 +123,7 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
         // 3. Bottom Sheet Tabs
         sheetTabBar.setAlignment(Pos.CENTER_LEFT);
         sheetTabBar.setPadding(new Insets(3, 8, 3, 8));
-        sheetTabBar.setStyle("-fx-background-color: #f3f3f3; -fx-border-color: #e0e0e0; -fx-border-width: 1 0 0 0;");
+        sheetTabBar.getStyleClass().add("sheet-tab-bar");
         refreshSheetTabs();
 
         // Search Bar setup
@@ -128,11 +140,13 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
     private HBox createFormulaBar() {
         HBox bar = new HBox(6);
         bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setPadding(new Insets(4, 10, 4, 10));
-        bar.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;");
+        bar.setPadding(new Insets(5, 12, 5, 12));
+        bar.getStyleClass().add("editor-formula-bar");
 
-        coordField.setPrefWidth(55);
+        coordField.setPrefWidth(65);
         coordField.setAlignment(Pos.CENTER);
+        coordField.getStyleClass().add("coord-field");
+        coordField.setStyle("-fx-font-family: monospace; -fx-font-weight: bold;");
         coordField.setOnAction(e -> {
             CellAddress addr = CellAddress.parse(coordField.getText().trim());
             if (addr != null) {
@@ -140,19 +154,9 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
             }
         });
 
-        Button cancelBtn = new Button("✕");
-        cancelBtn.setStyle("-fx-font-size: 11px; -fx-text-fill: #dc3545;");
-        cancelBtn.setOnAction(e -> {
-            Cell c = canvas.getWorksheet().getCell(canvas.getActiveRow(), canvas.getActiveCol());
-            formulaField.setText(c != null ? (c.getFormula() != null ? "=" + c.getFormula() : c.getStringValue()) : "");
-        });
-
-        Button okBtn = new Button("✓");
-        okBtn.setStyle("-fx-font-size: 11px; -fx-text-fill: #28a745;");
-        okBtn.setOnAction(e -> commitFormula());
-
         Button fxBtn = new Button("fx");
-        fxBtn.setStyle("-fx-font-weight: bold; -fx-font-style: italic; -fx-text-fill: #0078d4;");
+        fxBtn.setStyle("-fx-font-weight: bold; -fx-font-style: italic; -fx-text-fill: #4f46e5; -fx-background-color: transparent;");
+        fxBtn.setTooltip(new Tooltip("Insert Function"));
         fxBtn.setOnAction(e -> {
             if (!formulaField.getText().startsWith("=")) {
                 formulaField.setText("=" + formulaField.getText());
@@ -161,7 +165,17 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
             formulaField.positionCaret(formulaField.getText().length());
         });
 
+        Button cancelBtn = AppIcons.iconButton(MaterialDesignC.CLOSE, "Cancel Edit", e -> {
+            Cell c = canvas.getWorksheet().getCell(canvas.getActiveRow(), canvas.getActiveCol());
+            formulaField.setText(c != null ? (c.getFormula() != null ? "=" + c.getFormula() : c.getStringValue()) : "");
+        });
+        cancelBtn.setStyle("-fx-background-color: transparent;");
+
+        Button okBtn = AppIcons.iconButton(MaterialDesignC.CHECK, "Commit Formula", e -> commitFormula());
+        okBtn.setStyle("-fx-background-color: transparent;");
+
         HBox.setHgrow(formulaField, Priority.ALWAYS);
+        formulaField.setPromptText("Enter a formula or value...");
         formulaField.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER) {
                 commitFormula();
@@ -176,56 +190,75 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
     }
 
     private void setupRibbonToolbar() {
-        ribbonBar.setAlignment(Pos.CENTER_LEFT);
-        ribbonBar.setSpacing(6);
+        ribbon.getTabs().clear();
+        ribbon.setMaxWidth(Double.MAX_VALUE);
 
-        // Font family
+        // =========================================================================
+        // Tab 1: HOME
+        // =========================================================================
+        RibbonTab homeTab = new RibbonTab("Home");
+
+        // Group: Clipboard
+        RibbonGroup clipboardGroup = new RibbonGroup();
+        clipboardGroup.setTitle("Clipboard");
+        Button pasteBtn = AppIcons.button("Paste", MaterialDesignC.CONTENT_PASTE, e -> paste());
+        Button cutBtn = AppIcons.button("Cut", MaterialDesignC.CONTENT_CUT, e -> cut());
+        Button copyBtn = AppIcons.button("Copy", MaterialDesignC.CONTENT_COPY, e -> copy());
+        clipboardGroup.getNodes().addAll(pasteBtn, cutBtn, copyBtn);
+
+        // Group: Font
+        RibbonGroup fontGroup = new RibbonGroup();
+        fontGroup.setTitle("Font");
+
         ComboBox<String> fontCombo = new ComboBox<>();
         fontCombo.getItems().addAll("Segoe UI", "Calibri", "Arial", "Times New Roman", "Courier New");
         fontCombo.setValue("Segoe UI");
         fontCombo.setPrefWidth(120);
         fontCombo.setOnAction(e -> applyStyle(s -> s.setFontFamily(fontCombo.getValue())));
 
-        // Font size
         ComboBox<Double> sizeCombo = new ComboBox<>();
         sizeCombo.getItems().addAll(9.0, 10.0, 11.0, 12.0, 14.0, 16.0, 18.0, 24.0);
         sizeCombo.setValue(11.0);
         sizeCombo.setPrefWidth(65);
         sizeCombo.setOnAction(e -> applyStyle(s -> s.setFontSize(sizeCombo.getValue())));
 
-        // Bold / Italic / Underline
-        ToggleButton boldBtn = new ToggleButton("B");
-        boldBtn.setStyle("-fx-font-weight: bold;");
+        ToggleButton boldBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_BOLD, "Bold (Ctrl+B)");
         boldBtn.setOnAction(e -> applyStyle(s -> s.setBold(boldBtn.isSelected())));
 
-        ToggleButton italicBtn = new ToggleButton("I");
-        italicBtn.setStyle("-fx-font-style: italic;");
+        ToggleButton italicBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_ITALIC, "Italic (Ctrl+I)");
         italicBtn.setOnAction(e -> applyStyle(s -> s.setItalic(italicBtn.isSelected())));
 
-        ToggleButton underlineBtn = new ToggleButton("U");
+        ToggleButton underlineBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_UNDERLINE, "Underline (Ctrl+U)");
         underlineBtn.setOnAction(e -> applyStyle(s -> s.setUnderline(underlineBtn.isSelected())));
 
-        // ColorPickers
         ColorPicker textColorPicker = new ColorPicker(Color.BLACK);
-        textColorPicker.setPrefWidth(40);
+        textColorPicker.setPrefWidth(44);
+        textColorPicker.setTooltip(new Tooltip("Text Color"));
         textColorPicker.setOnAction(e -> applyStyle(s -> s.setTextColor(textColorPicker.getValue())));
 
         ColorPicker fillPicker = new ColorPicker(Color.TRANSPARENT);
-        fillPicker.setPrefWidth(40);
+        fillPicker.setPrefWidth(44);
+        fillPicker.setTooltip(new Tooltip("Fill Color"));
         fillPicker.setOnAction(e -> applyStyle(s -> s.setFillColor(fillPicker.getValue())));
 
-        // Alignments
-        Button alignLeft = new Button("Left");
+        fontGroup.getNodes().addAll(fontCombo, sizeCombo, boldBtn, italicBtn, underlineBtn, textColorPicker, fillPicker);
+
+        // Group: Alignment
+        RibbonGroup alignGroup = new RibbonGroup();
+        alignGroup.setTitle("Alignment");
+
+        ToggleButton alignLeft = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_LEFT, "Align Left");
         alignLeft.setOnAction(e -> applyStyle(s -> s.setAlignment(CellStyle.Alignment.LEFT)));
 
-        Button alignCenter = new Button("Center");
+        ToggleButton alignCenter = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_CENTER, "Center");
         alignCenter.setOnAction(e -> applyStyle(s -> s.setAlignment(CellStyle.Alignment.CENTER)));
 
-        Button alignRight = new Button("Right");
+        ToggleButton alignRight = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_RIGHT, "Align Right");
         alignRight.setOnAction(e -> applyStyle(s -> s.setAlignment(CellStyle.Alignment.RIGHT)));
 
-        Button mergeCenterBtn = new Button("Merge & Center");
-        mergeCenterBtn.setOnAction(e -> {
+        SegmentedButton alignSegmented = new SegmentedButton(alignLeft, alignCenter, alignRight);
+
+        Button mergeCenterBtn = AppIcons.button("Merge & Center", MaterialDesignT.TABLE_MERGE_CELLS, e -> {
             CellRangeAddress range = canvas.getSelectedRange();
             if (range != null && (range.getRowCount() > 1 || range.getColumnCount() > 1)) {
                 Worksheet ws = canvas.getWorksheet();
@@ -235,36 +268,25 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
             }
         });
 
-        // Number Formats
+        alignGroup.getNodes().addAll(alignSegmented, mergeCenterBtn);
+
+        // Group: Number
+        RibbonGroup numGroup = new RibbonGroup();
+        numGroup.setTitle("Number");
+
         ComboBox<String> numFormatCombo = new ComboBox<>();
         numFormatCombo.getItems().addAll("General", "0.00", "$#,##0.00", "0.00%", "yyyy-mm-dd");
         numFormatCombo.setValue("General");
-        numFormatCombo.setPrefWidth(100);
+        numFormatCombo.setPrefWidth(105);
         numFormatCombo.setOnAction(e -> applyStyle(s -> s.setNumberFormat(numFormatCombo.getValue())));
 
-        // Operations: Sort & Auto-sum
-        Button sortAsc = new Button("Sort A-Z");
-        sortAsc.setOnAction(e -> {
-            CellRangeAddress range = canvas.getSelectedRange();
-            if (range != null) {
-                canvas.getWorksheet().sortRange(range, canvas.getActiveCol(), true);
-                workbook.recalculate();
-                canvas.render();
-            }
-        });
+        numGroup.getNodes().add(numFormatCombo);
 
-        Button sortDesc = new Button("Sort Z-A");
-        sortDesc.setOnAction(e -> {
-            CellRangeAddress range = canvas.getSelectedRange();
-            if (range != null) {
-                canvas.getWorksheet().sortRange(range, canvas.getActiveCol(), false);
-                workbook.recalculate();
-                canvas.render();
-            }
-        });
+        // Group: Editing
+        RibbonGroup editGroup = new RibbonGroup();
+        editGroup.setTitle("Editing");
 
-        Button autoSumBtn = new Button("Σ AutoSum");
-        autoSumBtn.setOnAction(e -> {
+        Button autoSumBtn = AppIcons.button("AutoSum", MaterialDesignS.SIGMA, e -> {
             int r = canvas.getActiveRow();
             int c = canvas.getActiveCol();
             if (r > 0) {
@@ -274,20 +296,94 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
             }
         });
 
-        Button insertChartBtn = new Button("📊 Chart...");
-        insertChartBtn.setOnAction(e -> {
+        Button sortAsc = AppIcons.button("Sort A-Z", MaterialDesignS.SORT_ALPHABETICAL_ASCENDING, e -> {
+            CellRangeAddress range = canvas.getSelectedRange();
+            if (range != null) {
+                canvas.getWorksheet().sortRange(range, canvas.getActiveCol(), true);
+                workbook.recalculate();
+                canvas.render();
+            }
+        });
+
+        Button sortDesc = AppIcons.button("Sort Z-A", MaterialDesignS.SORT_ALPHABETICAL_DESCENDING, e -> {
+            CellRangeAddress range = canvas.getSelectedRange();
+            if (range != null) {
+                canvas.getWorksheet().sortRange(range, canvas.getActiveCol(), false);
+                workbook.recalculate();
+                canvas.render();
+            }
+        });
+
+        editGroup.getNodes().addAll(autoSumBtn, sortAsc, sortDesc);
+
+        homeTab.getRibbonGroups().addAll(clipboardGroup, fontGroup, alignGroup, numGroup, editGroup);
+
+        // =========================================================================
+        // Tab 2: INSERT
+        // =========================================================================
+        RibbonTab insertTab = new RibbonTab("Insert");
+
+        RibbonGroup chartsGroup = new RibbonGroup();
+        chartsGroup.setTitle("Charts");
+        Button insertChartBtn = AppIcons.button("Insert Chart...", MaterialDesignC.CHART_BAR, e -> {
             Stage stage = getScene() != null ? (Stage) getScene().getWindow() : null;
             new SpreadsheetChartDialog(stage, canvas.getWorksheet(), canvas.getSelectedRange()).show();
         });
+        chartsGroup.getNodes().add(insertChartBtn);
 
-        ribbonBar.getChildren().addAll(
-                fontCombo, sizeCombo, boldBtn, italicBtn, underlineBtn,
-                textColorPicker, fillPicker, new Separator(Orientation.VERTICAL),
-                alignLeft, alignCenter, alignRight, mergeCenterBtn, new Separator(Orientation.VERTICAL),
-                numFormatCombo, new Separator(Orientation.VERTICAL),
-                sortAsc, sortDesc, autoSumBtn, new Separator(Orientation.VERTICAL),
-                insertChartBtn
-        );
+        insertTab.getRibbonGroups().add(chartsGroup);
+
+        // =========================================================================
+        // Tab 3: FORMULAS & DATA
+        // =========================================================================
+        RibbonTab formulasTab = new RibbonTab("Formulas & Data");
+
+        RibbonGroup funcsGroup = new RibbonGroup();
+        funcsGroup.setTitle("Function Library");
+
+        MenuButton insertFuncMenu = new MenuButton("Common Formulas");
+        insertFuncMenu.setGraphic(AppIcons.of(MaterialDesignF.FUNCTION, 16));
+        String[] funcs = {"SUM", "AVERAGE", "COUNT", "MAX", "MIN", "IF", "VLOOKUP"};
+        for (String f : funcs) {
+            MenuItem mi = new MenuItem(f + "()");
+            mi.setOnAction(e -> {
+                formulaField.setText("=" + f + "()");
+                formulaField.requestFocus();
+                formulaField.positionCaret(f.length() + 2);
+            });
+            insertFuncMenu.getItems().add(mi);
+        }
+
+        Button recalcBtn = AppIcons.button("Recalculate Now", MaterialDesignR.REFRESH, e -> {
+            workbook.recalculate();
+            canvas.render();
+            updateStatusStats();
+        });
+
+        funcsGroup.getNodes().addAll(insertFuncMenu, recalcBtn);
+        formulasTab.getRibbonGroups().add(funcsGroup);
+
+        // =========================================================================
+        // Tab 4: VIEW
+        // =========================================================================
+        RibbonTab viewTab = new RibbonTab("View");
+
+        RibbonGroup findGroup = new RibbonGroup();
+        findGroup.setTitle("Search");
+        Button findBtn = AppIcons.button("Find in Sheet", MaterialDesignM.MAGNIFY, e -> toggleSearch(!searchBar.isVisible()));
+        findGroup.getNodes().add(findBtn);
+
+        RibbonGroup zoomGroup = new RibbonGroup();
+        zoomGroup.setTitle("Zoom");
+        Button zoomInBtn = AppIcons.iconButton(MaterialDesignM.MAGNIFY_PLUS_OUTLINE, "Zoom In", e -> setZoom(canvas.getZoom() + 0.15));
+        Button zoomResetBtn = new Button("100%");
+        zoomResetBtn.setOnAction(e -> setZoom(1.0));
+        Button zoomOutBtn = AppIcons.iconButton(MaterialDesignM.MAGNIFY_MINUS_OUTLINE, "Zoom Out", e -> setZoom(canvas.getZoom() - 0.15));
+        zoomGroup.getNodes().addAll(zoomOutBtn, zoomResetBtn, zoomInBtn);
+
+        viewTab.getRibbonGroups().addAll(findGroup, zoomGroup);
+
+        ribbon.getTabs().addAll(homeTab, insertTab, formulasTab, viewTab);
     }
 
     private void applyStyle(java.util.function.Consumer<CellStyle> modifier) {
@@ -391,11 +487,10 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
             final int index = i;
             Worksheet ws = workbook.getSheet(index);
             Button tabBtn = new Button(ws.getName());
+            tabBtn.getStyleClass().add("sheet-tab-button");
 
             if (index == workbook.getActiveSheetIndex()) {
-                tabBtn.setStyle("-fx-background-color: white; -fx-font-weight: bold; -fx-border-color: #0078d4; -fx-border-width: 0 0 2 0;");
-            } else {
-                tabBtn.setStyle("-fx-background-color: transparent;");
+                tabBtn.getStyleClass().add("sheet-tab-button-active");
             }
 
             tabBtn.setOnAction(e -> {
@@ -479,26 +574,21 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
 
     private void setupSearchBar() {
         searchBar.setAlignment(Pos.CENTER_LEFT);
-        searchBar.setPadding(new Insets(4, 10, 4, 10));
-        searchBar.setStyle("-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-border-width: 0 0 1 0;");
+        searchBar.setPadding(new Insets(5, 12, 5, 12));
+        searchBar.getStyleClass().add("editor-search-bar");
         searchBar.setVisible(false);
         searchBar.setManaged(false);
 
-        searchField.setPromptText("Find in worksheet...");
-        searchField.setPrefWidth(200);
+        searchField.setPromptText("Find text or numbers in worksheet...");
+        searchField.setPrefWidth(220);
         searchField.setOnAction(e -> performSearch(searchField.getText(), true));
 
-        Button prevBtn = new Button("Prev");
-        prevBtn.setOnAction(e -> navigateSearch(-1));
+        Button prevBtn = AppIcons.iconButton(MaterialDesignC.CHEVRON_LEFT, "Previous Match", e -> navigateSearch(-1));
+        Button nextBtn = AppIcons.iconButton(MaterialDesignC.CHEVRON_RIGHT, "Next Match", e -> navigateSearch(1));
+        Button closeBtn = AppIcons.iconButton(MaterialDesignC.CLOSE, "Close Search", e -> toggleSearch(false));
+        closeBtn.setStyle("-fx-background-color: transparent;");
 
-        Button nextBtn = new Button("Next");
-        nextBtn.setOnAction(e -> navigateSearch(1));
-
-        Button closeBtn = new Button("✕");
-        closeBtn.setStyle("-fx-background-color: transparent; -fx-font-weight: bold;");
-        closeBtn.setOnAction(e -> toggleSearch(false));
-
-        searchResultLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+        searchResultLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: 500;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -573,7 +663,7 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
 
     @Override
     public Node getRibbonToolbar() {
-        return ribbonBar;
+        return ribbon;
     }
 
     @Override

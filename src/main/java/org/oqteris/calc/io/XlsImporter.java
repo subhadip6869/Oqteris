@@ -123,7 +123,8 @@ public class XlsImporter implements DocumentImporter<Workbook> {
         org.apache.poi.ss.usermodel.CellStyle poiStyle = poiCell.getCellStyle();
         if (poiStyle != null) {
             CellStyle style = cell.getStyle();
-            org.apache.poi.ss.usermodel.Font poiFont = poiCell.getSheet().getWorkbook().getFontAt(poiStyle.getFontIndex());
+            org.apache.poi.ss.usermodel.Workbook poiWb = poiCell.getSheet().getWorkbook();
+            org.apache.poi.ss.usermodel.Font poiFont = poiWb.getFontAt(poiStyle.getFontIndex());
             if (poiFont != null) {
                 style.setFontFamily(poiFont.getFontName());
                 style.setFontSize((double) poiFont.getFontHeightInPoints());
@@ -131,10 +132,49 @@ public class XlsImporter implements DocumentImporter<Workbook> {
                 style.setItalic(poiFont.getItalic());
             }
 
+            // HSSF palette for colors
+            if (poiWb instanceof org.apache.poi.hssf.usermodel.HSSFWorkbook hssfWb) {
+                org.apache.poi.hssf.usermodel.HSSFPalette palette = hssfWb.getCustomPalette();
+                if (palette != null) {
+                    // Fill color
+                    if (poiStyle.getFillPattern() != org.apache.poi.ss.usermodel.FillPatternType.NO_FILL) {
+                        short fillIdx = poiStyle.getFillForegroundColor();
+                        org.apache.poi.hssf.util.HSSFColor hssfFill = palette.getColor(fillIdx);
+                        if (hssfFill != null) {
+                            short[] triplet = hssfFill.getTriplet();
+                            style.setFillColor(javafx.scene.paint.Color.rgb(triplet[0], triplet[1], triplet[2]));
+                        }
+                    }
+                    // Font color
+                    if (poiFont != null) {
+                        short fontColorIdx = poiFont.getColor();
+                        org.apache.poi.hssf.util.HSSFColor hssfText = palette.getColor(fontColorIdx);
+                        if (hssfText != null) {
+                            short[] triplet = hssfText.getTriplet();
+                            style.setTextColor(javafx.scene.paint.Color.rgb(triplet[0], triplet[1], triplet[2]));
+                        }
+                    }
+                }
+            }
+
             switch (poiStyle.getAlignment()) {
                 case CENTER -> style.setAlignment(CellStyle.Alignment.CENTER);
                 case RIGHT -> style.setAlignment(CellStyle.Alignment.RIGHT);
                 default -> style.setAlignment(CellStyle.Alignment.LEFT);
+            }
+
+            // Borders
+            if (poiStyle.getBorderTop() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                style.setBorderTop(CellStyle.BorderType.THIN);
+            }
+            if (poiStyle.getBorderBottom() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                style.setBorderBottom(CellStyle.BorderType.THIN);
+            }
+            if (poiStyle.getBorderLeft() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                style.setBorderLeft(CellStyle.BorderType.THIN);
+            }
+            if (poiStyle.getBorderRight() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                style.setBorderRight(CellStyle.BorderType.THIN);
             }
 
             String formatStr = poiStyle.getDataFormatString();

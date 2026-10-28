@@ -247,18 +247,18 @@ public class WelcomeScreen extends BorderPane {
             row.setAlignment(Pos.CENTER_LEFT);
             row.setPadding(new Insets(10, 14, 10, 14));
             row.setStyle("-fx-background-color: white; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px; -fx-cursor: hand;");
-            row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: #eef2ff; -fx-background-radius: 8px; -fx-border-color: #c7d2fe; -fx-border-radius: 8px; -fx-cursor: hand;"));
-            row.setOnMouseExited(e -> row.setStyle("-fx-background-color: white; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px; -fx-cursor: hand;"));
+            row.getStyleClass().add("recent-file-row");
+            row.setCursor(javafx.scene.Cursor.HAND);
 
             Label badge = new Label(entry.getType().name());
             badge.setStyle("-fx-padding: 2px 7px; -fx-background-radius: 4px; -fx-font-size: 10px; -fx-font-weight: bold; " + getBadgeStyle(entry.getType()));
 
             VBox fileInfo = new VBox(2);
             Label fileName = new Label(entry.getFileName());
-            fileName.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #1e293b;");
+            fileName.getStyleClass().add("recent-file-name");
 
             Label filePath = new Label(entry.getAbsolutePath());
-            filePath.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+            filePath.getStyleClass().add("recent-file-path");
             fileInfo.getChildren().addAll(fileName, filePath);
 
             Region spacer = new Region();

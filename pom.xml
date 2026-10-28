@@ -15,10 +15,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
         <javafx.version>21.0.6</javafx.version>
-        <poi.version>5.4.1</poi.version>
+        <poi.version>6.0.0</poi.version>
         <pdfbox.version>3.0.5</pdfbox.version>
-        <bouncycastle.prov.version>1.80.2</bouncycastle.prov.version>
-        <bouncycastle.pkix.version>1.80</bouncycastle.pkix.version>
+        <bouncycastle.prov.version>1.86</bouncycastle.prov.version>
+        <bouncycastle.pkix.version>1.86</bouncycastle.pkix.version>
         <junit.version>5.11.4</junit.version>
     </properties>
 
@@ -74,6 +74,38 @@
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk18on</artifactId>
             <version>${bouncycastle.pkix.version}</version>
+        </dependency>
+
+        <!-- UI Libraries: ControlsFX, Ikonli, JMetro, FXRibbon -->
+        <dependency>
+            <groupId>org.controlsfx</groupId>
+            <artifactId>controlsfx</artifactId>
+            <version>11.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-javafx</artifactId>
+            <version>12.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-fluentui-pack</artifactId>
+            <version>12.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-materialdesign2-pack</artifactId>
+            <version>12.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jfxtras</groupId>
+            <artifactId>jmetro</artifactId>
+            <version>11.6.15</version>
+        </dependency>
+        <dependency>
+            <groupId>com.pixelduke</groupId>
+            <artifactId>fxribbon</artifactId>
+            <version>1.2.2</version>
         </dependency>
 
         <!-- Testing -->

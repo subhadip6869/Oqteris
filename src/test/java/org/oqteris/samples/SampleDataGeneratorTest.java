@@ -10,12 +10,14 @@ import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureInterface;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.jcajce.JcaCertStore;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.cms.CMSProcessableByteArray;
 import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.CMSSignedDataGenerator;
 import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
@@ -35,6 +37,7 @@ import java.security.KeyPairGenerator;
 import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -347,8 +350,8 @@ public class SampleDataGeneratorTest {
         X509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
                 dnName, serial, startDate, endDate, dnName, keyPair.getPublic()
         );
-        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(keyPair.getPrivate());
-        X509Certificate cert = new JcaX509CertificateConverter().getCertificate(certBuilder.build(signer));
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(keyPair.getPrivate());
+        X509Certificate cert = new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME).getCertificate(certBuilder.build(signer));
 
         // Export certificate to file
         try (FileOutputStream fos = new FileOutputStream(targetCert)) {
@@ -403,11 +406,11 @@ public class SampleDataGeneratorTest {
                 public byte[] sign(InputStream content) throws IOException {
                     try {
                         CMSSignedDataGenerator gen = new CMSSignedDataGenerator();
-                        ContentSigner shaSigner = new JcaContentSignerBuilder("SHA256withRSA").build(keyPair.getPrivate());
+                        ContentSigner shaSigner = new JcaContentSignerBuilder("SHA256withRSA").setProvider(BouncyCastleProvider.PROVIDER_NAME).build(keyPair.getPrivate());
                         gen.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(
-                                new JcaDigestCalculatorProviderBuilder().build()
+                                new JcaDigestCalculatorProviderBuilder().setProvider(BouncyCastleProvider.PROVIDER_NAME).build()
                         ).build(shaSigner, cert));
-                        gen.addCertificate(new org.bouncycastle.cert.X509CertificateHolder(cert.getEncoded()));
+                        gen.addCertificates(new JcaCertStore(Collections.singletonList(cert)));
 
                         byte[] data = content.readAllBytes();
                         CMSSignedData signedData = gen.generate(new CMSProcessableByteArray(data), false);

@@ -127,6 +127,77 @@ public class XlsxImporter implements DocumentImporter<Workbook> {
             if (formatStr != null && !formatStr.isBlank()) {
                 style.setNumberFormat(formatStr);
             }
+
+            // Fill color
+            if (poiStyle.getFillPattern() != org.apache.poi.ss.usermodel.FillPatternType.NO_FILL) {
+                org.apache.poi.ss.usermodel.Color poiColor = poiStyle.getFillForegroundColorColor();
+                if (poiColor instanceof org.apache.poi.xssf.usermodel.XSSFColor xssfColor) {
+                    javafx.scene.paint.Color fxColor = convertXssfColor(xssfColor);
+                    if (fxColor != null) {
+                        style.setFillColor(fxColor);
+                    }
+                }
+            }
+
+            // Font & text color
+            int fontIndex = poiStyle.getFontIndex();
+            org.apache.poi.ss.usermodel.Font poiFont = poiCell.getSheet().getWorkbook().getFontAt(fontIndex);
+            if (poiFont != null) {
+                style.setFontFamily(poiFont.getFontName());
+                style.setFontSize((double) poiFont.getFontHeightInPoints());
+                style.setBold(poiFont.getBold());
+                style.setItalic(poiFont.getItalic());
+                if (poiFont instanceof org.apache.poi.xssf.usermodel.XSSFFont xssfFont) {
+                    org.apache.poi.xssf.usermodel.XSSFColor fontColor = xssfFont.getXSSFColor();
+                    javafx.scene.paint.Color fxFontColor = convertXssfColor(fontColor);
+                    if (fxFontColor != null) {
+                        style.setTextColor(fxFontColor);
+                    }
+                }
+            }
+
+            // Alignment
+            switch (poiStyle.getAlignment()) {
+                case CENTER -> style.setAlignment(CellStyle.Alignment.CENTER);
+                case RIGHT -> style.setAlignment(CellStyle.Alignment.RIGHT);
+                default -> style.setAlignment(CellStyle.Alignment.LEFT);
+            }
+
+            // Borders
+            if (poiStyle.getBorderTop() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                style.setBorderTop(CellStyle.BorderType.THIN);
+            }
+            if (poiStyle.getBorderBottom() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                style.setBorderBottom(CellStyle.BorderType.THIN);
+            }
+            if (poiStyle.getBorderLeft() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                style.setBorderLeft(CellStyle.BorderType.THIN);
+            }
+            if (poiStyle.getBorderRight() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                style.setBorderRight(CellStyle.BorderType.THIN);
+            }
         }
+    }
+
+    private static javafx.scene.paint.Color convertXssfColor(org.apache.poi.xssf.usermodel.XSSFColor xssfColor) {
+        if (xssfColor == null) return null;
+        try {
+            byte[] rgb = xssfColor.getRGB();
+            if (rgb != null && rgb.length >= 3) {
+                int r = Byte.toUnsignedInt(rgb[0]);
+                int g = Byte.toUnsignedInt(rgb[1]);
+                int b = Byte.toUnsignedInt(rgb[2]);
+                return javafx.scene.paint.Color.rgb(r, g, b);
+            }
+            String hex = xssfColor.getARGBHex();
+            if (hex != null && hex.length() >= 6) {
+                if (hex.length() == 8) {
+                    hex = hex.substring(2);
+                }
+                return javafx.scene.paint.Color.web("#" + hex);
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 }

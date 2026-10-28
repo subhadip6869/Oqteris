@@ -13,7 +13,9 @@ import org.oqteris.core.model.DocumentType;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Exporter for Office Open XML spreadsheets (.xlsx).
@@ -49,7 +51,8 @@ public class XlsxExporter implements DocumentExporter<Workbook> {
 
     @Override
     public void exportDocument(Workbook document, File file) throws IOException {
-        try (org.apache.poi.ss.usermodel.Workbook poiWorkbook = new XSSFWorkbook()) {
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook poiWorkbook = new XSSFWorkbook()) {
+            Map<CellStyle, org.apache.poi.xssf.usermodel.XSSFCellStyle> styleCache = new HashMap<>();
 
             for (Worksheet ws : document.getSheets()) {
                 Sheet poiSheet = poiWorkbook.createSheet(ws.getName());
@@ -74,6 +77,7 @@ public class XlsxExporter implements DocumentExporter<Workbook> {
                             if (cell != null && cell.getType() != CellType.BLANK) {
                                 org.apache.poi.ss.usermodel.Cell poiCell = poiRow.createCell(c);
                                 writeCell(cell, poiCell);
+                                applyStyle(cell, poiCell, poiWorkbook, styleCache);
                             }
                         }
                     }
@@ -84,6 +88,60 @@ public class XlsxExporter implements DocumentExporter<Workbook> {
                 poiWorkbook.write(out);
             }
         }
+    }
+
+    private void applyStyle(Cell cell, org.apache.poi.ss.usermodel.Cell poiCell, org.apache.poi.xssf.usermodel.XSSFWorkbook poiWb, Map<CellStyle, org.apache.poi.xssf.usermodel.XSSFCellStyle> styleCache) {
+        CellStyle style = cell.getStyle();
+        if (style == null) return;
+
+        org.apache.poi.xssf.usermodel.XSSFCellStyle poiStyle = styleCache.computeIfAbsent(style, s -> {
+            org.apache.poi.xssf.usermodel.XSSFCellStyle ps = poiWb.createCellStyle();
+
+            // Font
+            org.apache.poi.xssf.usermodel.XSSFFont font = poiWb.createFont();
+            font.setFontName(s.getFontFamily());
+            font.setFontHeightInPoints((short) Math.round(s.getFontSize()));
+            font.setBold(s.isBold());
+            font.setItalic(s.isItalic());
+            if (s.getTextColor() != null && !s.getTextColor().equals(javafx.scene.paint.Color.BLACK)) {
+                byte[] rgb = toRgbBytes(s.getTextColor());
+                font.setColor(new org.apache.poi.xssf.usermodel.XSSFColor(rgb, null));
+            }
+            ps.setFont(font);
+
+            // Fill color
+            if (s.getFillColor() != null) {
+                byte[] rgb = toRgbBytes(s.getFillColor());
+                org.apache.poi.xssf.usermodel.XSSFColor fillCol = new org.apache.poi.xssf.usermodel.XSSFColor(rgb, null);
+                ps.setFillForegroundColor(fillCol);
+                ps.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            }
+
+            // Alignment
+            switch (s.getAlignment()) {
+                case CENTER -> ps.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+                case RIGHT -> ps.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.RIGHT);
+                default -> ps.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.LEFT);
+            }
+
+            // Number format
+            if (s.getNumberFormat() != null && !s.getNumberFormat().equalsIgnoreCase("general")) {
+                org.apache.poi.ss.usermodel.DataFormat df = poiWb.createDataFormat();
+                ps.setDataFormat(df.getFormat(s.getNumberFormat()));
+            }
+
+            return ps;
+        });
+
+        poiCell.setCellStyle(poiStyle);
+    }
+
+    private static byte[] toRgbBytes(javafx.scene.paint.Color color) {
+        return new byte[]{
+                (byte) Math.round(color.getRed() * 255),
+                (byte) Math.round(color.getGreen() * 255),
+                (byte) Math.round(color.getBlue() * 255)
+        };
     }
 
     private void writeCell(Cell cell, org.apache.poi.ss.usermodel.Cell poiCell) {

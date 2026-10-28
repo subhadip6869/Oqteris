@@ -3,10 +3,12 @@ package org.oqteris.crypto.signature;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
 import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.cms.Attribute;
 import org.bouncycastle.asn1.cms.AttributeTable;
 import org.bouncycastle.asn1.cms.CMSAttributes;
+import org.bouncycastle.asn1.cms.ContentInfo;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -114,7 +116,10 @@ public class PdfSignatureVerifier {
         }
 
         try {
-            CMSSignedData cmsSignedData = new CMSSignedData(new CMSProcessableByteArray(signedContent), contents);
+            ASN1InputStream asn1In = new ASN1InputStream(contents);
+            ASN1Primitive primitive = asn1In.readObject();
+            ContentInfo contentInfo = ContentInfo.getInstance(primitive);
+            CMSSignedData cmsSignedData = new CMSSignedData(new CMSProcessableByteArray(signedContent), contentInfo);
             SignerInformationStore signers = cmsSignedData.getSignerInfos();
             Store<X509CertificateHolder> certStore = cmsSignedData.getCertificates();
             JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME);

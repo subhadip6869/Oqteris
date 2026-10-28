@@ -17,10 +17,16 @@ import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
+import org.controlsfx.control.textfield.TextFields;
+import com.pixelduke.control.Ribbon;
+import com.pixelduke.control.ribbon.RibbonGroup;
+import com.pixelduke.control.ribbon.RibbonTab;
+import org.kordamp.ikonli.materialdesign2.*;
 import org.oqteris.core.model.DocumentModel;
 import org.oqteris.presentation.model.*;
 import org.oqteris.presentation.render.SlideRenderer;
 import org.oqteris.ui.DocumentView;
+import org.oqteris.ui.icon.AppIcons;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -46,12 +52,12 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
     private final ScrollPane canvasScroll = new ScrollPane();
 
     // Ribbon toolbar
-    private final HBox ribbonBar = new HBox(6);
+    private final Ribbon ribbon = new Ribbon();
     private final Label statusSlideLabel = new Label("Slide 1 of 1");
 
     // Search bar
     private final HBox searchBar = new HBox(8);
-    private final TextField searchField = new TextField();
+    private final TextField searchField = TextFields.createClearableTextField();
     private final Label searchResultLabel = new Label("");
 
     // Selection & interaction state
@@ -84,7 +90,7 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
         thumbnailsScroll.setContent(thumbnailsBox);
         thumbnailsScroll.setFitToWidth(true);
         thumbnailsScroll.setPrefWidth(210);
-        thumbnailsScroll.setStyle("-fx-background-color: #f8fafc; -fx-background: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-width: 0 1 0 0;");
+        thumbnailsScroll.getStyleClass().add("sidebar-panel");
         thumbnailsBox.setPadding(new Insets(12));
         thumbnailsBox.setAlignment(Pos.TOP_CENTER);
         setLeft(thumbnailsScroll);
@@ -121,28 +127,25 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
 
     private void setupSearchBar() {
         searchBar.setAlignment(Pos.CENTER_LEFT);
-        searchBar.setPadding(new Insets(4, 10, 4, 10));
-        searchBar.setStyle("-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-border-width: 0 0 1 0;");
+        searchBar.setPadding(new Insets(5, 12, 5, 12));
+        searchBar.getStyleClass().add("editor-search-bar");
         searchBar.setVisible(false);
         searchBar.setManaged(false);
 
         searchField.setPromptText("Find text in slides...");
-        searchField.setPrefWidth(200);
+        searchField.setPrefWidth(220);
         searchField.setOnAction(e -> performSearch(searchField.getText()));
 
-        Button findBtn = new Button("Find Next");
-        findBtn.setOnAction(e -> performSearch(searchField.getText()));
+        Button findNextBtn = AppIcons.button("Find Next", MaterialDesignC.CHEVRON_RIGHT, e -> performSearch(searchField.getText()));
+        Button closeBtn = AppIcons.iconButton(MaterialDesignC.CLOSE, "Close Search", e -> toggleSearch(false));
+        closeBtn.setStyle("-fx-background-color: transparent;");
 
-        Button closeBtn = new Button("✕");
-        closeBtn.setStyle("-fx-background-color: transparent; -fx-font-weight: bold;");
-        closeBtn.setOnAction(e -> toggleSearch(false));
-
-        searchResultLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+        searchResultLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: 500;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        searchBar.getChildren().addAll(new Label("Find:"), searchField, findBtn, searchResultLabel, spacer, closeBtn);
+        searchBar.getChildren().addAll(new Label("Find:"), searchField, findNextBtn, searchResultLabel, spacer, closeBtn);
     }
 
     private void toggleSearch(boolean visible) {
@@ -185,27 +188,32 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
     }
 
     private void setupRibbonToolbar() {
-        ribbonBar.setAlignment(Pos.CENTER_LEFT);
-        ribbonBar.setSpacing(6);
+        ribbon.getTabs().clear();
+        ribbon.setMaxWidth(Double.MAX_VALUE);
+
+        // =========================================================================
+        // Tab 1: HOME
+        // =========================================================================
+        RibbonTab homeTab = new RibbonTab("Home");
 
         // Slides Group
-        Button newSlideBtn = new Button("+ New Slide");
-        newSlideBtn.setOnAction(e -> {
+        RibbonGroup slidesGroup = new RibbonGroup();
+        slidesGroup.setTitle("Slides");
+
+        Button newSlideBtn = AppIcons.button("New Slide", MaterialDesignP.PLUS_BOX, e -> {
             presentation.createSlide("New Slide");
             presentation.setActiveSlideIndex(presentation.getSlideCount() - 1);
             refreshThumbnails();
             renderActiveSlide();
         });
 
-        Button dupSlideBtn = new Button("Duplicate");
-        dupSlideBtn.setOnAction(e -> {
+        Button dupSlideBtn = AppIcons.button("Duplicate", MaterialDesignC.CONTENT_DUPLICATE, e -> {
             presentation.duplicateSlide(presentation.getActiveSlideIndex());
             refreshThumbnails();
             renderActiveSlide();
         });
 
-        Button deleteSlideBtn = new Button("Delete");
-        deleteSlideBtn.setOnAction(e -> {
+        Button deleteSlideBtn = AppIcons.button("Delete", MaterialDesignT.TRASH_CAN_OUTLINE, e -> {
             if (presentation.getSlideCount() > 1) {
                 presentation.removeSlide(presentation.getActiveSlideIndex());
                 refreshThumbnails();
@@ -213,11 +221,125 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
             }
         });
 
-        // Insert Shapes Group
-        MenuButton insertShapeBtn = new MenuButton("Insert Shape");
-        MenuItem addText = new MenuItem("Text Box");
-        addText.setOnAction(e -> addShapeToActiveSlide(new TextBoxShape(200, 200, 320, 70, "Click to edit text", 20.0, false)));
+        slidesGroup.getNodes().addAll(newSlideBtn, dupSlideBtn, deleteSlideBtn);
 
+        // Clipboard Group
+        RibbonGroup clipboardGroup = new RibbonGroup();
+        clipboardGroup.setTitle("Clipboard");
+        Button pasteBtn = AppIcons.button("Paste", MaterialDesignC.CONTENT_PASTE, e -> paste());
+        Button cutBtn = AppIcons.button("Cut", MaterialDesignC.CONTENT_CUT, e -> cut());
+        Button copyBtn = AppIcons.button("Copy", MaterialDesignC.CONTENT_COPY, e -> copy());
+        clipboardGroup.getNodes().addAll(pasteBtn, cutBtn, copyBtn);
+
+        // Text Group
+        RibbonGroup textGroup = new RibbonGroup();
+        textGroup.setTitle("Text Formatting");
+
+        ComboBox<Double> fontSizeCombo = new ComboBox<>();
+        fontSizeCombo.getItems().addAll(12.0, 14.0, 16.0, 18.0, 20.0, 24.0, 28.0, 32.0, 40.0, 48.0);
+        fontSizeCombo.setValue(18.0);
+        fontSizeCombo.setPrefWidth(65);
+        fontSizeCombo.setOnAction(e -> {
+            if (selectedShape instanceof TextBoxShape tb) {
+                tb.setFontSize(fontSizeCombo.getValue());
+                presentation.setModified(true);
+                renderActiveSlide();
+            }
+        });
+
+        ToggleButton boldBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_BOLD, "Bold");
+        boldBtn.setOnAction(e -> {
+            if (selectedShape instanceof TextBoxShape tb) {
+                tb.setBold(boldBtn.isSelected());
+                presentation.setModified(true);
+                renderActiveSlide();
+            }
+        });
+
+        ToggleButton italicBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_ITALIC, "Italic");
+        italicBtn.setOnAction(e -> {
+            if (selectedShape instanceof TextBoxShape tb) {
+                tb.setItalic(italicBtn.isSelected());
+                presentation.setModified(true);
+                renderActiveSlide();
+            }
+        });
+
+        ColorPicker textColorPicker = new ColorPicker(Color.BLACK);
+        textColorPicker.setPrefWidth(42);
+        textColorPicker.setTooltip(new Tooltip("Text Color"));
+        textColorPicker.setOnAction(e -> {
+            if (selectedShape instanceof TextBoxShape tb) {
+                tb.setTextColor(textColorPicker.getValue());
+                presentation.setModified(true);
+                renderActiveSlide();
+            }
+        });
+
+        textGroup.getNodes().addAll(fontSizeCombo, boldBtn, italicBtn, textColorPicker);
+
+        // Style Group
+        RibbonGroup styleGroup = new RibbonGroup();
+        styleGroup.setTitle("Shape Style");
+
+        ColorPicker fillColorPicker = new ColorPicker(Color.rgb(79, 70, 229));
+        fillColorPicker.setPrefWidth(42);
+        fillColorPicker.setTooltip(new Tooltip("Fill Color"));
+        fillColorPicker.setOnAction(e -> {
+            if (selectedShape != null) {
+                selectedShape.setFillColor(fillColorPicker.getValue());
+                presentation.setModified(true);
+                renderActiveSlide();
+            }
+        });
+
+        ColorPicker strokeColorPicker = new ColorPicker(Color.rgb(67, 56, 202));
+        strokeColorPicker.setPrefWidth(42);
+        strokeColorPicker.setTooltip(new Tooltip("Border Color"));
+        strokeColorPicker.setOnAction(e -> {
+            if (selectedShape != null) {
+                selectedShape.setStrokeColor(strokeColorPicker.getValue());
+                presentation.setModified(true);
+                renderActiveSlide();
+            }
+        });
+
+        styleGroup.getNodes().addAll(new Label("Fill:"), fillColorPicker, new Label("Border:"), strokeColorPicker);
+
+        // Arrange Group
+        RibbonGroup arrangeGroup = new RibbonGroup();
+        arrangeGroup.setTitle("Arrange");
+
+        Button bringFrontBtn = AppIcons.button("Bring Forward", MaterialDesignA.ARRANGE_BRING_TO_FRONT, e -> {
+            if (selectedShape != null) {
+                presentation.getActiveSlide().bringToFront(selectedShape);
+                presentation.setModified(true);
+                renderActiveSlide();
+            }
+        });
+
+        Button sendBackBtn = AppIcons.button("Send Back", MaterialDesignA.ARRANGE_SEND_TO_BACK, e -> {
+            if (selectedShape != null) {
+                presentation.getActiveSlide().sendToBack(selectedShape);
+                presentation.setModified(true);
+                renderActiveSlide();
+            }
+        });
+
+        arrangeGroup.getNodes().addAll(bringFrontBtn, sendBackBtn);
+
+        homeTab.getRibbonGroups().addAll(slidesGroup, clipboardGroup, textGroup, styleGroup, arrangeGroup);
+
+        // =========================================================================
+        // Tab 2: INSERT
+        // =========================================================================
+        RibbonTab insertTab = new RibbonTab("Insert");
+
+        RibbonGroup shapesGroup = new RibbonGroup();
+        shapesGroup.setTitle("Shapes");
+
+        MenuButton insertShapeBtn = new MenuButton("Insert Shape");
+        insertShapeBtn.setGraphic(AppIcons.of(MaterialDesignS.SHAPE_PLUS, 16));
         MenuItem addRect = new MenuItem("Rectangle");
         addRect.setOnAction(e -> addShapeToActiveSlide(new GeometricShape(GeometricShape.Geometry.RECTANGLE, 200, 200, 200, 120)));
 
@@ -236,110 +358,95 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
         MenuItem addStar = new MenuItem("Star");
         addStar.setOnAction(e -> addShapeToActiveSlide(new GeometricShape(GeometricShape.Geometry.STAR, 200, 200, 150, 150)));
 
-        MenuItem addTable = new MenuItem("Table (3x3)");
-        addTable.setOnAction(e -> addShapeToActiveSlide(new TableShape(3, 3, 200, 200, 420, 160)));
+        insertShapeBtn.getItems().addAll(addRect, addRoundedRect, addEllipse, addTriangle, addArrow, addStar);
+        shapesGroup.getNodes().add(insertShapeBtn);
 
-        insertShapeBtn.getItems().addAll(addText, new SeparatorMenuItem(), addRect, addRoundedRect, addEllipse, addTriangle, addArrow, addStar, new SeparatorMenuItem(), addTable);
+        RibbonGroup textInsertGroup = new RibbonGroup();
+        textInsertGroup.setTitle("Text");
+        Button addTextBtn = AppIcons.button("Text Box", MaterialDesignT.TEXT_BOX, e -> addShapeToActiveSlide(new TextBoxShape(200, 200, 320, 70, "Click to edit text", 20.0, false)));
+        textInsertGroup.getNodes().add(addTextBtn);
 
-        Button insertImageBtn = new Button("+ Image");
-        insertImageBtn.setOnAction(e -> handleInsertImage());
+        RibbonGroup mediaGroup = new RibbonGroup();
+        mediaGroup.setTitle("Media & Tables");
+        Button insertImageBtn = AppIcons.button("Picture", MaterialDesignI.IMAGE, e -> handleInsertImage());
+        Button addTableBtn = AppIcons.button("Table (3x3)", MaterialDesignT.TABLE, e -> addShapeToActiveSlide(new TableShape(3, 3, 200, 200, 420, 160)));
+        mediaGroup.getNodes().addAll(insertImageBtn, addTableBtn);
 
-        // Styling Controls
-        ColorPicker fillColorPicker = new ColorPicker(Color.rgb(79, 70, 229));
-        fillColorPicker.setPrefWidth(42);
-        fillColorPicker.setOnAction(e -> {
-            if (selectedShape != null) {
-                selectedShape.setFillColor(fillColorPicker.getValue());
-                presentation.setModified(true);
-                renderActiveSlide();
-            }
+        insertTab.getRibbonGroups().addAll(shapesGroup, textInsertGroup, mediaGroup);
+
+        // =========================================================================
+        // Tab 3: DESIGN
+        // =========================================================================
+        RibbonTab designTab = new RibbonTab("Design");
+
+        RibbonGroup bgGroup = new RibbonGroup();
+        bgGroup.setTitle("Background");
+        ColorPicker slideBgPicker = new ColorPicker(presentation.getActiveSlide().getBackgroundColor());
+        slideBgPicker.setPrefWidth(55);
+        slideBgPicker.setTooltip(new Tooltip("Slide Background Color"));
+        slideBgPicker.setOnAction(e -> {
+            presentation.getActiveSlide().setBackgroundColor(slideBgPicker.getValue());
+            presentation.setModified(true);
+            refreshThumbnails();
+            renderActiveSlide();
+        });
+        bgGroup.getNodes().addAll(new Label("Background:"), slideBgPicker);
+
+        RibbonGroup themeGroup = new RibbonGroup();
+        themeGroup.setTitle("Themes");
+        Button themeDark = new Button("Modern Obsidian");
+        themeDark.setOnAction(e -> {
+            presentation.getActiveSlide().setBackgroundColor(Color.rgb(15, 23, 42));
+            presentation.setModified(true);
+            refreshThumbnails();
+            renderActiveSlide();
         });
 
-        ColorPicker strokeColorPicker = new ColorPicker(Color.rgb(67, 56, 202));
-        strokeColorPicker.setPrefWidth(42);
-        strokeColorPicker.setOnAction(e -> {
-            if (selectedShape != null) {
-                selectedShape.setStrokeColor(strokeColorPicker.getValue());
-                presentation.setModified(true);
-                renderActiveSlide();
-            }
+        Button themeLight = new Button("Executive Clean");
+        themeLight.setOnAction(e -> {
+            presentation.getActiveSlide().setBackgroundColor(Color.WHITE);
+            presentation.setModified(true);
+            refreshThumbnails();
+            renderActiveSlide();
         });
 
-        // Text controls for text box shapes
-        ComboBox<Double> fontSizeCombo = new ComboBox<>();
-        fontSizeCombo.getItems().addAll(12.0, 14.0, 16.0, 18.0, 20.0, 24.0, 28.0, 32.0, 40.0, 48.0);
-        fontSizeCombo.setValue(18.0);
-        fontSizeCombo.setPrefWidth(65);
-        fontSizeCombo.setOnAction(e -> {
-            if (selectedShape instanceof TextBoxShape tb) {
-                tb.setFontSize(fontSizeCombo.getValue());
-                presentation.setModified(true);
-                renderActiveSlide();
-            }
+        Button themeIndigo = new Button("Indigo Slate");
+        themeIndigo.setOnAction(e -> {
+            presentation.getActiveSlide().setBackgroundColor(Color.rgb(241, 245, 249));
+            presentation.setModified(true);
+            refreshThumbnails();
+            renderActiveSlide();
         });
 
-        ToggleButton boldBtn = new ToggleButton("B");
-        boldBtn.setStyle("-fx-font-weight: bold;");
-        boldBtn.setOnAction(e -> {
-            if (selectedShape instanceof TextBoxShape tb) {
-                tb.setBold(boldBtn.isSelected());
-                presentation.setModified(true);
-                renderActiveSlide();
-            }
-        });
+        themeGroup.getNodes().addAll(themeLight, themeDark, themeIndigo);
 
-        ToggleButton italicBtn = new ToggleButton("I");
-        italicBtn.setStyle("-fx-font-style: italic;");
-        italicBtn.setOnAction(e -> {
-            if (selectedShape instanceof TextBoxShape tb) {
-                tb.setItalic(italicBtn.isSelected());
-                presentation.setModified(true);
-                renderActiveSlide();
-            }
-        });
+        designTab.getRibbonGroups().addAll(bgGroup, themeGroup);
 
-        ColorPicker textColorPicker = new ColorPicker(Color.BLACK);
-        textColorPicker.setPrefWidth(42);
-        textColorPicker.setOnAction(e -> {
-            if (selectedShape instanceof TextBoxShape tb) {
-                tb.setTextColor(textColorPicker.getValue());
-                presentation.setModified(true);
-                renderActiveSlide();
-            }
-        });
+        // =========================================================================
+        // Tab 4: SLIDE SHOW
+        // =========================================================================
+        RibbonTab showTab = new RibbonTab("Slide Show");
 
-        // Arrange Controls
-        Button bringFrontBtn = new Button("Bring to Front");
-        bringFrontBtn.setOnAction(e -> {
-            if (selectedShape != null) {
-                presentation.getActiveSlide().bringToFront(selectedShape);
-                presentation.setModified(true);
-                renderActiveSlide();
-            }
-        });
-
-        Button sendBackBtn = new Button("Send to Back");
-        sendBackBtn.setOnAction(e -> {
-            if (selectedShape != null) {
-                presentation.getActiveSlide().sendToBack(selectedShape);
-                presentation.setModified(true);
-                renderActiveSlide();
-            }
-        });
-
-        // Slideshow presentation launcher (F5)
-        Button slideshowBtn = new Button("▶ Present (F5)");
+        RibbonGroup presentGroup = new RibbonGroup();
+        presentGroup.setTitle("Start Presentation");
+        Button slideshowBtn = AppIcons.button("Present (F5)", MaterialDesignP.PRESENTATION_PLAY, e -> startSlideshow());
         slideshowBtn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6px;");
-        slideshowBtn.setOnAction(e -> startSlideshow());
+        presentGroup.getNodes().add(slideshowBtn);
 
-        ribbonBar.getChildren().addAll(
-                newSlideBtn, dupSlideBtn, deleteSlideBtn, new Separator(Orientation.VERTICAL),
-                insertShapeBtn, insertImageBtn, new Separator(Orientation.VERTICAL),
-                new Label("Fill:"), fillColorPicker, new Label("Line:"), strokeColorPicker, new Separator(Orientation.VERTICAL),
-                fontSizeCombo, boldBtn, italicBtn, textColorPicker, new Separator(Orientation.VERTICAL),
-                bringFrontBtn, sendBackBtn, new Separator(Orientation.VERTICAL),
-                slideshowBtn
-        );
+        RibbonGroup transGroup = new RibbonGroup();
+        transGroup.setTitle("Transitions");
+        ComboBox<Slide.Transition> transCombo = new ComboBox<>();
+        transCombo.getItems().addAll(Slide.Transition.values());
+        transCombo.setValue(presentation.getActiveSlide().getTransition());
+        transCombo.setOnAction(e -> {
+            presentation.getActiveSlide().setTransition(transCombo.getValue());
+            presentation.setModified(true);
+        });
+        transGroup.getNodes().addAll(new Label("Effect:"), transCombo);
+
+        showTab.getRibbonGroups().addAll(presentGroup, transGroup);
+
+        ribbon.getTabs().addAll(homeTab, insertTab, designTab, showTab);
     }
 
     private void handleInsertImage() {
@@ -601,7 +708,7 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
 
     @Override
     public Node getRibbonToolbar() {
-        return ribbonBar;
+        return ribbon;
     }
 
     @Override

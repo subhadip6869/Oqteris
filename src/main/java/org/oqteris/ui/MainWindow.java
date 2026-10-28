@@ -86,12 +86,13 @@ public class MainWindow extends BorderPane {
         MenuBar menuBar = createMenuBar();
         ribbonContainer.getStyleClass().add("ribbon-bar");
         ribbonContainer.setAlignment(Pos.CENTER_LEFT);
-        ribbonContainer.setPadding(new Insets(4, 10, 4, 10));
+        ribbonContainer.setPadding(Insets.EMPTY);
 
         topContainer.getChildren().addAll(menuBar, ribbonContainer);
         setTop(topContainer);
 
         // Center Area: Welcome Screen or TabPane
+        documentTabPane.getStyleClass().add("document-tab-pane");
         documentTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
         documentTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             updateActiveView();
@@ -517,6 +518,10 @@ public class MainWindow extends BorderPane {
         if (view != null) {
             Node toolbar = view.getRibbonToolbar();
             if (toolbar != null) {
+                if (toolbar instanceof Control c) {
+                    c.setMaxWidth(Double.MAX_VALUE);
+                }
+                HBox.setHgrow(toolbar, Priority.ALWAYS);
                 ribbonContainer.getChildren().add(toolbar);
             }
             Node statusNode = view.getStatusBarNode();

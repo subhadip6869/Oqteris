@@ -67,6 +67,8 @@ public class SampleFilesVerificationTest {
         Cell deptHeader = sheet.getCell(2, 0);
         assertNotNull(deptHeader);
         assertEquals("Department", deptHeader.getRawValue());
+        assertNotNull(deptHeader.getStyle().getFillColor(), "Header cell must retain imported background fill color");
+        assertTrue(deptHeader.getStyle().isBold(), "Header cell must retain bold font style");
 
         // Formula check
         Cell engineeringVariance = sheet.getCell(3, 3);
@@ -100,7 +102,7 @@ public class SampleFilesVerificationTest {
 
             assertEquals(1, signatures.size(), "Should have exactly 1 signature");
             PdfSignatureInfo sig = signatures.get(0);
-            assertTrue(sig.isCryptographicallyValid(), "Mathematical signature MUST be valid");
+            assertTrue(sig.isCryptographicallyValid(), () -> "Mathematical signature MUST be valid. Reason: " + sig.getStatusDetails() + " Status: " + sig.getStatus());
             assertTrue(sig.coversWholeDocument(), "Document MUST not be modified after signing");
             assertEquals(SignatureVerificationStatus.VALID_BUT_UNTRUSTED, sig.getStatus(),
                     "Certificate must be UNTRUSTED before being added to trust store");

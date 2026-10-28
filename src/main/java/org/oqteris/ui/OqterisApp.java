@@ -3,9 +3,6 @@ package org.oqteris.ui;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.oqteris.core.io.DocumentRegistry;
-import org.oqteris.core.model.DocumentModel;
-import org.oqteris.core.model.DocumentType;
 
 import java.io.File;
 import java.util.List;

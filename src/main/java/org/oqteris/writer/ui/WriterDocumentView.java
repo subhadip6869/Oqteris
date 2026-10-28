@@ -7,6 +7,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
+import javafx.application.Platform;
 import javafx.print.PageLayout;
 import javafx.print.PageOrientation;
 import javafx.print.Paper;
@@ -26,9 +27,16 @@ import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import org.controlsfx.control.SegmentedButton;
+import org.controlsfx.control.textfield.TextFields;
+import com.pixelduke.control.Ribbon;
+import com.pixelduke.control.ribbon.RibbonGroup;
+import com.pixelduke.control.ribbon.RibbonTab;
+import org.kordamp.ikonli.materialdesign2.*;
 import org.oqteris.core.model.DocumentModel;
 import org.oqteris.core.render.FontManager;
 import org.oqteris.ui.DocumentView;
+import org.oqteris.ui.icon.AppIcons;
 import org.oqteris.writer.layout.LayoutEngine;
 import org.oqteris.writer.layout.LayoutLine;
 import org.oqteris.writer.layout.LayoutPage;
@@ -53,7 +61,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
     private final StackPane canvasContainer = new StackPane();
 
     // Ribbon toolbar
-    private final HBox ribbonBar = new HBox(6);
+    private final Ribbon ribbon = new Ribbon();
     private final Label statusStatsLabel = new Label("Page 1 of 1 | Words: 0");
 
     // Caret & selection state
@@ -74,8 +82,8 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
     // Search and Replace Bar
     private final HBox searchBar = new HBox(8);
-    private final TextField searchField = new TextField();
-    private final TextField replaceField = new TextField();
+    private final TextField searchField = TextFields.createClearableTextField();
+    private final TextField replaceField = TextFields.createClearableTextField();
     private final Label searchResultLabel = new Label("");
     private final List<SearchResult> searchResults = new ArrayList<>();
     private int currentMatchIndex = 0;
@@ -130,34 +138,28 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
     private void setupSearchBar() {
         searchBar.setAlignment(Pos.CENTER_LEFT);
         searchBar.setPadding(new Insets(6, 12, 6, 12));
-        searchBar.setStyle("-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-border-width: 0 0 1 0;");
+        searchBar.getStyleClass().add("editor-search-bar");
         searchBar.setVisible(false);
         searchBar.setManaged(false);
 
-        searchField.setPromptText("Find text...");
-        searchField.setPrefWidth(180);
+        searchField.setPromptText("Find text in document...");
+        searchField.setPrefWidth(210);
         searchField.setOnAction(e -> performSearch(searchField.getText(), true));
 
         replaceField.setPromptText("Replace with...");
-        replaceField.setPrefWidth(180);
+        replaceField.setPrefWidth(210);
 
-        Button findNextBtn = new Button("Next");
-        findNextBtn.setOnAction(e -> navigateSearch(1));
+        Button findPrevBtn = AppIcons.iconButton(MaterialDesignC.CHEVRON_LEFT, "Previous Match", e -> navigateSearch(-1));
+        Button findNextBtn = AppIcons.iconButton(MaterialDesignC.CHEVRON_RIGHT, "Next Match", e -> navigateSearch(1));
 
-        Button findPrevBtn = new Button("Prev");
-        findPrevBtn.setOnAction(e -> navigateSearch(-1));
-
-        Button replaceBtn = new Button("Replace");
-        replaceBtn.setOnAction(e -> performReplace(false));
-
+        Button replaceBtn = AppIcons.button("Replace", MaterialDesignF.FIND_REPLACE, e -> performReplace(false));
         Button replaceAllBtn = new Button("Replace All");
         replaceAllBtn.setOnAction(e -> performReplace(true));
 
-        Button closeSearchBtn = new Button("✕");
-        closeSearchBtn.setStyle("-fx-background-color: transparent; -fx-font-weight: bold;");
-        closeSearchBtn.setOnAction(e -> toggleSearch(false));
+        Button closeSearchBtn = AppIcons.iconButton(MaterialDesignC.CLOSE, "Close Search", e -> toggleSearch(false));
+        closeSearchBtn.setStyle("-fx-background-color: transparent;");
 
-        searchResultLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+        searchResultLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: 500;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -171,77 +173,81 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
     }
 
     private void setupRibbonToolbar() {
-        ribbonBar.setAlignment(Pos.CENTER_LEFT);
-        ribbonBar.setSpacing(6);
+        ribbon.getTabs().clear();
+        ribbon.setMaxWidth(Double.MAX_VALUE);
 
-        // Style Preset (Normal, Title, Heading 1, 2, 3)
-        ComboBox<Paragraph.HeadingStyle> styleCombo = new ComboBox<>();
-        styleCombo.getItems().addAll(Paragraph.HeadingStyle.values());
-        styleCombo.setValue(Paragraph.HeadingStyle.NORMAL);
-        styleCombo.setPrefWidth(110);
-        styleCombo.setOnAction(e -> {
-            Paragraph p = getActiveParagraph();
-            if (p != null) {
-                p.setHeadingStyle(styleCombo.getValue());
-                document.setModified(true);
-                relayout();
-            }
-        });
+        // =========================================================================
+        // Tab 1: HOME
+        // =========================================================================
+        RibbonTab homeTab = new RibbonTab("Home");
 
-        // Font Family
+        // Group: Clipboard
+        RibbonGroup clipboardGroup = new RibbonGroup();
+        clipboardGroup.setTitle("Clipboard");
+        Button pasteBtn = AppIcons.button("Paste", MaterialDesignC.CONTENT_PASTE, e -> paste());
+        Button cutBtn = AppIcons.button("Cut", MaterialDesignC.CONTENT_CUT, e -> cut());
+        Button copyBtn = AppIcons.button("Copy", MaterialDesignC.CONTENT_COPY, e -> copy());
+        clipboardGroup.getNodes().addAll(pasteBtn, cutBtn, copyBtn);
+
+        // Group: Font
+        RibbonGroup fontGroup = new RibbonGroup();
+        fontGroup.setTitle("Font");
+
         ComboBox<String> fontCombo = new ComboBox<>();
         fontCombo.getItems().addAll("Segoe UI", "Calibri", "Arial", "Times New Roman", "Courier New", "Georgia", "Verdana");
         fontCombo.setValue("Segoe UI");
-        fontCombo.setPrefWidth(115);
+        fontCombo.setPrefWidth(125);
         fontCombo.setOnAction(e -> applyRunStyle(r -> r.setFontFamily(fontCombo.getValue())));
 
-        // Font Size
         ComboBox<Double> sizeCombo = new ComboBox<>();
-        sizeCombo.getItems().addAll(8.0, 9.0, 10.0, 11.0, 12.0, 14.0, 16.0, 18.0, 24.0, 32.0, 48.0);
+        sizeCombo.getItems().addAll(8.0, 9.0, 10.0, 11.0, 12.0, 14.0, 16.0, 18.0, 20.0, 24.0, 28.0, 32.0, 48.0, 72.0);
         sizeCombo.setValue(11.0);
-        sizeCombo.setPrefWidth(65);
+        sizeCombo.setPrefWidth(70);
         sizeCombo.setOnAction(e -> applyRunStyle(r -> r.setFontSize(sizeCombo.getValue())));
 
-        // Bold / Italic / Underline / Strikethrough
-        ToggleButton boldBtn = new ToggleButton("B");
-        boldBtn.setStyle("-fx-font-weight: bold;");
+        ToggleButton boldBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_BOLD, "Bold (Ctrl+B)");
         boldBtn.setOnAction(e -> applyRunStyle(r -> r.setBold(boldBtn.isSelected())));
 
-        ToggleButton italicBtn = new ToggleButton("I");
-        italicBtn.setStyle("-fx-font-style: italic;");
+        ToggleButton italicBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_ITALIC, "Italic (Ctrl+I)");
         italicBtn.setOnAction(e -> applyRunStyle(r -> r.setItalic(italicBtn.isSelected())));
 
-        ToggleButton underlineBtn = new ToggleButton("U");
+        ToggleButton underlineBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_UNDERLINE, "Underline (Ctrl+U)");
         underlineBtn.setOnAction(e -> applyRunStyle(r -> r.setUnderline(underlineBtn.isSelected())));
 
-        ToggleButton strikeBtn = new ToggleButton("S");
-        strikeBtn.setStyle("-fx-strikethrough: true;");
+        ToggleButton strikeBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_STRIKETHROUGH, "Strikethrough");
         strikeBtn.setOnAction(e -> applyRunStyle(r -> r.setStrikethrough(strikeBtn.isSelected())));
 
-        // Colors
         ColorPicker textColor = new ColorPicker(Color.BLACK);
-        textColor.setPrefWidth(42);
+        textColor.setPrefWidth(46);
+        textColor.setTooltip(new Tooltip("Text Color"));
         textColor.setOnAction(e -> applyRunStyle(r -> r.setTextColor(textColor.getValue())));
 
         ColorPicker highlightColor = new ColorPicker(Color.TRANSPARENT);
-        highlightColor.setPrefWidth(42);
+        highlightColor.setPrefWidth(46);
+        highlightColor.setTooltip(new Tooltip("Highlight Color"));
         highlightColor.setOnAction(e -> applyRunStyle(r -> r.setHighlightColor(highlightColor.getValue())));
 
-        // Alignments
-        Button alignLeft = new Button("Left");
+        fontGroup.getNodes().addAll(fontCombo, sizeCombo, boldBtn, italicBtn, underlineBtn, strikeBtn, textColor, highlightColor);
+
+        // Group: Paragraph
+        RibbonGroup paragraphGroup = new RibbonGroup();
+        paragraphGroup.setTitle("Paragraph");
+
+        ToggleButton alignLeft = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_LEFT, "Align Left");
         alignLeft.setOnAction(e -> setParagraphAlignment(Paragraph.Alignment.LEFT));
 
-        Button alignCenter = new Button("Center");
+        ToggleButton alignCenter = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_CENTER, "Center");
         alignCenter.setOnAction(e -> setParagraphAlignment(Paragraph.Alignment.CENTER));
 
-        Button alignRight = new Button("Right");
+        ToggleButton alignRight = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_RIGHT, "Align Right");
         alignRight.setOnAction(e -> setParagraphAlignment(Paragraph.Alignment.RIGHT));
 
-        Button alignJustify = new Button("Justify");
+        ToggleButton alignJustify = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_JUSTIFY, "Justify");
         alignJustify.setOnAction(e -> setParagraphAlignment(Paragraph.Alignment.JUSTIFY));
 
-        // Lists
-        Button bulletBtn = new Button("• List");
+        SegmentedButton alignSegmented = new SegmentedButton(alignLeft, alignCenter, alignRight, alignJustify);
+
+        ToggleButton bulletBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_LIST_BULLETED, "Bulleted List");
         bulletBtn.setOnAction(e -> {
             Paragraph p = getActiveParagraph();
             if (p != null) {
@@ -251,7 +257,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             }
         });
 
-        Button numberBtn = new Button("1. List");
+        ToggleButton numberBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_LIST_NUMBERED, "Numbered List");
         numberBtn.setOnAction(e -> {
             Paragraph p = getActiveParagraph();
             if (p != null) {
@@ -261,38 +267,120 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             }
         });
 
-        // Insert Elements
-        Button insertTableBtn = new Button("+ Table");
-        insertTableBtn.setOnAction(e -> {
+        paragraphGroup.getNodes().addAll(alignSegmented, bulletBtn, numberBtn);
+
+        // Group: Styles
+        RibbonGroup styleGroup = new RibbonGroup();
+        styleGroup.setTitle("Styles");
+
+        ComboBox<Paragraph.HeadingStyle> styleCombo = new ComboBox<>();
+        styleCombo.getItems().addAll(Paragraph.HeadingStyle.values());
+        styleCombo.setValue(Paragraph.HeadingStyle.NORMAL);
+        styleCombo.setPrefWidth(125);
+        styleCombo.setOnAction(e -> {
+            Paragraph p = getActiveParagraph();
+            if (p != null) {
+                p.setHeadingStyle(styleCombo.getValue());
+                document.setModified(true);
+                relayout();
+            }
+        });
+        styleGroup.getNodes().add(styleCombo);
+
+        homeTab.getRibbonGroups().addAll(clipboardGroup, fontGroup, paragraphGroup, styleGroup);
+
+        // =========================================================================
+        // Tab 2: INSERT
+        // =========================================================================
+        RibbonTab insertTab = new RibbonTab("Insert");
+
+        RibbonGroup tableGroup = new RibbonGroup();
+        tableGroup.setTitle("Tables");
+        Button insertTableBtn = AppIcons.button("Table (3x3)", MaterialDesignT.TABLE, e -> {
             DocumentTable table = new DocumentTable(3, 3);
             document.addElement(table);
             document.addElement(new Paragraph());
             relayout();
         });
+        tableGroup.getNodes().add(insertTableBtn);
 
-        Button insertImageBtn = new Button("+ Image");
-        insertImageBtn.setOnAction(e -> handleInsertImage());
+        RibbonGroup mediaGroup = new RibbonGroup();
+        mediaGroup.setTitle("Illustrations");
+        Button insertImageBtn = AppIcons.button("Pictures", MaterialDesignI.IMAGE, e -> handleInsertImage());
+        mediaGroup.getNodes().add(insertImageBtn);
 
-        Button insertLinkBtn = new Button("+ Link");
-        insertLinkBtn.setOnAction(e -> handleInsertLink());
+        RibbonGroup linksGroup = new RibbonGroup();
+        linksGroup.setTitle("Links");
+        Button insertLinkBtn = AppIcons.button("Hyperlink", MaterialDesignL.LINK, e -> handleInsertLink());
+        linksGroup.getNodes().add(insertLinkBtn);
 
-        Button insertPageBreakBtn = new Button("Page Break");
-        insertPageBreakBtn.setOnAction(e -> {
+        RibbonGroup pagesGroup = new RibbonGroup();
+        pagesGroup.setTitle("Pages");
+        Button insertPageBreakBtn = AppIcons.button("Page Break", MaterialDesignP.PAGE_NEXT, e -> {
             document.addElement(new PageBreakElement());
             document.addElement(new Paragraph());
             relayout();
         });
+        pagesGroup.getNodes().add(insertPageBreakBtn);
 
-        Button pageSetupBtn = new Button("Page Setup...");
-        pageSetupBtn.setOnAction(e -> showPageSetupDialog());
+        insertTab.getRibbonGroups().addAll(tableGroup, mediaGroup, linksGroup, pagesGroup);
 
-        ribbonBar.getChildren().addAll(
-                styleCombo, fontCombo, sizeCombo, boldBtn, italicBtn, underlineBtn, strikeBtn,
-                textColor, highlightColor, new Separator(Orientation.VERTICAL),
-                alignLeft, alignCenter, alignRight, alignJustify, new Separator(Orientation.VERTICAL),
-                bulletBtn, numberBtn, new Separator(Orientation.VERTICAL),
-                insertTableBtn, insertImageBtn, insertLinkBtn, insertPageBreakBtn, pageSetupBtn
-        );
+        // =========================================================================
+        // Tab 3: LAYOUT
+        // =========================================================================
+        RibbonTab layoutTab = new RibbonTab("Layout");
+
+        RibbonGroup pageSetupGroup = new RibbonGroup();
+        pageSetupGroup.setTitle("Page Setup");
+
+        ComboBox<String> orientCombo = new ComboBox<>();
+        orientCombo.getItems().addAll("Portrait", "Landscape");
+        orientCombo.setValue("Portrait");
+        orientCombo.setOnAction(e -> {
+            document.getPageSetup().setOrientation("Landscape".equals(orientCombo.getValue()) ? PageSetup.Orientation.LANDSCAPE : PageSetup.Orientation.PORTRAIT);
+            document.setModified(true);
+            relayout();
+        });
+
+        ComboBox<String> paperCombo = new ComboBox<>();
+        paperCombo.getItems().addAll("A4 (210 x 297 mm)", "Letter (8.5 x 11 in)");
+        paperCombo.setValue("A4 (210 x 297 mm)");
+        paperCombo.setOnAction(e -> {
+            if (paperCombo.getValue() != null && paperCombo.getValue().startsWith("Letter")) {
+                document.getPageSetup().setPageWidth(612.0);
+                document.getPageSetup().setPageHeight(792.0);
+            } else {
+                document.getPageSetup().setPageWidth(595.28);
+                document.getPageSetup().setPageHeight(841.89);
+            }
+            document.setModified(true);
+            relayout();
+        });
+
+        Button pageSetupBtn = AppIcons.button("More Options...", MaterialDesignC.COG, e -> showPageSetupDialog());
+        pageSetupGroup.getNodes().addAll(orientCombo, paperCombo, pageSetupBtn);
+
+        layoutTab.getRibbonGroups().add(pageSetupGroup);
+
+        // =========================================================================
+        // Tab 4: REVIEW & VIEW
+        // =========================================================================
+        RibbonTab viewTab = new RibbonTab("Review & View");
+
+        RibbonGroup searchGroup = new RibbonGroup();
+        searchGroup.setTitle("Editing");
+        Button findBtn = AppIcons.button("Find & Replace", MaterialDesignF.FIND_REPLACE, e -> toggleSearch(!searchBar.isVisible()));
+        searchGroup.getNodes().add(findBtn);
+
+        RibbonGroup statsGroup = new RibbonGroup();
+        statsGroup.setTitle("Statistics");
+        Label wordBadge = AppIcons.badge("Words: " + document.getWordCount(), MaterialDesignT.TEXT_BOX_OUTLINE, "stats-badge");
+        document.addDocumentListener(d -> Platform.runLater(() -> wordBadge.setText("Words: " + document.getWordCount())));
+        statsGroup.getNodes().add(wordBadge);
+
+        viewTab.getRibbonGroups().addAll(searchGroup, statsGroup);
+
+        ribbon.getTabs().addAll(homeTab, insertTab, layoutTab, viewTab);
     }
 
     private void handleInsertImage() {
@@ -947,7 +1035,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
     @Override
     public Node getRibbonToolbar() {
-        return ribbonBar;
+        return ribbon;
     }
 
     @Override

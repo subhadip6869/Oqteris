@@ -83,41 +83,90 @@
 }
 
 /* --- Ribbon / Toolbar --- */
-.ribbon-bar {
-    -fx-padding: 5px 10px;
-    -fx-spacing: 6px;
-    -fx-alignment: center-left;
+.ribbon {
+    -fx-min-height: 68px !important;
+    -fx-pref-height: 70px !important;
+    -fx-max-height: 72px !important;
+    -fx-background-color: transparent;
+}
+
+.ribbon > .outer-container {
+    -fx-min-height: 68px !important;
+    -fx-pref-height: 70px !important;
+    -fx-max-height: 72px !important;
+}
+
+.ribbon > .outer-container > .tab-pane {
+    -fx-tab-min-height: 25px !important;
+    -fx-tab-max-height: 25px !important;
+    -fx-min-height: 68px !important;
+    -fx-pref-height: 70px !important;
+    -fx-max-height: 72px !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area {
+    -fx-padding: 0 4px !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-padding: 2px 14px !important;
 }
 
 .ribbon-group {
-    -fx-padding: 2px 6px;
-    -fx-spacing: 5px;
-    -fx-alignment: center-left;
+    -fx-padding: 2px 6px 1px 6px !important;
+    -fx-alignment: center !important;
 }
 
-.ribbon-button {
-    -fx-background-radius: 6px;
-    -fx-padding: 4px 10px;
-    -fx-cursor: hand;
-    -fx-font-size: 12px;
+.ribbon-group-content {
+    -fx-min-height: 32px !important;
+    -fx-pref-height: 34px !important;
+    -fx-max-height: 36px !important;
+    -fx-padding: 0 2px !important;
+    -fx-spacing: 4px !important;
+    -fx-alignment: center-left !important;
 }
 
-/* --- Tab Pane & Document Tabs --- */
+.ribbon-group > .ribbon-group-content > .button,
+.ribbon-group > .ribbon-group-content > .toggle-button,
+.ribbon-group > .ribbon-group-content > .menu-button,
+.ribbon-group > .ribbon-group-content > .combo-box,
+.ribbon-group > .ribbon-group-content > .color-picker {
+    -fx-min-height: 28px !important;
+    -fx-pref-height: 28px !important;
+    -fx-max-height: 30px !important;
+    -fx-padding: 3px 8px !important;
+}
+
+.ribbon-group .title {
+    -fx-font-size: 9.5px !important;
+    -fx-font-weight: 500 !important;
+    -fx-padding: 1px 0 0 0 !important;
+}
+
+/* --- Document Tabs (Compact & Comfortable) --- */
+.document-tab-pane,
+.tab-pane {
+    -fx-tab-min-height: 26px !important;
+    -fx-tab-max-height: 28px !important;
+}
+
+.document-tab-pane > .tab-header-area,
 .tab-pane > .tab-header-area {
-    -fx-padding: 4px 8px 0 8px;
+    -fx-padding: 2px 6px 0 6px !important;
 }
 
+.document-tab-pane > .tab-header-area .tab,
 .tab-pane > .tab-header-area .tab {
-    -fx-background-radius: 8px 8px 0 0;
-    -fx-padding: 5px 16px;
+    -fx-background-radius: 6px 6px 0 0;
+    -fx-padding: 3px 12px !important;
     -fx-cursor: hand;
-    -fx-font-size: 12px;
+    -fx-font-size: 11.5px !important;
     -fx-font-weight: 500;
 }
 
 .tab-pane > .tab-header-area .tab-close-button {
     -fx-background-radius: 50%;
-    -fx-padding: 3px;
+    -fx-padding: 2px;
     -fx-cursor: hand;
 }
 
@@ -128,29 +177,64 @@
     -fx-alignment: center-left;
 }
 
-/* --- Modern Slim Scrollbars --- */
+/* --- Visible Native-style Scrollbars --- */
 .scroll-bar:vertical {
-    -fx-pref-width: 10px;
-    -fx-background-color: transparent;
+    -fx-pref-width: 14px;
+    -fx-min-width: 14px;
 }
 
 .scroll-bar:horizontal {
-    -fx-pref-height: 10px;
-    -fx-background-color: transparent;
+    -fx-pref-height: 14px;
+    -fx-min-height: 14px;
 }
 
 .scroll-bar .thumb {
-    -fx-background-radius: 5px;
+    -fx-background-radius: 4px;
 }
 
 .scroll-bar .track {
-    -fx-background-color: transparent;
+    -fx-background-radius: 0px;
 }
 
 .scroll-bar .increment-button, .scroll-bar .decrement-button {
-    -fx-pref-width: 0;
-    -fx-pref-height: 0;
-    -fx-padding: 0;
+    -fx-pref-width: 14px;
+    -fx-pref-height: 14px;
+    -fx-padding: 2px;
+    -fx-cursor: hand;
+}
+
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+    -fx-padding: 3px;
+}
+
+/* --- Search & Formula Bars --- */
+.editor-search-bar {
+    -fx-alignment: center-left;
+    -fx-padding: 4px 10px;
+    -fx-spacing: 8px;
+}
+
+.editor-formula-bar {
+    -fx-alignment: center-left;
+    -fx-padding: 4px 10px;
+    -fx-spacing: 6px;
+}
+
+.sheet-tab-bar {
+    -fx-alignment: center-left;
+    -fx-padding: 2px 8px;
+    -fx-spacing: 3px;
+}
+
+.sheet-tab-button {
+    -fx-padding: 3px 10px;
+    -fx-font-size: 11px;
+    -fx-background-radius: 4px 4px 0 0;
+    -fx-cursor: hand;
+}
+
+.sheet-tab-button-active {
+    -fx-font-weight: bold;
 }
 
 /* --- Welcome / Start Center --- */
@@ -200,4 +284,37 @@
     -fx-background-radius: 12px;
     -fx-font-weight: bold;
     -fx-font-size: 11px;
+}
+
+/* --- FXRibbon Modern Controls --- */
+.ribbon {
+    -fx-background-color: transparent;
+}
+
+.ribbon-group {
+    -fx-padding: 4px 6px;
+    -fx-spacing: 4px;
+    -fx-alignment: center-left;
+}
+
+.ribbon-group > .title-label {
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+}
+
+/* --- ControlsFX SegmentedButton --- */
+.segmented-button .toggle-button {
+    -fx-background-radius: 0;
+}
+
+.segmented-button .first {
+    -fx-background-radius: 6px 0 0 6px;
+}
+
+.segmented-button .last {
+    -fx-background-radius: 0 6px 6px 0;
+}
+
+.segmented-button .only-button {
+    -fx-background-radius: 6px;
 }

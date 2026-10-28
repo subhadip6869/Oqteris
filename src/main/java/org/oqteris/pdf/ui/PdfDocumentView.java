@@ -10,6 +10,11 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.controlsfx.control.textfield.TextFields;
+import com.pixelduke.control.Ribbon;
+import com.pixelduke.control.ribbon.RibbonGroup;
+import com.pixelduke.control.ribbon.RibbonTab;
+import org.kordamp.ikonli.materialdesign2.*;
 import org.oqteris.core.model.DocumentModel;
 import org.oqteris.crypto.signature.PdfSignatureInfo;
 import org.oqteris.crypto.signature.SignatureVerificationStatus;
@@ -20,6 +25,7 @@ import org.oqteris.pdf.render.PdfPageRenderer;
 import org.oqteris.pdf.render.PdfPageView;
 import org.oqteris.ui.AsyncExecutor;
 import org.oqteris.ui.DocumentView;
+import org.oqteris.ui.icon.AppIcons;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,11 +54,11 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private final TextField pageField = new TextField("1");
     private final Label pageCountLabel = new Label("/ 1");
     private final Label statusPageLabel = new Label("Page 1 of 1");
-    private final HBox ribbonBar = new HBox(8);
+    private final Ribbon ribbon = new Ribbon();
 
     // Search bar
     private final HBox searchBar = new HBox(8);
-    private final TextField searchField = new TextField();
+    private final TextField searchField = TextFields.createClearableTextField();
     private final Label searchResultLabel = new Label("");
     private int currentMatchIndex = 0;
     private final List<SearchResult> searchResults = new ArrayList<>();
@@ -138,13 +144,13 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
     private void setupSearchBar() {
         searchBar.setAlignment(Pos.CENTER_LEFT);
-        searchBar.setPadding(new Insets(6, 12, 6, 12));
-        searchBar.setStyle("-fx-background-color: #f3f3f3; -fx-border-color: #dddddd; -fx-border-width: 0 0 1 0;");
+        searchBar.setPadding(new Insets(5, 12, 5, 12));
+        searchBar.getStyleClass().add("editor-search-bar");
         searchBar.setVisible(false);
         searchBar.setManaged(false);
 
-        searchField.setPromptText("Find text in PDF...");
-        searchField.setPrefWidth(200);
+        searchField.setPromptText("Find text in PDF document...");
+        searchField.setPrefWidth(220);
         searchField.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER) {
                 performSearch(searchField.getText(), true);
@@ -153,33 +159,35 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             }
         });
 
-        Button nextBtn = new Button("Next");
-        nextBtn.setOnAction(e -> navigateSearch(1));
+        Button prevBtn = AppIcons.iconButton(MaterialDesignC.CHEVRON_LEFT, "Previous Match", e -> navigateSearch(-1));
+        Button nextBtn = AppIcons.iconButton(MaterialDesignC.CHEVRON_RIGHT, "Next Match", e -> navigateSearch(1));
+        Button closeBtn = AppIcons.iconButton(MaterialDesignC.CLOSE, "Close Search", e -> toggleSearch(false));
+        closeBtn.setStyle("-fx-background-color: transparent;");
 
-        Button prevBtn = new Button("Previous");
-        prevBtn.setOnAction(e -> navigateSearch(-1));
+        searchResultLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: 500;");
 
-        Button closeBtn = new Button("✕");
-        closeBtn.setOnAction(e -> toggleSearch(false));
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        searchBar.getChildren().addAll(new Label("Find:"), searchField, nextBtn, prevBtn, searchResultLabel, closeBtn);
+        searchBar.getChildren().addAll(new Label("Find:"), searchField, prevBtn, nextBtn, searchResultLabel, spacer, closeBtn);
     }
 
     private void setupRibbonToolbar() {
-        ribbonBar.setAlignment(Pos.CENTER_LEFT);
-        ribbonBar.setSpacing(6);
+        ribbon.getTabs().clear();
+        ribbon.setMaxWidth(Double.MAX_VALUE);
 
-        // Navigation Group
-        Button firstBtn = new Button("|<");
-        firstBtn.setTooltip(new Tooltip("First Page"));
-        firstBtn.setOnAction(e -> jumpToPage(0));
+        RibbonTab docTab = new RibbonTab("Document");
 
-        Button prevBtn = new Button("<");
-        prevBtn.setTooltip(new Tooltip("Previous Page"));
-        prevBtn.setOnAction(e -> jumpToPage(currentPage - 1));
+        // Page Navigation Group
+        RibbonGroup navGroup = new RibbonGroup();
+        navGroup.setTitle("Navigation");
 
-        pageField.setPrefWidth(45);
+        Button firstBtn = AppIcons.iconButton(MaterialDesignP.PAGE_FIRST, "First Page", e -> jumpToPage(0));
+        Button prevBtn = AppIcons.iconButton(MaterialDesignC.CHEVRON_LEFT, "Previous Page", e -> jumpToPage(currentPage - 1));
+
+        pageField.setPrefWidth(50);
         pageField.setAlignment(Pos.CENTER);
+        pageField.setStyle("-fx-font-family: monospace; -fx-font-weight: bold;");
         pageField.setOnAction(e -> {
             try {
                 int p = Integer.parseInt(pageField.getText().trim()) - 1;
@@ -190,58 +198,55 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         pageCountLabel.setText("/ " + model.getPageCount());
 
-        Button nextBtn = new Button(">");
-        nextBtn.setTooltip(new Tooltip("Next Page"));
-        nextBtn.setOnAction(e -> jumpToPage(currentPage + 1));
+        Button nextBtn = AppIcons.iconButton(MaterialDesignC.CHEVRON_RIGHT, "Next Page", e -> jumpToPage(currentPage + 1));
+        Button lastBtn = AppIcons.iconButton(MaterialDesignP.PAGE_LAST, "Last Page", e -> jumpToPage(model.getPageCount() - 1));
 
-        Button lastBtn = new Button(">|");
-        lastBtn.setTooltip(new Tooltip("Last Page"));
-        lastBtn.setOnAction(e -> jumpToPage(model.getPageCount() - 1));
+        navGroup.getNodes().addAll(firstBtn, prevBtn, pageField, pageCountLabel, nextBtn, lastBtn);
 
-        HBox navGroup = new HBox(4, firstBtn, prevBtn, pageField, pageCountLabel, nextBtn, lastBtn);
-        navGroup.setAlignment(Pos.CENTER_LEFT);
+        // Zoom & Rotation Group
+        RibbonGroup viewGroup = new RibbonGroup();
+        viewGroup.setTitle("Zoom & View");
 
-        // Zoom Group
-        Button zoomOutBtn = new Button("-");
-        zoomOutBtn.setOnAction(e -> setZoom(currentZoom - 0.2));
-
-        Button zoomInBtn = new Button("+");
-        zoomInBtn.setOnAction(e -> setZoom(currentZoom + 0.2));
-
+        Button zoomOutBtn = AppIcons.iconButton(MaterialDesignM.MAGNIFY_MINUS_OUTLINE, "Zoom Out", e -> setZoom(currentZoom - 0.2));
+        Button zoomInBtn = AppIcons.iconButton(MaterialDesignM.MAGNIFY_PLUS_OUTLINE, "Zoom In", e -> setZoom(currentZoom + 0.2));
         Button fitWidthBtn = new Button("Fit Width");
         fitWidthBtn.setOnAction(e -> setZoom(1.3));
-
         Button fitPageBtn = new Button("Fit Page");
         fitPageBtn.setOnAction(e -> setZoom(1.0));
 
-        Button rotateBtn = new Button("Rotate 90°");
-        rotateBtn.setOnAction(e -> {
+        Button rotateBtn = AppIcons.button("Rotate 90°", MaterialDesignR.ROTATE_RIGHT, e -> {
             userRotation = (userRotation + 90) % 360;
             renderer.clearCache();
             refreshPageViews();
         });
 
-        HBox zoomGroup = new HBox(4, zoomOutBtn, zoomInBtn, fitWidthBtn, fitPageBtn, rotateBtn);
-        zoomGroup.setAlignment(Pos.CENTER_LEFT);
+        viewGroup.getNodes().addAll(zoomOutBtn, zoomInBtn, fitWidthBtn, fitPageBtn, rotateBtn);
 
         // Tools Group
-        Button findBtn = new Button("Find...");
-        findBtn.setOnAction(e -> toggleSearch(!searchBar.isVisible()));
+        RibbonGroup toolsGroup = new RibbonGroup();
+        toolsGroup.setTitle("Tools");
 
-        ToggleButton sideToggle = new ToggleButton("Sidebar");
+        ToggleButton sideToggle = AppIcons.toggleButton(MaterialDesignV.VIEW_SPLIT_VERTICAL, "Toggle Sidebar");
         sideToggle.setSelected(true);
         sideToggle.setOnAction(e -> {
             sideTabPane.setVisible(sideToggle.isSelected());
             sideTabPane.setManaged(sideToggle.isSelected());
         });
 
-        // Digital Signature Summary Badge
-        Node sigBadge = createSignatureToolbarBadge();
+        Button findBtn = AppIcons.button("Find...", MaterialDesignM.MAGNIFY, e -> toggleSearch(!searchBar.isVisible()));
+        Button copyBtn = AppIcons.button("Copy Text", MaterialDesignC.CONTENT_COPY, e -> copy());
+        Button printBtn = AppIcons.button("Print", MaterialDesignP.PRINTER, e -> print());
 
-        ribbonBar.getChildren().addAll(navGroup, new Separator(javafx.geometry.Orientation.VERTICAL),
-                zoomGroup, new Separator(javafx.geometry.Orientation.VERTICAL),
-                findBtn, sideToggle, new Separator(javafx.geometry.Orientation.VERTICAL),
-                sigBadge);
+        toolsGroup.getNodes().addAll(sideToggle, findBtn, copyBtn, printBtn);
+
+        // Digital Signatures Group
+        RibbonGroup sigGroup = new RibbonGroup();
+        sigGroup.setTitle("Digital Security");
+        Node sigBadge = createSignatureToolbarBadge();
+        sigGroup.getNodes().add(sigBadge);
+
+        docTab.getRibbonGroups().addAll(navGroup, viewGroup, toolsGroup, sigGroup);
+        ribbon.getTabs().add(docTab);
     }
 
     private Node createSignatureToolbarBadge() {
@@ -269,13 +274,16 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         Label badge = new Label();
         if (hasInvalid) {
-            badge.setText("✕ Signature Invalid / Modified");
+            badge.setText(" Signature Invalid / Modified");
+            badge.setGraphic(AppIcons.of(MaterialDesignS.SHIELD_OFF, 16, javafx.scene.paint.Color.WHITE));
             badge.getStyleClass().add("signature-badge-invalid");
         } else if (hasUntrusted) {
-            badge.setText("⚠ Valid Signature (Untrusted CA)");
+            badge.setText(" Valid (Untrusted Root CA)");
+            badge.setGraphic(AppIcons.of(MaterialDesignS.SHIELD_ALERT, 16, javafx.scene.paint.Color.rgb(30, 41, 59)));
             badge.getStyleClass().add("signature-badge-warning");
         } else if (allTrusted) {
-            badge.setText("✓ Digitally Signed & Trusted");
+            badge.setText(" Digitally Signed & Trusted");
+            badge.setGraphic(AppIcons.of(MaterialDesignS.SHIELD_CHECK, 16, javafx.scene.paint.Color.WHITE));
             badge.getStyleClass().add("signature-badge-trusted");
         }
 
@@ -459,7 +467,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
     @Override
     public Node getRibbonToolbar() {
-        return ribbonBar;
+        return ribbon;
     }
 
     @Override
