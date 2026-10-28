@@ -10,6 +10,7 @@ import org.oqteris.crypto.trust.CertificateDetails;
 import org.oqteris.crypto.trust.TrustLevel;
 import org.oqteris.crypto.trust.TrustStoreManager;
 import org.oqteris.pdf.model.PdfDocumentModel;
+import org.oqteris.ui.icon.AppIcons;
 
 import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
@@ -68,8 +69,20 @@ public class PdfSignaturePanel extends VBox {
             card.setStyle("-fx-background-color: #fafafa; -fx-border-color: #e0e0e0; -fx-border-radius: 6px; -fx-background-radius: 6px;");
 
             // Status Badge
-            Label badge = new Label(sig.getStatus().getDisplayTitle());
-            badge.setStyle("-fx-background-color: " + sig.getStatus().getColorHex() + "; -fx-text-fill: white; -fx-padding: 3px 8px; -fx-background-radius: 10px; -fx-font-weight: bold; -fx-font-size: 11px;");
+            Label badge = new Label();
+            if (sig.getStatus() == SignatureVerificationStatus.VALID_AND_TRUSTED) {
+                badge.setText(" ✓ " + sig.getStatus().getDisplayTitle());
+                badge.setGraphic(AppIcons.of(org.kordamp.ikonli.materialdesign2.MaterialDesignS.SHIELD_CHECK, 14, javafx.scene.paint.Color.WHITE));
+                badge.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-padding: 4px 10px; -fx-background-radius: 12px; -fx-font-weight: bold; -fx-font-size: 11px;");
+            } else if (sig.getStatus() == SignatureVerificationStatus.VALID_BUT_UNTRUSTED) {
+                badge.setText(" ? " + sig.getStatus().getDisplayTitle());
+                badge.setGraphic(AppIcons.of(org.kordamp.ikonli.materialdesign2.MaterialDesignS.SHIELD_ALERT, 14, javafx.scene.paint.Color.rgb(30, 41, 59)));
+                badge.setStyle("-fx-background-color: #ffc107; -fx-text-fill: #1e293b; -fx-padding: 4px 10px; -fx-background-radius: 12px; -fx-font-weight: bold; -fx-font-size: 11px;");
+            } else {
+                badge.setText(" ✕ " + sig.getStatus().getDisplayTitle());
+                badge.setGraphic(AppIcons.of(org.kordamp.ikonli.materialdesign2.MaterialDesignS.SHIELD_OFF, 14, javafx.scene.paint.Color.WHITE));
+                badge.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white; -fx-padding: 4px 10px; -fx-background-radius: 12px; -fx-font-weight: bold; -fx-font-size: 11px;");
+            }
 
             // Signer Name
             Label signer = new Label("Signer: " + sig.getSignerName());

@@ -30,7 +30,7 @@ public class CellStyle {
         DASHED
     }
 
-    private String fontFamily = "Segoe UI";
+    private String fontFamily = "Calibri";
     private double fontSize = 11.0;
     private boolean bold = false;
     private boolean italic = false;
@@ -78,7 +78,7 @@ public class CellStyle {
     }
 
     public void setFontFamily(String fontFamily) {
-        this.fontFamily = fontFamily != null ? fontFamily : "Segoe UI";
+        this.fontFamily = fontFamily != null ? fontFamily : "Calibri";
     }
 
     public double getFontSize() {

@@ -26,14 +26,28 @@ public class PdfDocumentModel extends AbstractDocumentModel implements Closeable
     private final List<PdfSignatureInfo> signatures = new ArrayList<>();
     private final List<PdfAnnotation> annotations = new ArrayList<>();
     private PdfBookmarkNode rootBookmark;
+    private final String openPassword;
 
     public PdfDocumentModel(File file) throws IOException {
+        this(file, null);
+    }
+
+    public PdfDocumentModel(File file, String password) throws IOException {
         super(DocumentType.PDF, file.getName());
         setFile(file);
-        this.pdDocument = Loader.loadPDF(file);
+        this.openPassword = password;
+        this.pdDocument = (password != null) ? Loader.loadPDF(file, password) : Loader.loadPDF(file);
         extractMetadata();
         extractBookmarks();
         extractSignatures();
+    }
+
+    public String getOpenPassword() {
+        return openPassword;
+    }
+
+    public boolean isEncrypted() {
+        return pdDocument != null && pdDocument.isEncrypted();
     }
 
     public PDDocument getPdDocument() {

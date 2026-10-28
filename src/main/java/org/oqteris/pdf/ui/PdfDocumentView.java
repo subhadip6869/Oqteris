@@ -55,6 +55,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private final Label pageCountLabel = new Label("/ 1");
     private final Label statusPageLabel = new Label("Page 1 of 1");
     private final Ribbon ribbon = new Ribbon();
+    private final RibbonGroup sigGroup = new RibbonGroup();
 
     // Search bar
     private final HBox searchBar = new HBox(8);
@@ -68,9 +69,19 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private int currentPage = 0;
 
     public PdfDocumentView(File file) throws IOException {
-        this.model = new PdfDocumentModel(file);
+        this(file, null);
+    }
+
+    public PdfDocumentView(File file, String password) throws IOException {
+        this(new PdfDocumentModel(file, password));
+    }
+
+    public PdfDocumentView(PdfDocumentModel model) {
+        this.model = model;
         this.renderer = new PdfPageRenderer(model.getPdDocument());
         this.signaturePanel = new PdfSignaturePanel(model);
+
+        model.addDocumentListener(doc -> Platform.runLater(this::updateSignatureBadge));
 
         buildUI();
         loadPages();
@@ -82,6 +93,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         pagesContainer.setPadding(new Insets(24));
         pagesContainer.getStyleClass().add("editor-canvas-container");
 
+        pagesContainer.setPrefWidth(USE_COMPUTED_SIZE);
         scrollPane.setContent(pagesContainer);
         scrollPane.setFitToWidth(true);
         scrollPane.getStyleClass().add("editor-canvas-container");
@@ -91,8 +103,14 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         setupSidebar();
         setLeft(sideTabPane);
 
-        // Search Bar (Initially hidden)
+        // Search Bar (Initially hidden, placed in top via topArea VBox)
         setupSearchBar();
+        // Top area VBox (search bar will be added/removed dynamically)
+        VBox topArea = new VBox();
+        topArea.getChildren().add(searchBar);
+        searchBar.setVisible(false);
+        searchBar.setManaged(false);
+        setTop(topArea);
 
         // Ribbon Toolbar
         setupRibbonToolbar();
@@ -240,13 +258,19 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         toolsGroup.getNodes().addAll(sideToggle, findBtn, copyBtn, printBtn);
 
         // Digital Signatures Group
-        RibbonGroup sigGroup = new RibbonGroup();
         sigGroup.setTitle("Digital Security");
-        Node sigBadge = createSignatureToolbarBadge();
-        sigGroup.getNodes().add(sigBadge);
+        updateSignatureBadge();
 
         docTab.getRibbonGroups().addAll(navGroup, viewGroup, toolsGroup, sigGroup);
         ribbon.getTabs().add(docTab);
+    }
+
+    public void updateSignatureBadge() {
+        sigGroup.getNodes().clear();
+        sigGroup.getNodes().add(createSignatureToolbarBadge());
+        for (PdfPageView pv : pageViews) {
+            pv.setSignatures(model.getSignatures());
+        }
     }
 
     private Node createSignatureToolbarBadge() {
@@ -305,6 +329,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         for (int i = 0; i < count; i++) {
             PdfPageView pageView = new PdfPageView(i);
+            pageView.setSignatures(model.getSignatures());
             pageViews.add(pageView);
             pagesContainer.getChildren().add(pageView);
 
@@ -354,7 +379,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
                     () -> renderer.renderPage(pageIdx, currentZoom, userRotation),
                     img -> {
                         if (img != null) {
-                            pv.updatePageImage(img);
+                            pv.updatePageImage(img, currentZoom);
                             pv.setAnnotations(model.getAnnotations());
                         }
                     },
@@ -383,10 +408,8 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         searchBar.setVisible(visible);
         searchBar.setManaged(visible);
         if (visible) {
-            setTop(new VBox(searchBar));
             searchField.requestFocus();
         } else {
-            setTop(null);
             clearSearch();
         }
     }

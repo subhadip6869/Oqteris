@@ -200,11 +200,18 @@ public class TrustStoreManager {
     public Optional<X509Certificate> findTrustAnchor(X509Certificate candidate) {
         if (candidate == null) return Optional.empty();
 
-        // 1. Check custom records
+        // 1. Check custom records in application trust store
         for (TrustedCertificateRecord record : records.values()) {
             if (record.getTrustLevel() == TrustLevel.TRUSTED) {
                 if (isSameCertificate(candidate, record.getCertificate())) {
                     return Optional.of(record.getCertificate());
+                }
+                if (candidate.getIssuerX500Principal().equals(record.getCertificate().getSubjectX500Principal())) {
+                    try {
+                        candidate.verify(record.getCertificate().getPublicKey());
+                        return Optional.of(record.getCertificate());
+                    } catch (Exception ignored) {
+                    }
                 }
             }
         }
@@ -214,6 +221,13 @@ public class TrustStoreManager {
             for (X509Certificate root : systemTrustAnchors) {
                 if (isSameCertificate(candidate, root)) {
                     return Optional.of(root);
+                }
+                if (candidate.getIssuerX500Principal().equals(root.getSubjectX500Principal())) {
+                    try {
+                        candidate.verify(root.getPublicKey());
+                        return Optional.of(root);
+                    } catch (Exception ignored) {
+                    }
                 }
             }
         }
@@ -252,31 +266,30 @@ public class TrustStoreManager {
             }
         }
 
-        // Check if root of chain connects to a trusted anchor
-        X509Certificate topCert = chain.get(chain.size() - 1);
-        Optional<X509Certificate> anchor = findTrustAnchor(topCert);
-
-        if (anchor.isPresent()) {
-            return new TrustValidationResult(true, TrustLevel.TRUSTED, "Chain verified to trusted anchor: " + anchor.get().getSubjectX500Principal().getName(), anchor.get());
-        }
-
-        // Check if leaf is self-signed and trusted directly
-        if (chain.size() == 1 && isSelfSigned(leaf)) {
-            Optional<X509Certificate> selfAnchor = findTrustAnchor(leaf);
-            if (selfAnchor.isPresent()) {
-                return new TrustValidationResult(true, TrustLevel.TRUSTED, "Self-signed certificate is explicitly trusted in Oqteris trust store", leaf);
-            } else {
-                return new TrustValidationResult(false, TrustLevel.UNKNOWN, "Certificate is self-signed and not found in any trusted store", leaf);
+        // Check if any certificate in chain (from root down to leaf signer) connects to an explicitly trusted anchor
+        for (int i = chain.size() - 1; i >= 0; i--) {
+            X509Certificate cert = chain.get(i);
+            Optional<X509Certificate> anchor = findTrustAnchor(cert);
+            if (anchor.isPresent()) {
+                String desc = (i == 0)
+                        ? "Signer certificate is explicitly trusted in Oqteris trust store"
+                        : "Chain verified to trusted authority: " + anchor.get().getSubjectX500Principal().getName();
+                return new TrustValidationResult(true, TrustLevel.TRUSTED, desc, anchor.get());
             }
         }
 
+        X509Certificate topCert = chain.get(chain.size() - 1);
         return new TrustValidationResult(false, TrustLevel.UNKNOWN, "No trusted root anchor found for issuer: " + topCert.getIssuerX500Principal().getName(), topCert);
     }
 
     private static boolean isSameCertificate(X509Certificate a, X509Certificate b) {
-        return Arrays.equals(a.getSignature(), b.getSignature()) &&
-                a.getSerialNumber().equals(b.getSerialNumber()) &&
-                a.getIssuerX500Principal().equals(b.getIssuerX500Principal());
+        if (a == null || b == null) return false;
+        try {
+            return Arrays.equals(a.getEncoded(), b.getEncoded());
+        } catch (Exception e) {
+            return a.getSerialNumber().equals(b.getSerialNumber()) &&
+                    a.getIssuerX500Principal().equals(b.getIssuerX500Principal());
+        }
     }
 
     public static boolean isSelfSigned(X509Certificate cert) {

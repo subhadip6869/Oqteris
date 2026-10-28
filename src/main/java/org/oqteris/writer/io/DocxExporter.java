@@ -1,5 +1,6 @@
 package org.oqteris.writer.io;
 
+import javafx.embed.swing.SwingFXUtils;
 import org.apache.poi.xwpf.usermodel.*;
 import org.oqteris.core.io.DocumentExporter;
 import org.oqteris.core.io.DocumentRegistry;
@@ -8,6 +9,9 @@ import org.oqteris.core.model.DocumentType;
 import org.oqteris.writer.model.*;
 import org.oqteris.writer.model.Paragraph;
 
+import javax.imageio.ImageIO;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -55,10 +59,28 @@ public class DocxExporter implements DocumentExporter<WriterDocument> {
                     writeParagraph(p, poiP);
                 } else if (element instanceof DocumentTable table) {
                     writeTable(table, docx);
+                } else if (element instanceof DocumentImage img) {
+                    writeImage(img, docx);
                 } else if (element instanceof PageBreakElement) {
                     XWPFParagraph p = docx.createParagraph();
                     p.setPageBreak(true);
                 }
+            }
+
+            // Export Page Setup (Dimensions and Margins)
+            try {
+                PageSetup setup = document.getPageSetup();
+                org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody body = docx.getDocument().getBody();
+                org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr sectPr = body.isSetSectPr() ? body.getSectPr() : body.addNewSectPr();
+                org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz pgSz = sectPr.isSetPgSz() ? sectPr.getPgSz() : sectPr.addNewPgSz();
+                pgSz.setW(java.math.BigInteger.valueOf((long) Math.round(setup.getPageWidth() * 20.0)));
+                pgSz.setH(java.math.BigInteger.valueOf((long) Math.round(setup.getPageHeight() * 20.0)));
+                org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar pgMar = sectPr.isSetPgMar() ? sectPr.getPgMar() : sectPr.addNewPgMar();
+                pgMar.setTop(java.math.BigInteger.valueOf((long) Math.round(setup.getMarginTop() * 20.0)));
+                pgMar.setBottom(java.math.BigInteger.valueOf((long) Math.round(setup.getMarginBottom() * 20.0)));
+                pgMar.setLeft(java.math.BigInteger.valueOf((long) Math.round(setup.getMarginLeft() * 20.0)));
+                pgMar.setRight(java.math.BigInteger.valueOf((long) Math.round(setup.getMarginRight() * 20.0)));
+            } catch (Exception ignored) {
             }
 
             try (FileOutputStream out = new FileOutputStream(file)) {
@@ -81,6 +103,25 @@ public class DocxExporter implements DocumentExporter<WriterDocument> {
             case HEADING_2 -> poiP.setStyle("Heading2");
             case HEADING_3 -> poiP.setStyle("Heading3");
             default -> {
+            }
+        }
+
+        // Export custom tab stops
+        if (!p.getTabStops().isEmpty()) {
+            try {
+                org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr ppr = poiP.getCTP().isSetPPr() ? poiP.getCTP().getPPr() : poiP.getCTP().addNewPPr();
+                org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTabs tabs = ppr.isSetTabs() ? ppr.getTabs() : ppr.addNewTabs();
+                for (TabStop ts : p.getTabStops()) {
+                    org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTabStop ctTab = tabs.addNewTab();
+                    ctTab.setPos(java.math.BigInteger.valueOf((long) Math.round(ts.getPosition() * 20.0)));
+                    switch (ts.getAlignment()) {
+                        case RIGHT -> ctTab.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabJc.RIGHT);
+                        case CENTER -> ctTab.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabJc.CENTER);
+                        case DECIMAL -> ctTab.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabJc.DECIMAL);
+                        default -> ctTab.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabJc.LEFT);
+                    }
+                }
+            } catch (Exception ignored) {
             }
         }
 
@@ -128,6 +169,35 @@ public class DocxExporter implements DocumentExporter<WriterDocument> {
                     }
                 }
             }
+        }
+    }
+
+    private void writeImage(DocumentImage img, XWPFDocument docx) {
+        try {
+            XWPFParagraph p = docx.createParagraph();
+            if ("CENTER".equalsIgnoreCase(img.getAlignment())) {
+                p.setAlignment(ParagraphAlignment.CENTER);
+            } else if ("RIGHT".equalsIgnoreCase(img.getAlignment())) {
+                p.setAlignment(ParagraphAlignment.RIGHT);
+            }
+            XWPFRun run = p.createRun();
+
+            byte[] bytes = img.getRawBytes();
+            if (bytes == null && img.getImage() != null) {
+                java.awt.image.BufferedImage bImg = SwingFXUtils.fromFXImage(img.getImage(), null);
+                if (bImg != null) {
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    ImageIO.write(bImg, "png", baos);
+                    bytes = baos.toByteArray();
+                }
+            }
+
+            if (bytes != null) {
+                int widthEmu = (int) Math.round(img.getWidth() * 12700);
+                int heightEmu = (int) Math.round(img.getHeight() * 12700);
+                run.addPicture(new ByteArrayInputStream(bytes), XWPFDocument.PICTURE_TYPE_PNG, "image.png", widthEmu, heightEmu);
+            }
+        } catch (Exception ignored) {
         }
     }
 }

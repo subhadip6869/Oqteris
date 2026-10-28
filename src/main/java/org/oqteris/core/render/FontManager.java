@@ -31,26 +31,43 @@ public class FontManager {
     private boolean toolkitWorking = true;
 
     private FontManager() {
-        try {
-            installedFamilies.addAll(Font.getFamilies());
-        } catch (Exception ignored) {
-        }
-        initSubstitutions();
+        ensureInstalledFamiliesLoaded();
     }
 
     public static FontManager getInstance() {
         return INSTANCE;
     }
 
+    private synchronized void ensureInstalledFamiliesLoaded() {
+        if (installedFamilies.isEmpty()) {
+            try {
+                installedFamilies.addAll(Font.getFamilies());
+            } catch (Exception ignored) {
+            }
+            initSubstitutions();
+        }
+    }
+
     private void initSubstitutions() {
         // Map common MS Office fonts to available Linux/system fonts if not installed
-        registerSub("Calibri", "Segoe UI", "DejaVu Sans", "Liberation Sans", "Arial", "System");
-        registerSub("Calibri Light", "Segoe UI Light", "DejaVu Sans", "Liberation Sans", "Arial", "System");
-        registerSub("Aptos", "Segoe UI", "Calibri", "Liberation Sans", "Arial", "System");
-        registerSub("Cambria", "Georgia", "DejaVu Serif", "Liberation Serif", "Times New Roman", "System");
-        registerSub("Consolas", "Cascadia Code", "Courier New", "Liberation Mono", "DejaVu Sans Mono", "Monospaced");
-        registerSub("Times New Roman", "Liberation Serif", "DejaVu Serif", "Times", "Georgia", "System");
-        registerSub("Arial", "Liberation Sans", "DejaVu Sans", "Helvetica", "System");
+        registerSub("Calibri", "Segoe UI", "DejaVu Sans", "Liberation Sans", "Arial");
+        registerSub("Calibri Light", "Segoe UI Light", "DejaVu Sans", "Liberation Sans", "Arial");
+        registerSub("Aptos", "Calibri", "Segoe UI", "Liberation Sans", "Arial");
+        registerSub("Cambria", "Georgia", "DejaVu Serif", "Liberation Serif", "Times New Roman");
+        registerSub("Consolas", "Cascadia Code", "Courier New", "Liberation Mono", "DejaVu Sans Mono");
+        registerSub("Times New Roman", "Liberation Serif", "DejaVu Serif", "Times", "Georgia");
+        registerSub("Arial", "Liberation Sans", "DejaVu Sans", "Helvetica");
+        registerSub("Arial Narrow", "Liberation Sans Narrow", "Arial", "Liberation Sans");
+        registerSub("Aptos Display", "Calibri", "Segoe UI", "Arial");
+        registerSub("Aptos Narrow", "Calibri", "Segoe UI", "Arial");
+        registerSub("Helvetica", "Arial", "Liberation Sans");
+        registerSub("Garamond", "Times New Roman", "Liberation Serif", "Georgia");
+        registerSub("Book Antiqua", "Palatino", "Georgia", "Times New Roman");
+        registerSub("Palatino Linotype", "Palatino", "Georgia", "Times New Roman");
+        registerSub("Comic Sans MS", "Comic Sans MS");
+        registerSub("Trebuchet MS", "Trebuchet MS", "Verdana");
+        registerSub("Century Gothic", "Futura", "Century Gothic", "Verdana");
+        registerSub("Courier", "Courier New", "Liberation Mono");
     }
 
     private void registerSub(String primary, String... fallbacks) {
@@ -69,14 +86,46 @@ public class FontManager {
      */
     public String resolveFamily(String requestedFamily) {
         if (requestedFamily == null || requestedFamily.isBlank()) {
-            return "System";
+            return getDefaultOfficeFont();
         }
+        ensureInstalledFamiliesLoaded();
         if (installedFamilies.contains(requestedFamily)) {
             return requestedFamily;
         }
         String sub = substitutions.get(requestedFamily.toLowerCase(Locale.ROOT));
         if (sub != null) {
             return sub;
+        }
+        // Case-insensitive search
+        String reqLower = requestedFamily.toLowerCase(Locale.ROOT);
+        for (String family : installedFamilies) {
+            if (family.toLowerCase(Locale.ROOT).equals(reqLower)) {
+                return family;
+            }
+        }
+
+        // Check heuristic fallbacks for common font categories
+        if (reqLower.contains("calibri") || reqLower.contains("aptos") || reqLower.contains("sans")) {
+            for (String f : List.of("Calibri", "Segoe UI", "Liberation Sans", "Arial", "DejaVu Sans")) {
+                if (installedFamilies.contains(f)) return f;
+            }
+        } else if (reqLower.contains("times") || reqLower.contains("cambria") || reqLower.contains("serif") || reqLower.contains("roman")) {
+            for (String f : List.of("Times New Roman", "Liberation Serif", "Georgia", "DejaVu Serif")) {
+                if (installedFamilies.contains(f)) return f;
+            }
+        } else if (reqLower.contains("consolas") || reqLower.contains("courier") || reqLower.contains("mono")) {
+            for (String f : List.of("Consolas", "Courier New", "Cascadia Code", "Liberation Mono")) {
+                if (installedFamilies.contains(f)) return f;
+            }
+        }
+
+        return getDefaultOfficeFont();
+    }
+
+    private String getDefaultOfficeFont() {
+        ensureInstalledFamiliesLoaded();
+        for (String f : List.of("Calibri", "Segoe UI", "Liberation Sans", "Arial")) {
+            if (installedFamilies.contains(f)) return f;
         }
         return "System";
     }

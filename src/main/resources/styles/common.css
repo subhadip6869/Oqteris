@@ -133,8 +133,24 @@
 .ribbon-group > .ribbon-group-content > .color-picker {
     -fx-min-height: 28px !important;
     -fx-pref-height: 28px !important;
-    -fx-max-height: 30px !important;
     -fx-padding: 3px 8px !important;
+}
+
+.ribbon-btn {
+    -fx-min-height: 28px !important;
+    -fx-pref-height: 28px !important;
+    -fx-padding: 3px 8px !important;
+    -fx-font-size: 11px !important;
+    -fx-graphic-text-gap: 5px;
+}
+
+.ribbon-vertical-btn {
+    -fx-min-height: 48px !important;
+    -fx-pref-height: 50px !important;
+    -fx-min-width: 44px !important;
+    -fx-padding: 2px 6px !important;
+    -fx-font-size: 10px !important;
+    -fx-graphic-text-gap: 2px;
 }
 
 .ribbon-group .title {

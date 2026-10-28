@@ -31,6 +31,7 @@ public class Paragraph implements DocumentElement {
     }
 
     private final List<TextRun> runs = new ArrayList<>();
+    private final List<TabStop> tabStops = new ArrayList<>();
     private Alignment alignment = Alignment.LEFT;
     private HeadingStyle headingStyle = HeadingStyle.NORMAL;
     private ListType listType = ListType.NONE;
@@ -60,6 +61,25 @@ public class Paragraph implements DocumentElement {
 
     public List<TextRun> getRuns() {
         return runs;
+    }
+
+    public List<TabStop> getTabStops() {
+        return tabStops;
+    }
+
+    public void addTabStop(TabStop tabStop) {
+        if (tabStop != null) {
+            tabStops.add(tabStop);
+            tabStops.sort((a, b) -> Double.compare(a.getPosition(), b.getPosition()));
+        }
+    }
+
+    public void removeTabStop(TabStop tabStop) {
+        tabStops.remove(tabStop);
+    }
+
+    public void clearTabStops() {
+        tabStops.clear();
     }
 
     public void addRun(TextRun run) {

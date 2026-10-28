@@ -74,6 +74,10 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
     private boolean isDraggingShape = false;
     private double currentScale = 0.85;
 
+    // In-place text editor for slide shapes
+    private final TextArea inPlaceTextEditor = new TextArea();
+    private TextBoxShape editingTextBox = null;
+
     public PresentationDocumentView() {
         this(new Presentation());
     }
@@ -99,7 +103,19 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
         canvasContainer.setAlignment(Pos.CENTER);
         canvasContainer.setPadding(new Insets(30));
         canvasContainer.getStyleClass().add("editor-canvas-container");
-        canvasContainer.getChildren().add(canvas);
+        canvasContainer.getChildren().addAll(canvas, inPlaceTextEditor);
+
+        inPlaceTextEditor.setVisible(false);
+        inPlaceTextEditor.setManaged(false);
+        inPlaceTextEditor.setWrapText(true);
+        inPlaceTextEditor.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) commitInPlaceEditor();
+        });
+        inPlaceTextEditor.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ESCAPE) {
+                cancelInPlaceEditor();
+            }
+        });
 
         canvasScroll.setContent(canvasContainer);
         canvasScroll.setFitToWidth(true);
@@ -572,15 +588,7 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
 
         if (e.getClickCount() == 2) {
             if (selectedShape instanceof TextBoxShape tb) {
-                TextInputDialog dialog = new TextInputDialog(tb.getText());
-                dialog.setTitle("Edit Text Box");
-                dialog.setHeaderText("Modify slide text contents:");
-                dialog.showAndWait().ifPresent(newText -> {
-                    tb.setText(newText);
-                    presentation.setModified(true);
-                    refreshThumbnails();
-                    renderActiveSlide();
-                });
+                showInPlaceEditor(tb);
                 return;
             } else if (selectedShape instanceof TableShape ts) {
                 TextInputDialog dialog = new TextInputDialog(ts.getCell(0, 0));
@@ -687,9 +695,55 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
         renderActiveSlide();
     }
 
+    private void showInPlaceEditor(TextBoxShape tb) {
+        this.editingTextBox = tb;
+        inPlaceTextEditor.setText(tb.getText());
+        double x = tb.getX() * currentScale - (canvas.getWidth() / 2.0) + (tb.getWidth() * currentScale / 2.0);
+        double y = tb.getY() * currentScale - (canvas.getHeight() / 2.0) + (tb.getHeight() * currentScale / 2.0);
+        inPlaceTextEditor.setTranslateX(x);
+        inPlaceTextEditor.setTranslateY(y);
+        inPlaceTextEditor.setPrefWidth(Math.max(tb.getWidth() * currentScale, 100));
+        inPlaceTextEditor.setPrefHeight(Math.max(tb.getHeight() * currentScale, 40));
+        inPlaceTextEditor.setStyle(String.format(
+                "-fx-background-color: white; -fx-border-color: #2563eb; -fx-border-width: 1.5px; -fx-font-family: '%s'; -fx-font-size: %.1fpx;",
+                tb.getFontFamily(), Math.max(10, tb.getFontSize() * currentScale * 0.9)
+        ));
+        inPlaceTextEditor.setVisible(true);
+        inPlaceTextEditor.setManaged(true);
+        inPlaceTextEditor.requestFocus();
+        inPlaceTextEditor.selectAll();
+    }
+
+    private void commitInPlaceEditor() {
+        if (inPlaceTextEditor.isVisible() && editingTextBox != null) {
+            editingTextBox.setText(inPlaceTextEditor.getText());
+            inPlaceTextEditor.setVisible(false);
+            inPlaceTextEditor.setManaged(false);
+            editingTextBox = null;
+            presentation.setModified(true);
+            refreshThumbnails();
+            renderActiveSlide();
+            canvas.requestFocus();
+        }
+    }
+
+    private void cancelInPlaceEditor() {
+        if (inPlaceTextEditor.isVisible()) {
+            inPlaceTextEditor.setVisible(false);
+            inPlaceTextEditor.setManaged(false);
+            editingTextBox = null;
+            canvas.requestFocus();
+        }
+    }
+
     private void handleKeyPressed(KeyEvent e) {
         if (e.getCode() == KeyCode.F5) {
             startSlideshow();
+        } else if (e.getCode() == KeyCode.ENTER || e.getCode() == KeyCode.F2) {
+            if (selectedShape instanceof TextBoxShape tb) {
+                showInPlaceEditor(tb);
+                e.consume();
+            }
         } else if (e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) {
             if (selectedShape != null) {
                 presentation.getActiveSlide().removeShape(selectedShape);
@@ -697,7 +751,18 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
                 presentation.setModified(true);
                 refreshThumbnails();
                 renderActiveSlide();
+                e.consume();
             }
+        } else if (selectedShape != null && (e.getCode() == KeyCode.UP || e.getCode() == KeyCode.DOWN ||
+                                             e.getCode() == KeyCode.LEFT || e.getCode() == KeyCode.RIGHT)) {
+            double step = e.isShiftDown() ? 10.0 : 1.0;
+            if (e.getCode() == KeyCode.UP) selectedShape.setY(selectedShape.getY() - step);
+            else if (e.getCode() == KeyCode.DOWN) selectedShape.setY(selectedShape.getY() + step);
+            else if (e.getCode() == KeyCode.LEFT) selectedShape.setX(selectedShape.getX() - step);
+            else if (e.getCode() == KeyCode.RIGHT) selectedShape.setX(selectedShape.getX() + step);
+            presentation.setModified(true);
+            renderActiveSlide();
+            e.consume();
         }
     }
 

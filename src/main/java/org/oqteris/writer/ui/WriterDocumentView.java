@@ -79,6 +79,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
     private double caretHeight = 14;
     private Timeline caretBlink;
     private double currentZoom = 1.0;
+    private final RulerBar rulerBar = new RulerBar(this);
 
     // Search and Replace Bar
     private final HBox searchBar = new HBox(8);
@@ -109,7 +110,13 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         scrollPane.setContent(canvasContainer);
         scrollPane.setFitToWidth(true);
         scrollPane.getStyleClass().add("editor-canvas-container");
-        setCenter(scrollPane);
+        canvasContainer.setOnMousePressed(e -> canvas.requestFocus());
+        scrollPane.setOnMousePressed(e -> canvas.requestFocus());
+
+        VBox centerContainer = new VBox();
+        centerContainer.getChildren().addAll(rulerBar, scrollPane);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        setCenter(centerContainer);
 
         // Canvas events
         canvas.setFocusTraversable(true);
@@ -194,8 +201,8 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         fontGroup.setTitle("Font");
 
         ComboBox<String> fontCombo = new ComboBox<>();
-        fontCombo.getItems().addAll("Segoe UI", "Calibri", "Arial", "Times New Roman", "Courier New", "Georgia", "Verdana");
-        fontCombo.setValue("Segoe UI");
+        fontCombo.getItems().addAll("Calibri", "Segoe UI", "Arial", "Times New Roman", "Courier New", "Georgia", "Verdana");
+        fontCombo.setValue("Calibri");
         fontCombo.setPrefWidth(125);
         fontCombo.setOnAction(e -> applyRunStyle(r -> r.setFontFamily(fontCombo.getValue())));
 
@@ -372,13 +379,24 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         Button findBtn = AppIcons.button("Find & Replace", MaterialDesignF.FIND_REPLACE, e -> toggleSearch(!searchBar.isVisible()));
         searchGroup.getNodes().add(findBtn);
 
+        RibbonGroup showGroup = new RibbonGroup();
+        showGroup.setTitle("Show");
+        ToggleButton rulerToggle = AppIcons.toggleButton(MaterialDesignR.RULER, "Ruler");
+        rulerToggle.setSelected(true);
+        rulerToggle.setOnAction(e -> {
+            boolean show = rulerToggle.isSelected();
+            rulerBar.setVisible(show);
+            rulerBar.setManaged(show);
+        });
+        showGroup.getNodes().add(rulerToggle);
+
         RibbonGroup statsGroup = new RibbonGroup();
         statsGroup.setTitle("Statistics");
         Label wordBadge = AppIcons.badge("Words: " + document.getWordCount(), MaterialDesignT.TEXT_BOX_OUTLINE, "stats-badge");
         document.addDocumentListener(d -> Platform.runLater(() -> wordBadge.setText("Words: " + document.getWordCount())));
         statsGroup.getNodes().add(wordBadge);
 
-        viewTab.getRibbonGroups().addAll(searchGroup, statsGroup);
+        viewTab.getRibbonGroups().addAll(searchGroup, showGroup, statsGroup);
 
         ribbon.getTabs().addAll(homeTab, insertTab, layoutTab, viewTab);
     }
@@ -391,13 +409,21 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         );
         File file = chooser.showOpenDialog(getScene() != null ? getScene().getWindow() : null);
         if (file != null) {
-            try (FileInputStream in = new FileInputStream(file)) {
-                Image img = new Image(in);
-                double w = Math.min(img.getWidth(), 450);
+            try {
+                byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+                Image img = new Image(new java.io.ByteArrayInputStream(bytes));
+                double maxW = document.getPageSetup().getPrintableWidth();
+                double w = Math.min(img.getWidth(), maxW);
                 double h = img.getHeight() * (w / Math.max(1, img.getWidth()));
                 DocumentImage docImg = new DocumentImage(img, w, h);
-                document.addElement(docImg);
-                document.addElement(new Paragraph());
+                docImg.setRawBytes(bytes);
+
+                int insertIdx = Math.min(currentElementIndex + 1, document.getElements().size());
+                document.getElements().add(insertIdx, docImg);
+                document.getElements().add(insertIdx + 1, new Paragraph());
+                currentElementIndex = insertIdx + 1;
+                currentRunIndex = 0;
+                currentCharOffset = 0;
                 document.setModified(true);
                 relayout();
             } catch (Exception ex) {
@@ -515,7 +541,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         }
     }
 
-    private Paragraph getActiveParagraph() {
+    public Paragraph getActiveParagraph() {
         if (currentElementIndex >= 0 && currentElementIndex < document.getElements().size()) {
             DocumentElement el = document.getElements().get(currentElementIndex);
             if (el instanceof Paragraph p) return p;
@@ -524,6 +550,10 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             if (el instanceof Paragraph p) return p;
         }
         return null;
+    }
+
+    public double getCurrentZoom() {
+        return currentZoom;
     }
 
     public void relayout() {
@@ -538,8 +568,10 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         canvas.setWidth(pageW + 48.0 * currentZoom);
         canvas.setHeight(totalH);
 
+        updateCaretFromPosition();
         updateStatus();
         render();
+        rulerBar.redraw();
     }
 
     public void render() {
@@ -805,6 +837,10 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             relayout();
             e.consume();
 
+        } else if (e.getCode() == KeyCode.TAB) {
+            insertText("\t");
+            e.consume();
+
         } else if (e.getCode() == KeyCode.BACK_SPACE) {
             deleteCharacter(true);
             e.consume();
@@ -835,6 +871,49 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         }
     }
 
+    private void updateCaretFromPosition() {
+        Paragraph p = getActiveParagraph();
+        if (p == null) return;
+
+        double pageW = document.getPageSetup().getPageWidth();
+        double pageH = document.getPageSetup().getPageHeight();
+        double gap = 24.0;
+        double pageX = (canvas.getWidth() / currentZoom - pageW) / 2.0;
+
+        TextRun targetRun = (!p.getRuns().isEmpty() && currentRunIndex < p.getRuns().size())
+                ? p.getRuns().get(currentRunIndex) : null;
+
+        for (int pIdx = 0; pIdx < pages.size(); pIdx++) {
+            LayoutPage page = pages.get(pIdx);
+            double pageTop = gap + pIdx * (pageH + gap);
+
+            for (LayoutLine line : page.getLines()) {
+                if (line.getParagraph() == p) {
+                    caretHeight = Math.max(12, line.getHeight() * 0.85);
+                    caretY = pageTop + line.getY() + (line.getHeight() - caretHeight) / 2.0;
+
+                    if (targetRun == null || line.getSegments().isEmpty()) {
+                        caretX = pageX + line.getX();
+                        caretVisible = true;
+                        return;
+                    }
+
+                    for (LayoutLine.LineSegment seg : line.getSegments()) {
+                        if (seg.getRun() == targetRun) {
+                            int len = seg.getText().length();
+                            int clampedOffset = Math.max(0, Math.min(currentCharOffset, len));
+                            String prefix = seg.getText().substring(0, clampedOffset);
+                            double prefixW = FontManager.getInstance().measureWidth(prefix, seg.getFont());
+                            caretX = pageX + line.getX() + seg.getX() + prefixW;
+                            caretVisible = true;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private void deleteCharacter(boolean backwards) {
         Paragraph p = getActiveParagraph();
         if (p == null || p.getRuns().isEmpty()) return;
@@ -852,6 +931,8 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             } else if (currentRunIndex > 0) {
                 currentRunIndex--;
                 currentCharOffset = p.getRuns().get(currentRunIndex).getText().length();
+                updateCaretFromPosition();
+                render();
             }
         } else {
             if (currentCharOffset >= 0 && currentCharOffset < txt.length()) {
@@ -878,13 +959,13 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             currentRunIndex++;
             currentCharOffset = 0;
         }
+        updateCaretFromPosition();
         caretVisible = true;
         render();
     }
 
-    private void handleKeyTyped(KeyEvent e) {
-        String ch = e.getCharacter();
-        if (ch == null || ch.isEmpty() || ch.charAt(0) < 32) return;
+    public void insertText(String str) {
+        if (str == null || str.isEmpty()) return;
 
         Paragraph p = getActiveParagraph();
         if (p == null) {
@@ -894,21 +975,27 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         }
 
         if (p.getRuns().isEmpty()) {
-            TextRun r = new TextRun(ch);
+            TextRun r = new TextRun(str);
             p.addRun(r);
             currentRunIndex = 0;
-            currentCharOffset = 1;
+            currentCharOffset = str.length();
         } else {
             currentRunIndex = Math.min(currentRunIndex, p.getRuns().size() - 1);
             TextRun run = p.getRuns().get(currentRunIndex);
             String txt = run.getText();
             currentCharOffset = Math.max(0, Math.min(currentCharOffset, txt.length()));
-            run.setText(txt.substring(0, currentCharOffset) + ch + txt.substring(currentCharOffset));
-            currentCharOffset++;
+            run.setText(txt.substring(0, currentCharOffset) + str + txt.substring(currentCharOffset));
+            currentCharOffset += str.length();
         }
 
         document.setModified(true);
         relayout();
+    }
+
+    private void handleKeyTyped(KeyEvent e) {
+        String ch = e.getCharacter();
+        if (ch == null || ch.isEmpty() || (ch.charAt(0) < 32 && ch.charAt(0) != '\t')) return;
+        insertText(ch);
     }
 
     private void updateStatus() {
@@ -1030,6 +1117,10 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
     @Override
     public DocumentModel getDocument() {
+        return document;
+    }
+
+    public WriterDocument getWriterDocument() {
         return document;
     }
 

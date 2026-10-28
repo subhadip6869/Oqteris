@@ -32,6 +32,9 @@ public class PdfSignatureInfo {
     private final List<X509Certificate> certificateChain;
     private final boolean hasTimestampToken;
     private final Date timestampTime;
+    private int pageIndex = -1;
+    private double[] visualRect = null; // [normX, normY, normW, normH] in [0.0..1.0] relative coordinates
+    private boolean isVisual = false;
 
     public PdfSignatureInfo(String fieldName, String signerName, String signerDN, Date signingTime,
                             String reason, String location, String filter, String subFilter,
@@ -135,6 +138,24 @@ public class PdfSignatureInfo {
 
     public Date getTimestampTime() {
         return timestampTime;
+    }
+
+    public int getPageIndex() {
+        return pageIndex;
+    }
+
+    public double[] getVisualRect() {
+        return visualRect;
+    }
+
+    public boolean isVisual() {
+        return isVisual;
+    }
+
+    public void setVisualLocation(int pageIndex, double[] visualRect) {
+        this.pageIndex = pageIndex;
+        this.visualRect = visualRect;
+        this.isVisual = (visualRect != null);
     }
 
     public CertificateDetails getSignerCertificateDetails() {

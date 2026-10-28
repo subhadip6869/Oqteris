@@ -24,16 +24,20 @@ public class PdfPageRenderer {
         this.pdfRenderer = new PDFRenderer(pdDocument);
     }
 
+    public Image renderPage(int pageIndex, double zoom) {
+        return renderPage(pageIndex, zoom, 0);
+    }
+
     /**
-     * Renders a page with the given zoom factor and user rotation (0, 90, 180, 270).
+     * Renders a page with high-DPI supersampling and user rotation (0, 90, 180, 270).
      */
     public Image renderPage(int pageIndex, double zoom, int additionalRotation) {
         if (pageIndex < 0 || pageIndex >= pdDocument.getNumberOfPages()) {
             return null;
         }
 
-        // DPI scaled by zoom, clamped to avoid memory exhaustion
-        float dpi = (float) Math.max(36.0, Math.min(300.0, 96.0 * zoom));
+        // High-DPI supersampling: render at 144 DPI (scaled by zoom) so text and vectors are razor-sharp
+        float dpi = (float) Math.max(96.0, Math.min(300.0, 144.0 * Math.max(1.0, zoom)));
         int rotation = (additionalRotation % 360 + 360) % 360;
         String cacheKey = pageIndex + ":" + ((int) dpi) + ":" + rotation;
 
@@ -42,17 +46,26 @@ public class PdfPageRenderer {
             return cached;
         }
 
-        try {
-            BufferedImage bImg = pdfRenderer.renderImageWithDPI(pageIndex, dpi);
-            if (rotation != 0) {
-                bImg = rotateImage(bImg, rotation);
+        synchronized (pdfRenderer) {
+            // Re-check after acquiring lock
+            cached = pageCache.get(cacheKey);
+            if (cached != null) {
+                return cached;
             }
-            Image fxImg = SwingFXUtils.toFXImage(bImg, null);
-            pageCache.put(cacheKey, fxImg);
-            return fxImg;
-        } catch (Exception e) {
-            System.err.println("[PdfPageRenderer] Error rendering page " + pageIndex + ": " + e.getMessage());
-            return null;
+            try {
+                BufferedImage bImg = pdfRenderer.renderImageWithDPI(pageIndex, dpi);
+                if (rotation != 0) {
+                    bImg = rotateImage(bImg, rotation);
+                }
+                Image fxImg = SwingFXUtils.toFXImage(bImg, null);
+                if (fxImg != null) {
+                    pageCache.put(cacheKey, fxImg);
+                }
+                return fxImg;
+            } catch (Exception e) {
+                System.err.println("[PdfPageRenderer] Error rendering page " + pageIndex + ": " + e.getMessage());
+                return null;
+            }
         }
     }
 
@@ -64,13 +77,19 @@ public class PdfPageRenderer {
         Image cached = pageCache.get(key);
         if (cached != null) return cached;
 
-        try {
-            BufferedImage bImg = pdfRenderer.renderImageWithDPI(pageIndex, 36.0f);
-            Image fxImg = SwingFXUtils.toFXImage(bImg, null);
-            pageCache.put(key, fxImg);
-            return fxImg;
-        } catch (Exception e) {
-            return null;
+        synchronized (pdfRenderer) {
+            cached = pageCache.get(key);
+            if (cached != null) return cached;
+            try {
+                BufferedImage bImg = pdfRenderer.renderImageWithDPI(pageIndex, 36.0f);
+                Image fxImg = SwingFXUtils.toFXImage(bImg, null);
+                if (fxImg != null) {
+                    pageCache.put(key, fxImg);
+                }
+                return fxImg;
+            } catch (Exception e) {
+                return null;
+            }
         }
     }
 

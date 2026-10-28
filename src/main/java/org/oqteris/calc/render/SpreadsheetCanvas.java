@@ -205,6 +205,27 @@ public class SpreadsheetCanvas extends Canvas {
         return null;
     }
 
+    /**
+     * Calculates the screen bounds [x, y, width, height] of the specified cell in canvas coordinates.
+     */
+    public double[] getCellBounds(int row, int col) {
+        if (worksheet == null || row < 0 || col < 0) return null;
+
+        double currentX = HEADER_COL_WIDTH - scrollX;
+        for (int c = 0; c < col; c++) {
+            currentX += worksheet.getColumnWidth(c);
+        }
+        double colW = worksheet.getColumnWidth(col);
+
+        double currentY = HEADER_ROW_HEIGHT - scrollY;
+        for (int r = 0; r < row; r++) {
+            currentY += worksheet.getRowHeight(r);
+        }
+        double rowH = worksheet.getRowHeight(row);
+
+        return new double[]{currentX * zoom, currentY * zoom, colW * zoom, rowH * zoom};
+    }
+
     public void render() {
         GraphicsContext gc = getGraphicsContext2D();
         double w = getWidth() / zoom;

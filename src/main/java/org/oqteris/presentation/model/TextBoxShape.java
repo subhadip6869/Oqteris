@@ -13,7 +13,7 @@ public class TextBoxShape extends SlideShape {
     }
 
     private String text = "Click to add text";
-    private String fontFamily = "Segoe UI";
+    private String fontFamily = "Calibri";
     private double fontSize = 20.0;
     private boolean bold = false;
     private boolean italic = false;
@@ -46,7 +46,7 @@ public class TextBoxShape extends SlideShape {
     }
 
     public void setFontFamily(String fontFamily) {
-        this.fontFamily = fontFamily != null ? fontFamily : "Segoe UI";
+        this.fontFamily = fontFamily != null ? fontFamily : "Calibri";
     }
 
     public double getFontSize() {

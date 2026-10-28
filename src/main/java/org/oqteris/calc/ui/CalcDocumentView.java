@@ -110,6 +110,7 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
         gridWithScroll.setBottom(hScrollBar);
 
         // Canvas callbacks
+        canvas.setFocusTraversable(true);
         canvas.setOnCellSelected((r, c) -> {
             hideInPlaceEditor(true);
             updateFormulaBar(r, c);
@@ -118,6 +119,42 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
 
         canvas.setOnCellDoubleClicked((r, c) -> {
             showInPlaceEditor(r, c);
+        });
+
+        canvas.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER || e.getCode() == KeyCode.F2) {
+                showInPlaceEditor(canvas.getActiveRow(), canvas.getActiveCol());
+                e.consume();
+            } else if (e.getCode() == KeyCode.UP) {
+                canvas.setActiveCell(Math.max(0, canvas.getActiveRow() - 1), canvas.getActiveCol());
+                e.consume();
+            } else if (e.getCode() == KeyCode.DOWN) {
+                canvas.setActiveCell(canvas.getActiveRow() + 1, canvas.getActiveCol());
+                e.consume();
+            } else if (e.getCode() == KeyCode.LEFT) {
+                canvas.setActiveCell(canvas.getActiveRow(), Math.max(0, canvas.getActiveCol() - 1));
+                e.consume();
+            } else if (e.getCode() == KeyCode.RIGHT) {
+                canvas.setActiveCell(canvas.getActiveRow(), canvas.getActiveCol() + 1);
+                e.consume();
+            } else if (e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) {
+                Cell c = canvas.getWorksheet().getCell(canvas.getActiveRow(), canvas.getActiveCol());
+                if (c != null) {
+                    c.setValue("");
+                    canvas.render();
+                    updateFormulaBar(canvas.getActiveRow(), canvas.getActiveCol());
+                }
+                e.consume();
+            }
+        });
+
+        canvas.setOnKeyTyped(e -> {
+            String ch = e.getCharacter();
+            if (ch != null && !ch.isEmpty() && !Character.isISOControl(ch.charAt(0))) {
+                showInPlaceEditor(canvas.getActiveRow(), canvas.getActiveCol());
+                inPlaceEditor.setText(ch);
+                inPlaceEditor.positionCaret(1);
+            }
         });
 
         // 3. Bottom Sheet Tabs
@@ -211,8 +248,8 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
         fontGroup.setTitle("Font");
 
         ComboBox<String> fontCombo = new ComboBox<>();
-        fontCombo.getItems().addAll("Segoe UI", "Calibri", "Arial", "Times New Roman", "Courier New");
-        fontCombo.setValue("Segoe UI");
+        fontCombo.getItems().addAll("Calibri", "Segoe UI", "Arial", "Times New Roman", "Courier New");
+        fontCombo.setValue("Calibri");
         fontCombo.setPrefWidth(120);
         fontCombo.setOnAction(e -> applyStyle(s -> s.setFontFamily(fontCombo.getValue())));
 
@@ -541,8 +578,17 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
     }
 
     private void showInPlaceEditor(int r, int c) {
+        double[] bounds = canvas.getCellBounds(r, c);
+        if (bounds == null) return;
+
         Cell cell = canvas.getWorksheet().getCell(r, c);
         inPlaceEditor.setText(cell != null ? (cell.getFormula() != null ? "=" + cell.getFormula() : cell.getStringValue()) : "");
+        inPlaceEditor.setTranslateX(bounds[0]);
+        inPlaceEditor.setTranslateY(bounds[1]);
+        inPlaceEditor.setPrefWidth(Math.max(bounds[2] + 4, 80));
+        inPlaceEditor.setPrefHeight(Math.max(bounds[3], 24));
+        inPlaceEditor.setStyle("-fx-border-color: #2563eb; -fx-border-width: 2px; -fx-background-color: white; -fx-padding: 1 4 1 4; -fx-font-family: 'Calibri', 'Segoe UI';");
+
         inPlaceEditor.setVisible(true);
         inPlaceEditor.setManaged(true);
         inPlaceEditor.requestFocus();
@@ -552,10 +598,17 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
             formulaField.setText(inPlaceEditor.getText());
             commitFormula();
             hideInPlaceEditor(true);
+            canvas.setActiveCell(canvas.getActiveRow() + 1, canvas.getActiveCol());
         });
         inPlaceEditor.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ESCAPE) {
                 hideInPlaceEditor(false);
+            } else if (e.getCode() == KeyCode.TAB) {
+                formulaField.setText(inPlaceEditor.getText());
+                commitFormula();
+                hideInPlaceEditor(true);
+                canvas.setActiveCell(canvas.getActiveRow(), canvas.getActiveCol() + 1);
+                e.consume();
             }
         });
     }

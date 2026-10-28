@@ -428,10 +428,12 @@ public class MainWindow extends BorderPane {
                     }
                 },
                 err -> {
-                    setBusy(false, "Error");
-                    Alert alert = new Alert(Alert.AlertType.ERROR, "Error opening file: " + err.getMessage(), ButtonType.OK);
-                    alert.initOwner(primaryStage);
-                    alert.showAndWait();
+                    setBusy(false, "Ready");
+                    if (!(err instanceof UserCancelledException || (err.getCause() instanceof UserCancelledException))) {
+                        Alert alert = new Alert(Alert.AlertType.ERROR, "Error opening file: " + err.getMessage(), ButtonType.OK);
+                        alert.initOwner(primaryStage);
+                        alert.showAndWait();
+                    }
                 }
         );
     }

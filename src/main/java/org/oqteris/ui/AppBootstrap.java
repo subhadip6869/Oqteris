@@ -166,11 +166,44 @@ public class AppBootstrap {
     }
 
     public static DocumentView openPdfView(File file) {
-        try {
-            return new PdfDocumentView(file);
-        } catch (Exception e) {
-            System.err.println("[AppBootstrap] PDF module error: " + e.getMessage());
-            return null;
+        String password = null;
+        boolean isRetry = false;
+
+        while (true) {
+            try {
+                return (password != null) ? new PdfDocumentView(file, password) : new PdfDocumentView(file);
+            } catch (org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException e) {
+                final boolean retry = isRetry;
+                java.util.concurrent.CompletableFuture<String> pwdFuture = new java.util.concurrent.CompletableFuture<>();
+
+                if (javafx.application.Platform.isFxApplicationThread()) {
+                    String pwd = org.oqteris.pdf.ui.PasswordPromptDialog.promptForPassword(file.getName(), retry);
+                    pwdFuture.complete(pwd);
+                } else {
+                    javafx.application.Platform.runLater(() -> {
+                        String pwd = org.oqteris.pdf.ui.PasswordPromptDialog.promptForPassword(file.getName(), retry);
+                        pwdFuture.complete(pwd);
+                    });
+                }
+
+                try {
+                    password = pwdFuture.get();
+                } catch (Exception ex) {
+                    return null;
+                }
+
+                if (password == null) {
+                    // User cancelled password prompt
+                    throw new UserCancelledException("Opening cancelled by user");
+                }
+                isRetry = true;
+            } catch (Exception e) {
+                if (e instanceof UserCancelledException uce) {
+                    throw uce;
+                }
+                System.err.println("[AppBootstrap] PDF module error: " + e.getMessage());
+                return null;
+            }
         }
     }
 }

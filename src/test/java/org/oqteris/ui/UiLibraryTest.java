@@ -118,5 +118,19 @@ public class UiLibraryTest {
         assertEquals("Insert", presRibbon.getTabs().get(1).getText());
         assertEquals("Design", presRibbon.getTabs().get(2).getText());
         assertEquals("Slide Show", presRibbon.getTabs().get(3).getText());
+
+        java.io.File pdfFile = new java.io.File("samples", "sample_signed.pdf");
+        if (pdfFile.exists()) {
+            try {
+                org.oqteris.pdf.ui.PdfDocumentView pdfView = new org.oqteris.pdf.ui.PdfDocumentView(pdfFile);
+                assertNotNull(pdfView.getRibbonToolbar());
+                assertInstanceOf(Ribbon.class, pdfView.getRibbonToolbar());
+                Ribbon pdfRibbon = (Ribbon) pdfView.getRibbonToolbar();
+                assertEquals(1, pdfRibbon.getTabs().size());
+                assertEquals("Document", pdfRibbon.getTabs().get(0).getText());
+            } catch (Exception e) {
+                fail("Failed to open PdfDocumentView: " + e.getMessage());
+            }
+        }
     }
 }

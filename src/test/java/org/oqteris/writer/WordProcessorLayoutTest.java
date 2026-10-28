@@ -77,4 +77,30 @@ public class WordProcessorLayoutTest {
         int totalCells = page.getTableBoxes().stream().mapToInt(b -> b.cells.size()).sum();
         assertEquals(12, totalCells, "Total table cells across rows should be 12");
     }
+
+    @Test
+    public void testCustomRightTabStop() {
+        WriterDocument doc = new WriterDocument("TabStopTest");
+        doc.clearElements();
+
+        Paragraph p = new Paragraph();
+        p.addRun(new TextRun("Memo:\tDate:"));
+        // Set a Right Tab Stop at 450.0 pt
+        p.addTabStop(new TabStop(450.0, TabStop.Alignment.RIGHT));
+        doc.addElement(p);
+
+        List<LayoutPage> pages = LayoutEngine.layout(doc);
+        assertFalse(pages.isEmpty());
+        LayoutPage page = pages.get(0);
+        assertFalse(page.getLines().isEmpty());
+
+        org.oqteris.writer.layout.LayoutLine line = page.getLines().get(0);
+        assertTrue(line.getSegments().size() >= 3, "Line must have segments for 'Memo:', tab, and 'Date:'");
+
+        // The last segment ('Date:') should end at or very close to 450.0 pt
+        org.oqteris.writer.layout.LayoutLine.LineSegment lastSeg = line.getSegments().get(line.getSegments().size() - 1);
+        assertEquals("Date:", lastSeg.getText());
+        double segEndX = lastSeg.getX() + lastSeg.getWidth();
+        assertEquals(450.0, segEndX, 1.5, "Right tab stop must align 'Date:' flush to 450.0 pt");
+    }
 }
