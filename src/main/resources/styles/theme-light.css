@@ -1,0 +1,81 @@
+/* Light Theme */
+.root {
+    -fx-base: #f5f6f8;
+    -fx-background: #ffffff;
+    -fx-text-fill: #1a1a1a;
+    -fx-accent: #0078d4;
+    -fx-focus-color: #0078d4;
+    -fx-faint-focus-color: rgba(0, 120, 212, 0.2);
+}
+
+.menu-bar {
+    -fx-background-color: #f3f3f3;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.tool-bar, .ribbon-bar {
+    -fx-background-color: #fafafa;
+    -fx-border-color: #e5e5e5;
+    -fx-border-width: 0 0 1 0;
+}
+
+.ribbon-button:hover {
+    -fx-background-color: #e5f1fb;
+}
+
+.ribbon-button:pressed {
+    -fx-background-color: #cce4f7;
+}
+
+.tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: #eaecef;
+}
+
+.tab-pane > .tab-header-area .tab {
+    -fx-background-color: #e0e2e5;
+    -fx-background-radius: 4 4 0 0;
+    -fx-padding: 4 12;
+}
+
+.tab-pane > .tab-header-area .tab:selected {
+    -fx-background-color: #ffffff;
+}
+
+.status-bar {
+    -fx-background-color: #f0f2f5;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1 0 0 0;
+    -fx-text-fill: #555555;
+}
+
+.action-card {
+    -fx-background-color: #ffffff;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 0, 2);
+    -fx-border-color: #e5e5e5;
+    -fx-border-radius: 8px;
+}
+
+.action-card:hover {
+    -fx-background-color: #f7f9fc;
+    -fx-border-color: #0078d4;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,120,212,0.18), 12, 0, 0, 3);
+}
+
+.welcome-screen {
+    -fx-background-color: #f8f9fa;
+}
+
+.recent-list-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e5e5e5;
+    -fx-border-radius: 6px;
+}
+
+.editor-canvas-container {
+    -fx-background-color: #e8eaed;
+}
+
+.canvas-page {
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.22), 12, 0, 0, 3);
+}

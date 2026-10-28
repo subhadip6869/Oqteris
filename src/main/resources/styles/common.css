@@ -1,0 +1,75 @@
+/* Common styles across all themes */
+.root {
+    -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+.button {
+    -fx-background-radius: 4px;
+    -fx-padding: 4px 10px;
+    -fx-cursor: hand;
+}
+
+.ribbon-bar {
+    -fx-padding: 4px;
+}
+
+.ribbon-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 4px;
+    -fx-padding: 5px 8px;
+    -fx-alignment: center;
+    -fx-content-display: top;
+    -fx-font-size: 11px;
+}
+
+.ribbon-group {
+    -fx-padding: 2px 6px;
+    -fx-spacing: 4px;
+    -fx-alignment: center-left;
+}
+
+.status-bar {
+    -fx-padding: 3px 10px;
+    -fx-font-size: 11px;
+    -fx-alignment: center-left;
+}
+
+.welcome-title {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+.welcome-subtitle {
+    -fx-font-size: 14px;
+}
+
+.action-card {
+    -fx-background-radius: 8px;
+    -fx-padding: 16px;
+    -fx-cursor: hand;
+}
+
+.signature-badge-trusted {
+    -fx-background-color: #28a745;
+    -fx-text-fill: white;
+    -fx-padding: 2px 8px;
+    -fx-background-radius: 10px;
+    -fx-font-weight: bold;
+}
+
+.signature-badge-warning {
+    -fx-background-color: #ffc107;
+    -fx-text-fill: #212529;
+    -fx-padding: 2px 8px;
+    -fx-background-radius: 10px;
+    -fx-font-weight: bold;
+}
+
+.signature-badge-invalid {
+    -fx-background-color: #dc3545;
+    -fx-text-fill: white;
+    -fx-padding: 2px 8px;
+    -fx-background-radius: 10px;
+    -fx-font-weight: bold;
+}
