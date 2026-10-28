@@ -1,81 +1,191 @@
-/* Light Theme */
+/* ==========================================================================
+   Oqteris Aurora Light Theme - Modern Executive Aesthetic
+   ========================================================================== */
+
 .root {
-    -fx-base: #f5f6f8;
+    -fx-base: #f8fafc;
     -fx-background: #ffffff;
-    -fx-text-fill: #1a1a1a;
-    -fx-accent: #0078d4;
-    -fx-focus-color: #0078d4;
-    -fx-faint-focus-color: rgba(0, 120, 212, 0.2);
+    -fx-text-fill: #0f172a;
+    -fx-accent: #4f46e5;
+    -fx-focus-color: #6366f1;
+    -fx-faint-focus-color: rgba(99, 102, 241, 0.2);
 }
 
+/* --- Menu Bar --- */
 .menu-bar {
-    -fx-background-color: #f3f3f3;
-    -fx-border-color: #e0e0e0;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0;
     -fx-border-width: 0 0 1 0;
 }
 
+.menu-bar .menu-button:hover, .menu-bar .menu-button:showing {
+    -fx-background-color: #f1f5f9;
+}
+
+.context-menu {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 8px;
+    -fx-border-width: 1px;
+}
+
+.menu-item:hover, .menu-item:focused {
+    -fx-background-color: #eef2ff;
+    -fx-text-fill: #4f46e5;
+}
+
+/* --- Ribbon Toolbar --- */
 .tool-bar, .ribbon-bar {
-    -fx-background-color: #fafafa;
-    -fx-border-color: #e5e5e5;
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e2e8f0;
     -fx-border-width: 0 0 1 0;
+}
+
+.ribbon-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #334155;
+    -fx-border-color: transparent;
 }
 
 .ribbon-button:hover {
-    -fx-background-color: #e5f1fb;
+    -fx-background-color: #eef2ff;
+    -fx-text-fill: #4f46e5;
+    -fx-border-color: #c7d2fe;
+    -fx-border-radius: 6px;
 }
 
 .ribbon-button:pressed {
-    -fx-background-color: #cce4f7;
+    -fx-background-color: #e0e7ff;
 }
 
+/* --- Standard Buttons & Inputs --- */
+.button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #1e293b;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 6px;
+    -fx-border-width: 1px;
+}
+
+.button:hover {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #94a3b8;
+}
+
+.button:pressed {
+    -fx-background-color: #f1f5f9;
+}
+
+.toggle-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #1e293b;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 6px;
+}
+
+.toggle-button:selected {
+    -fx-background-color: #eef2ff;
+    -fx-text-fill: #4f46e5;
+    -fx-border-color: #818cf8;
+    -fx-font-weight: bold;
+}
+
+.text-field, .text-area {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #0f172a;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 6px;
+    -fx-border-width: 1px;
+}
+
+.text-field:focused, .text-area:focused {
+    -fx-border-color: #6366f1;
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.25), 6, 0, 0, 0);
+}
+
+.combo-box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 6px;
+}
+
+.combo-box:hover {
+    -fx-border-color: #94a3b8;
+}
+
+/* --- Document Tabs --- */
 .tab-pane > .tab-header-area > .tab-header-background {
-    -fx-background-color: #eaecef;
+    -fx-background-color: #f1f5f9;
 }
 
 .tab-pane > .tab-header-area .tab {
-    -fx-background-color: #e0e2e5;
-    -fx-background-radius: 4 4 0 0;
-    -fx-padding: 4 12;
+    -fx-background-color: #e2e8f0;
+    -fx-border-color: #cbd5e1;
+    -fx-border-width: 1 1 0 1;
+    -fx-border-radius: 8 8 0 0;
+}
+
+.tab-pane > .tab-header-area .tab .tab-label {
+    -fx-text-fill: #64748b;
 }
 
 .tab-pane > .tab-header-area .tab:selected {
     -fx-background-color: #ffffff;
+    -fx-border-color: #4f46e5 #cbd5e1 transparent #cbd5e1;
+    -fx-border-width: 2 1 0 1;
 }
 
+.tab-pane > .tab-header-area .tab:selected .tab-label {
+    -fx-text-fill: #0f172a;
+    -fx-font-weight: bold;
+}
+
+/* --- Status Bar --- */
 .status-bar {
-    -fx-background-color: #f0f2f5;
-    -fx-border-color: #e0e0e0;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0;
     -fx-border-width: 1 0 0 0;
-    -fx-text-fill: #555555;
+    -fx-text-fill: #64748b;
+}
+
+/* --- Scrollbar Thumb --- */
+.scroll-bar .thumb {
+    -fx-background-color: #cbd5e1;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #94a3b8;
+}
+
+/* --- Welcome / Start Center --- */
+.welcome-screen {
+    -fx-background-color: #f8fafc;
 }
 
 .action-card {
     -fx-background-color: #ffffff;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0, 0, 2);
-    -fx-border-color: #e5e5e5;
-    -fx-border-radius: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10, 0, 0, 2);
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 10px;
 }
 
 .action-card:hover {
-    -fx-background-color: #f7f9fc;
-    -fx-border-color: #0078d4;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,120,212,0.18), 12, 0, 0, 3);
-}
-
-.welcome-screen {
-    -fx-background-color: #f8f9fa;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #6366f1;
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.2), 14, 0, 0, 4);
 }
 
 .recent-list-view {
     -fx-background-color: #ffffff;
-    -fx-border-color: #e5e5e5;
-    -fx-border-radius: 6px;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 8px;
 }
 
+/* --- Canvas Container & Pages --- */
 .editor-canvas-container {
-    -fx-background-color: #e8eaed;
+    -fx-background-color: #e2e8f0;
 }
 
 .canvas-page {
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.22), 12, 0, 0, 3);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.14), 14, 0, 0, 3);
 }

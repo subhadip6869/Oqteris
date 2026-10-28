@@ -78,4 +78,14 @@ public class DocumentTable implements DocumentElement {
     public void setBorderWidth(double borderWidth) {
         this.borderWidth = Math.max(0.5, borderWidth);
     }
+
+    public DocumentTableCell getCell(int row, int col) {
+        if (row >= 0 && row < rows.size()) {
+            DocumentTableRow r = rows.get(row);
+            if (col >= 0 && col < r.getCells().size()) {
+                return r.getCells().get(col);
+            }
+        }
+        return null;
+    }
 }

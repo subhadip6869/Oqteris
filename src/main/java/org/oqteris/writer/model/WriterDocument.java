@@ -136,4 +136,26 @@ public class WriterDocument extends AbstractDocumentModel {
         }
         return count;
     }
+
+    public String getPlainText() {
+        StringBuilder sb = new StringBuilder();
+        for (DocumentElement el : elements) {
+            if (el instanceof Paragraph p) {
+                sb.append(p.getPlainText()).append("\n");
+            } else if (el instanceof DocumentTable t) {
+                for (DocumentTableRow row : t.getRows()) {
+                    List<String> cellTexts = new ArrayList<>();
+                    for (DocumentTableCell cell : row.getCells()) {
+                        StringBuilder cellSb = new StringBuilder();
+                        for (Paragraph cp : cell.getParagraphs()) {
+                            cellSb.append(cp.getPlainText()).append(" ");
+                        }
+                        cellTexts.add(cellSb.toString().trim());
+                    }
+                    sb.append(String.join("\t", cellTexts)).append("\n");
+                }
+            }
+        }
+        return sb.toString();
+    }
 }

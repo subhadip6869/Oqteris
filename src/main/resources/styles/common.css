@@ -1,75 +1,203 @@
-/* Common styles across all themes */
+/* ==========================================================================
+   Oqteris Aurora Design System - Common Global Styles
+   ========================================================================== */
+
 .root {
-    -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -fx-font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Inter", Roboto, "Helvetica Neue", sans-serif;
     -fx-font-size: 13px;
+    -fx-background-color: transparent;
 }
 
+/* --- Buttons & Controls --- */
 .button {
-    -fx-background-radius: 4px;
+    -fx-background-radius: 6px;
+    -fx-padding: 5px 12px;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+    -fx-font-weight: 500;
+}
+
+.button:hover {
+    -fx-opacity: 0.92;
+}
+
+.button:pressed {
+    -fx-opacity: 0.82;
+}
+
+.toggle-button {
+    -fx-background-radius: 6px;
     -fx-padding: 4px 10px;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.text-field, .text-area {
+    -fx-background-radius: 6px;
+    -fx-padding: 5px 8px;
+    -fx-font-size: 12px;
+}
+
+.combo-box {
+    -fx-background-radius: 6px;
+    -fx-padding: 2px 4px;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.combo-box .list-cell {
+    -fx-padding: 4px 8px;
+}
+
+.color-picker {
+    -fx-background-radius: 6px;
+    -fx-padding: 2px 4px;
     -fx-cursor: hand;
 }
 
-.ribbon-bar {
-    -fx-padding: 4px;
+.color-picker > .color-picker-label {
+    -fx-padding: 0;
 }
 
-.ribbon-button {
-    -fx-background-color: transparent;
-    -fx-background-radius: 4px;
-    -fx-padding: 5px 8px;
-    -fx-alignment: center;
-    -fx-content-display: top;
-    -fx-font-size: 11px;
+/* --- Menu Bar & Menus --- */
+.menu-bar {
+    -fx-padding: 2px 8px;
+}
+
+.menu-bar .menu-button {
+    -fx-padding: 4px 10px;
+    -fx-background-radius: 5px;
+    -fx-font-size: 12px;
+}
+
+.context-menu {
+    -fx-background-radius: 8px;
+    -fx-padding: 4px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 12, 0, 0, 4);
+}
+
+.menu-item {
+    -fx-background-radius: 5px;
+    -fx-padding: 5px 14px;
+    -fx-font-size: 12px;
+}
+
+/* --- Ribbon / Toolbar --- */
+.ribbon-bar {
+    -fx-padding: 5px 10px;
+    -fx-spacing: 6px;
+    -fx-alignment: center-left;
 }
 
 .ribbon-group {
     -fx-padding: 2px 6px;
-    -fx-spacing: 4px;
+    -fx-spacing: 5px;
     -fx-alignment: center-left;
 }
 
+.ribbon-button {
+    -fx-background-radius: 6px;
+    -fx-padding: 4px 10px;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+/* --- Tab Pane & Document Tabs --- */
+.tab-pane > .tab-header-area {
+    -fx-padding: 4px 8px 0 8px;
+}
+
+.tab-pane > .tab-header-area .tab {
+    -fx-background-radius: 8px 8px 0 0;
+    -fx-padding: 5px 16px;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+    -fx-font-weight: 500;
+}
+
+.tab-pane > .tab-header-area .tab-close-button {
+    -fx-background-radius: 50%;
+    -fx-padding: 3px;
+    -fx-cursor: hand;
+}
+
+/* --- Status Bar --- */
 .status-bar {
-    -fx-padding: 3px 10px;
+    -fx-padding: 4px 14px;
     -fx-font-size: 11px;
     -fx-alignment: center-left;
 }
 
+/* --- Modern Slim Scrollbars --- */
+.scroll-bar:vertical {
+    -fx-pref-width: 10px;
+    -fx-background-color: transparent;
+}
+
+.scroll-bar:horizontal {
+    -fx-pref-height: 10px;
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-radius: 5px;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+    -fx-padding: 0;
+}
+
+/* --- Welcome / Start Center --- */
+.welcome-screen {
+    -fx-padding: 32px 48px;
+}
+
 .welcome-title {
-    -fx-font-size: 26px;
-    -fx-font-weight: bold;
+    -fx-font-size: 28px;
+    -fx-font-weight: 700;
 }
 
 .welcome-subtitle {
     -fx-font-size: 14px;
+    -fx-font-weight: 400;
 }
 
 .action-card {
-    -fx-background-radius: 8px;
+    -fx-background-radius: 10px;
     -fx-padding: 16px;
     -fx-cursor: hand;
 }
 
+/* --- Signature Status Badges --- */
 .signature-badge-trusted {
-    -fx-background-color: #28a745;
+    -fx-background-color: #10b981;
     -fx-text-fill: white;
-    -fx-padding: 2px 8px;
-    -fx-background-radius: 10px;
+    -fx-padding: 3px 10px;
+    -fx-background-radius: 12px;
     -fx-font-weight: bold;
+    -fx-font-size: 11px;
 }
 
 .signature-badge-warning {
-    -fx-background-color: #ffc107;
-    -fx-text-fill: #212529;
-    -fx-padding: 2px 8px;
-    -fx-background-radius: 10px;
+    -fx-background-color: #f59e0b;
+    -fx-text-fill: #1e293b;
+    -fx-padding: 3px 10px;
+    -fx-background-radius: 12px;
     -fx-font-weight: bold;
+    -fx-font-size: 11px;
 }
 
 .signature-badge-invalid {
-    -fx-background-color: #dc3545;
+    -fx-background-color: #ef4444;
     -fx-text-fill: white;
-    -fx-padding: 2px 8px;
-    -fx-background-radius: 10px;
+    -fx-padding: 3px 10px;
+    -fx-background-radius: 12px;
     -fx-font-weight: bold;
+    -fx-font-size: 11px;
 }

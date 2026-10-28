@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Start Center / Welcome screen displayed when no documents are active.
+ * Modern Start Center / Welcome Screen for Oqteris Office Suite.
  */
 public class WelcomeScreen extends BorderPane {
     private final Consumer<DocumentType> onNewDocument;
@@ -25,6 +25,7 @@ public class WelcomeScreen extends BorderPane {
     private final Consumer<File> onOpenSpecificFile;
     private final VBox recentFilesBox = new VBox(6);
     private final VBox recoveryAlertBox = new VBox(8);
+    private final TextField recentSearchField = new TextField();
 
     public WelcomeScreen(Consumer<DocumentType> onNewDocument, Runnable onOpenFile, Consumer<File> onOpenSpecificFile) {
         this.onNewDocument = onNewDocument;
@@ -32,87 +33,141 @@ public class WelcomeScreen extends BorderPane {
         this.onOpenSpecificFile = onOpenSpecificFile;
 
         getStyleClass().add("welcome-screen");
-        setPadding(new Insets(30, 40, 30, 40));
+        setPadding(new Insets(32, 48, 32, 48));
 
         buildUI();
     }
 
     private void buildUI() {
-        // Top Header
-        HBox header = new HBox(16);
-        header.setAlignment(Pos.CENTER_LEFT);
+        // Crash recovery check
+        checkRecovery();
+
+        // 1. Top Hero Section
+        HBox heroHeader = new HBox(16);
+        heroHeader.setAlignment(Pos.CENTER_LEFT);
+        heroHeader.setPadding(new Insets(0, 0, 20, 0));
 
         ImageView logoView = new ImageView();
         try (InputStream in = getClass().getResourceAsStream("/icons/oqteris-logo.png")) {
             if (in != null) {
-                logoView.setImage(new Image(in, 56, 56, true, true));
+                logoView.setImage(new Image(in, 60, 60, true, true));
             }
         } catch (Exception ignored) {
         }
 
-        VBox titleBox = new VBox(2);
-        Label title = new Label("Welcome to Oqteris");
+        VBox titleBox = new VBox(4);
+        HBox titleRow = new HBox(10);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label title = new Label("Oqteris Office Suite");
         title.getStyleClass().add("welcome-title");
-        Label subtitle = new Label("Independent Office Suite: Word Processor, Spreadsheet, Presentation & PDF");
+
+        Label versionBadge = new Label("v1.0.0 LTS");
+        versionBadge.setStyle("-fx-background-color: #6366f1; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10px;");
+
+        titleRow.getChildren().addAll(title, versionBadge);
+
+        Label subtitle = new Label("Independent Office Suite: Word Processor, Spreadsheet, Presentation & PDF Trust Center");
         subtitle.getStyleClass().add("welcome-subtitle");
-        subtitle.setStyle("-fx-text-fill: #777777;");
-        titleBox.getChildren().addAll(title, subtitle);
+        subtitle.setStyle("-fx-text-fill: #64748b;");
 
-        header.getChildren().addAll(logoView, titleBox);
+        titleBox.getChildren().addAll(titleRow, subtitle);
+        heroHeader.getChildren().addAll(logoView, titleBox);
 
-        // Center Content
-        VBox center = new VBox(24);
-        center.setPadding(new Insets(20, 0, 0, 0));
+        // 2. Main Two-Column Content Area
+        HBox columnsContainer = new HBox(32);
+        columnsContainer.setAlignment(Pos.TOP_LEFT);
+        VBox.setVgrow(columnsContainer, Priority.ALWAYS);
 
-        // Crash recovery banner if files exist
-        checkRecovery();
+        // Left Column: Create New & Launch Cards
+        VBox leftColumn = new VBox(14);
+        leftColumn.setPrefWidth(320);
 
-        // Action Cards Grid
-        Label startLabel = new Label("Create or Open");
-        startLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold;");
+        Label startLabel = new Label("New Document");
+        startLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;");
 
-        HBox cardsBox = new HBox(16);
-        cardsBox.setAlignment(Pos.CENTER_LEFT);
-
+        VBox cardsBox = new VBox(10);
         cardsBox.getChildren().addAll(
-                createActionCard("Document", "Word Processor (DOCX)", "#0078d4", () -> onNewDocument.accept(DocumentType.WRITER)),
-                createActionCard("Spreadsheet", "Workbook (XLSX)", "#107c41", () -> onNewDocument.accept(DocumentType.CALC)),
-                createActionCard("Presentation", "Slide Deck (PPTX)", "#d83b01", () -> onNewDocument.accept(DocumentType.IMPRESS)),
-                createActionCard("Open File", "DOCX, XLSX, PPTX, PDF", "#6a1b9a", onOpenFile)
+                createActionCard("Text Document", "Word Processor (DOCX, RTF, ODT)", "W", "#2563eb", () -> onNewDocument.accept(DocumentType.WRITER)),
+                createActionCard("Spreadsheet", "Workbook & Formulas (XLSX, XLS)", "S", "#059669", () -> onNewDocument.accept(DocumentType.CALC)),
+                createActionCard("Presentation", "Slide Designer (PPTX, ODP)", "P", "#ea580c", () -> onNewDocument.accept(DocumentType.IMPRESS)),
+                createActionCard("Open File...", "Browse DOCX, XLSX, PPTX, PDF", "📂", "#7c3aed", onOpenFile)
         );
 
-        // Recent Documents Section
+        leftColumn.getChildren().addAll(startLabel, cardsBox);
+
+        // Right Column: Recent Documents
+        VBox rightColumn = new VBox(10);
+        HBox.setHgrow(rightColumn, Priority.ALWAYS);
+
+        HBox recentsHeader = new HBox(12);
+        recentsHeader.setAlignment(Pos.CENTER_LEFT);
+
         Label recentLabel = new Label("Recent Documents");
-        recentLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold;");
+        recentLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;");
+
+        recentSearchField.setPromptText("Filter recent files...");
+        recentSearchField.setPrefWidth(200);
+        recentSearchField.textProperty().addListener((obs, oldV, newV) -> filterRecentFiles(newV));
+
+        Region recentSpacer = new Region();
+        HBox.setHgrow(recentSpacer, Priority.ALWAYS);
+
+        Button clearRecentBtn = new Button("Clear History");
+        clearRecentBtn.setStyle("-fx-font-size: 11px;");
+        clearRecentBtn.setOnAction(e -> {
+            RecentFilesManager.getInstance().clear();
+            refreshRecentFiles();
+        });
+
+        recentsHeader.getChildren().addAll(recentLabel, recentSpacer, recentSearchField, clearRecentBtn);
 
         ScrollPane recentScroll = new ScrollPane(recentFilesBox);
         recentScroll.setFitToWidth(true);
-        recentScroll.setPrefHeight(260);
+        recentScroll.setPrefHeight(380);
         recentScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        VBox.setVgrow(recentScroll, Priority.ALWAYS);
 
         refreshRecentFiles();
 
-        center.getChildren().addAll(recoveryAlertBox, startLabel, cardsBox, recentLabel, recentScroll);
+        rightColumn.getChildren().addAll(recentsHeader, recentScroll);
 
-        setTop(header);
-        setCenter(center);
+        columnsContainer.getChildren().addAll(leftColumn, rightColumn);
+
+        VBox centerContainer = new VBox(16, recoveryAlertBox, columnsContainer);
+        VBox.setVgrow(centerContainer, Priority.ALWAYS);
+
+        setTop(heroHeader);
+        setCenter(centerContainer);
     }
 
-    private VBox createActionCard(String title, String desc, String accentColor, Runnable onClick) {
-        VBox card = new VBox(6);
+    private HBox createActionCard(String title, String desc, String badgeChar, String accentColor, Runnable onClick) {
+        HBox card = new HBox(14);
         card.getStyleClass().add("action-card");
-        card.setPrefWidth(170);
-        card.setPrefHeight(90);
-        card.setStyle("-fx-border-left-color: " + accentColor + "; -fx-border-left-width: 4px;");
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPadding(new Insets(12, 16, 12, 16));
 
+        // Circular or rounded icon badge
+        StackPane iconBadge = new StackPane();
+        iconBadge.setPrefSize(40, 40);
+        iconBadge.setMinSize(40, 40);
+        iconBadge.setStyle("-fx-background-color: " + accentColor + "; -fx-background-radius: 8px;");
+
+        Label badgeLabel = new Label(badgeChar);
+        badgeLabel.setStyle("-fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold;");
+        iconBadge.getChildren().add(badgeLabel);
+
+        VBox textCol = new VBox(2);
         Label cardTitle = new Label(title);
-        cardTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: " + accentColor + ";");
+        cardTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: " + accentColor + ";");
 
         Label cardDesc = new Label(desc);
         cardDesc.setWrapText(true);
-        cardDesc.setStyle("-fx-font-size: 11px; -fx-text-fill: #777777;");
+        cardDesc.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
 
-        card.getChildren().addAll(cardTitle, cardDesc);
+        textCol.getChildren().addAll(cardTitle, cardDesc);
+        card.getChildren().addAll(iconBadge, textCol);
+
         card.setOnMouseClicked(e -> {
             if (onClick != null) onClick.run();
         });
@@ -127,13 +182,14 @@ public class WelcomeScreen extends BorderPane {
 
         HBox banner = new HBox(12);
         banner.setAlignment(Pos.CENTER_LEFT);
-        banner.setPadding(new Insets(10, 14, 10, 14));
-        banner.setStyle("-fx-background-color: #fff3cd; -fx-border-color: #ffeeba; -fx-border-radius: 4px; -fx-background-radius: 4px;");
+        banner.setPadding(new Insets(10, 16, 10, 16));
+        banner.setStyle("-fx-background-color: #fef3c7; -fx-border-color: #fde68a; -fx-border-radius: 8px; -fx-background-radius: 8px;");
 
         Label warning = new Label("Document Recovery: Oqteris detected " + records.size() + " unsaved document(s) from a previous session.");
-        warning.setStyle("-fx-text-fill: #856404; -fx-font-weight: bold; -fx-font-size: 12px;");
+        warning.setStyle("-fx-text-fill: #92400e; -fx-font-weight: bold; -fx-font-size: 12px;");
 
         Button recoverBtn = new Button("Recover All");
+        recoverBtn.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold;");
         recoverBtn.setOnAction(e -> {
             for (RecoveryManager.RecoveryRecord r : records) {
                 if (!r.getOriginalPath().equals("none")) {
@@ -163,40 +219,53 @@ public class WelcomeScreen extends BorderPane {
     }
 
     public void refreshRecentFiles() {
+        filterRecentFiles(recentSearchField.getText());
+    }
+
+    private void filterRecentFiles(String query) {
         recentFilesBox.getChildren().clear();
         List<RecentFilesManager.RecentFileEntry> recents = RecentFilesManager.getInstance().getRecentFiles();
 
         if (recents.isEmpty()) {
             Label empty = new Label("No recent documents. Create a new document or open an existing file.");
-            empty.setStyle("-fx-text-fill: #888888; -fx-padding: 8px;");
+            empty.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 16px; -fx-alignment: center;");
             recentFilesBox.getChildren().add(empty);
             return;
         }
 
+        String filter = query != null ? query.trim().toLowerCase() : "";
         SimpleDateFormat sdf = new SimpleDateFormat("MMM d, yyyy HH:mm");
+        int count = 0;
+
         for (RecentFilesManager.RecentFileEntry entry : recents) {
+            if (!filter.isEmpty() && !entry.getFileName().toLowerCase().contains(filter) && !entry.getAbsolutePath().toLowerCase().contains(filter)) {
+                continue;
+            }
+            count++;
+
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
-            row.setPadding(new Insets(8, 12, 8, 12));
-            row.setStyle("-fx-background-radius: 4px; -fx-cursor: hand;");
-            row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(0,120,212,0.08); -fx-background-radius: 4px; -fx-cursor: hand;"));
-            row.setOnMouseExited(e -> row.setStyle("-fx-background-radius: 4px; -fx-cursor: hand;"));
+            row.setPadding(new Insets(10, 14, 10, 14));
+            row.setStyle("-fx-background-color: white; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px; -fx-cursor: hand;");
+            row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: #eef2ff; -fx-background-radius: 8px; -fx-border-color: #c7d2fe; -fx-border-radius: 8px; -fx-cursor: hand;"));
+            row.setOnMouseExited(e -> row.setStyle("-fx-background-color: white; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px; -fx-cursor: hand;"));
 
             Label badge = new Label(entry.getType().name());
-            badge.setStyle("-fx-padding: 2px 6px; -fx-background-radius: 3px; -fx-font-size: 10px; -fx-font-weight: bold; " + getBadgeStyle(entry.getType()));
+            badge.setStyle("-fx-padding: 2px 7px; -fx-background-radius: 4px; -fx-font-size: 10px; -fx-font-weight: bold; " + getBadgeStyle(entry.getType()));
 
             VBox fileInfo = new VBox(2);
             Label fileName = new Label(entry.getFileName());
-            fileName.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+            fileName.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #1e293b;");
+
             Label filePath = new Label(entry.getAbsolutePath());
-            filePath.setStyle("-fx-font-size: 11px; -fx-text-fill: #888888;");
+            filePath.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
             fileInfo.getChildren().addAll(fileName, filePath);
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
 
             Label timeLbl = new Label(sdf.format(new Date(entry.getLastAccessed())));
-            timeLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #999999;");
+            timeLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
 
             row.getChildren().addAll(badge, fileInfo, spacer, timeLbl);
             row.setOnMouseClicked(e -> {
@@ -207,14 +276,20 @@ public class WelcomeScreen extends BorderPane {
 
             recentFilesBox.getChildren().add(row);
         }
+
+        if (count == 0) {
+            Label noMatch = new Label("No recent documents matching '" + filter + "'");
+            noMatch.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 16px;");
+            recentFilesBox.getChildren().add(noMatch);
+        }
     }
 
     private String getBadgeStyle(DocumentType type) {
         return switch (type) {
-            case WRITER -> "-fx-background-color: #0078d4; -fx-text-fill: white;";
-            case CALC -> "-fx-background-color: #107c41; -fx-text-fill: white;";
-            case IMPRESS -> "-fx-background-color: #d83b01; -fx-text-fill: white;";
-            case PDF -> "-fx-background-color: #6a1b9a; -fx-text-fill: white;";
+            case WRITER -> "-fx-background-color: #2563eb; -fx-text-fill: white;";
+            case CALC -> "-fx-background-color: #059669; -fx-text-fill: white;";
+            case IMPRESS -> "-fx-background-color: #ea580c; -fx-text-fill: white;";
+            case PDF -> "-fx-background-color: #dc2626; -fx-text-fill: white;";
         };
     }
 }

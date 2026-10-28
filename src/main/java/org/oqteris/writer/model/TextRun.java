@@ -24,6 +24,19 @@ public class TextRun {
         this.text = text != null ? text : "";
     }
 
+    public TextRun(String text, String fontFamily, double fontSize, boolean bold, boolean italic,
+                   boolean underline, boolean strikethrough, Color textColor, Color highlightColor) {
+        this.text = text != null ? text : "";
+        this.fontFamily = fontFamily != null ? fontFamily : "Segoe UI";
+        this.fontSize = fontSize;
+        this.bold = bold;
+        this.italic = italic;
+        this.underline = underline;
+        this.strikethrough = strikethrough;
+        this.textColor = textColor != null ? textColor : Color.BLACK;
+        this.highlightColor = highlightColor;
+    }
+
     public TextRun copy() {
         TextRun r = new TextRun(this.text);
         r.fontFamily = this.fontFamily;

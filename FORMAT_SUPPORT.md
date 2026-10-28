@@ -7,14 +7,20 @@ Oqteris prioritizes modern Office Open XML (OOXML) formats (DOCX, XLSX, PPTX) an
 | Extension | Format Name | Application | Import | Export | Fidelity Level |
 |---|---|---|:---:|:---:|---|
 | **.docx** | Office Open XML Document | Writer | Yes | Yes | High (Layout & Pagination Engine) |
+| **.doc** | Word 97-2003 Binary Document | Writer | Yes | No | Text, Structure & Paragraphs |
+| **.odt** | OpenDocument Text (ISO 26300) | Writer | Yes | Yes | High (Headings, Paragraphs & Tables) |
+| **.rtf** | Rich Text Format | Writer | Yes | Yes | Complete (Styled Runs, Colors & Tables) |
+| **.txt** | Plain Text Document | Writer | Yes | Yes | Complete |
+| **.html** | HyperText Markup Language | Writer | Yes | Yes | Presentation-Ready Import & Clean Export |
 | **.xlsx** | Office Open XML Spreadsheet | Calc | Yes | Yes | High (Formulas, Styles & Values) |
-| **.pptx** | Office Open XML Presentation | Impress | Yes | Yes | High (Vector Shapes & Text) |
-| **.pdf** | Portable Document Format (ISO 32000) | PDF Viewer | Yes | Yes (from Impress) | Full (Digital Signature Verification) |
+| **.xls** | Excel 97-2003 Binary Workbook | Calc | Yes | Yes | High (Formulas, Styles & Values) |
+| **.ods** | OpenDocument Spreadsheet | Calc | Yes | No | Complete (Formulas, Values & Sheets) |
 | **.csv** | Comma-Separated Values | Calc | Yes | Yes | Complete |
 | **.tsv** | Tab-Separated Values | Calc | Yes | Yes | Complete |
-| **.txt** | Plain Text Document | Writer | Yes | Yes | Complete |
-| **.html** | HyperText Markup Language | Writer | No | Yes | Presentation-Ready Clean Export |
-| **.rtf** | Rich Text Format | Writer | Planned | Planned | Text & Core Typography |
+| **.pptx** | Office Open XML Presentation | Impress | Yes | Yes | High (Vector Shapes, Text & Geometry) |
+| **.ppt** | PowerPoint 97-2003 Binary Deck | Impress | Yes | No | High (Slide Titles & Body Shapes) |
+| **.odp** | OpenDocument Presentation | Impress | Yes | No | High (Slide Frames & Vector Shapes) |
+| **.pdf** | Portable Document Format (ISO 32000) | PDF Viewer | Yes | Yes (from Impress) | Full (Digital Signature Verification) |
 
 ---
 

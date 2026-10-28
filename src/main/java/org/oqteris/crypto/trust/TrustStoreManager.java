@@ -21,17 +21,39 @@ public class TrustStoreManager {
     private static final String STORE_TYPE = "PKCS12";
     private static final char[] STORE_PASSWORD = "oqteris-trust-store".toCharArray();
 
-    private final Path trustStorePath;
+    private Path trustStorePath;
     private KeyStore appKeyStore;
     private final Map<String, TrustedCertificateRecord> records = new ConcurrentHashMap<>();
     private final Set<X509Certificate> systemTrustAnchors = new HashSet<>();
     private boolean useSystemTrustStore = true;
 
     private TrustStoreManager() {
-        String userHome = System.getProperty("user.home", ".");
-        this.trustStorePath = Paths.get(userHome, ".oqteris", "truststore.p12");
+        this.trustStorePath = resolveTrustStorePath();
         initTrustStore();
         loadSystemTrustAnchors();
+    }
+
+    private static Path resolveTrustStorePath() {
+        String userHome = System.getProperty("user.home", ".");
+        Path primary = Paths.get(userHome, ".oqteris", "truststore.p12");
+        try {
+            if (primary.getParent() != null) {
+                Files.createDirectories(primary.getParent());
+            }
+            return primary;
+        } catch (Exception ex) {
+            // Fallback to temporary directory if user.home is not writable
+            String tmpDir = System.getProperty("java.io.tmpdir", ".");
+            Path fallback = Paths.get(tmpDir, ".oqteris", "truststore.p12");
+            try {
+                if (fallback.getParent() != null) {
+                    Files.createDirectories(fallback.getParent());
+                }
+                return fallback;
+            } catch (Exception ignored) {
+                return Paths.get("truststore.p12");
+            }
+        }
     }
 
     public static TrustStoreManager getInstance() {
@@ -85,7 +107,17 @@ public class TrustStoreManager {
                 appKeyStore.store(out, STORE_PASSWORD);
             }
         } catch (Exception e) {
-            System.err.println("[TrustStoreManager] Failed to persist trust store: " + e.getMessage());
+            // Try fallback path if first attempt failed
+            try {
+                Path altPath = Paths.get(System.getProperty("java.io.tmpdir", "."), ".oqteris", "truststore.p12");
+                if (altPath.getParent() != null) Files.createDirectories(altPath.getParent());
+                try (OutputStream out = Files.newOutputStream(altPath)) {
+                    appKeyStore.store(out, STORE_PASSWORD);
+                    this.trustStorePath = altPath;
+                }
+            } catch (Exception ex2) {
+                System.err.println("[TrustStoreManager] Failed to persist trust store: " + e.getMessage());
+            }
         }
     }
 

@@ -266,17 +266,28 @@ public class MainWindow extends BorderPane {
         statusBar.setPadding(new Insets(3, 10, 3, 10));
 
         backgroundProgress.setVisible(false);
-        backgroundProgress.setPrefWidth(100);
-        backgroundProgress.setPrefHeight(12);
+        backgroundProgress.setPrefWidth(90);
+        backgroundProgress.setPrefHeight(10);
 
-        HBox leftStatus = new HBox(8, statusMessage, backgroundProgress);
+        Label autosaveChip = new Label("● Autosaved");
+        autosaveChip.setStyle("-fx-font-size: 11px; -fx-text-fill: #10b981; -fx-padding: 2 6; -fx-background-radius: 4;");
+
+        HBox leftStatus = new HBox(8, statusMessage, backgroundProgress, autosaveChip);
         leftStatus.setAlignment(Pos.CENTER_LEFT);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         // Zoom controls
-        zoomSlider.setPrefWidth(120);
+        Button zoomOutBtn = new Button("-");
+        zoomOutBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 6; -fx-background-radius: 4;");
+        zoomOutBtn.setOnAction(e -> setZoom(zoomSlider.getValue() - 15));
+
+        Button zoomInBtn = new Button("+");
+        zoomInBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 6; -fx-background-radius: 4;");
+        zoomInBtn.setOnAction(e -> setZoom(zoomSlider.getValue() + 15));
+
+        zoomSlider.setPrefWidth(110);
         zoomSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             int rounded = (int) Math.round(newVal.doubleValue());
             zoomLabel.setText(rounded + "%");
@@ -286,7 +297,11 @@ public class MainWindow extends BorderPane {
             }
         });
 
-        HBox zoomControls = new HBox(6, zoomSlider, zoomLabel);
+        zoomLabel.setStyle("-fx-font-size: 11px; -fx-min-width: 38px; -fx-alignment: center-right;");
+        zoomLabel.setOnMouseClicked(e -> setZoom(100));
+        zoomLabel.setCursor(javafx.scene.Cursor.HAND);
+
+        HBox zoomControls = new HBox(5, zoomOutBtn, zoomSlider, zoomInBtn, zoomLabel);
         zoomControls.setAlignment(Pos.CENTER_RIGHT);
 
         statusBar.getChildren().addAll(leftStatus, spacer, contextualStatusContainer, zoomControls);
@@ -464,9 +479,19 @@ public class MainWindow extends BorderPane {
     private void updateTabTitle(Tab tab, DocumentModel doc) {
         String title = doc.getTitle();
         if (doc.isModified()) {
-            title += " *";
+            title += " ●";
         }
         tab.setText(title);
+
+        Label typeBadge = new Label(doc.getType().name());
+        switch (doc.getType()) {
+            case WRITER -> typeBadge.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 1 5; -fx-background-radius: 4; -fx-font-size: 9px; -fx-font-weight: bold;");
+            case CALC -> typeBadge.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-padding: 1 5; -fx-background-radius: 4; -fx-font-size: 9px; -fx-font-weight: bold;");
+            case IMPRESS -> typeBadge.setStyle("-fx-background-color: #ea580c; -fx-text-fill: white; -fx-padding: 1 5; -fx-background-radius: 4; -fx-font-size: 9px; -fx-font-weight: bold;");
+            case PDF -> typeBadge.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-padding: 1 5; -fx-background-radius: 4; -fx-font-size: 9px; -fx-font-weight: bold;");
+        }
+        tab.setGraphic(typeBadge);
+
         primaryStage.setTitle(title + " - Oqteris Office Suite");
     }
 
@@ -523,15 +548,36 @@ public class MainWindow extends BorderPane {
         if (target == null || saveAs) {
             FileChooser chooser = new FileChooser();
             chooser.setTitle("Save Document - Oqteris");
-            String ext = doc.getType().getDefaultExtension();
-            chooser.getExtensionFilters().add(
-                    new FileChooser.ExtensionFilter(doc.getType().getDisplayName() + " (*." + ext + ")", "*." + ext)
-            );
+            switch (doc.getType()) {
+                case WRITER -> chooser.getExtensionFilters().addAll(
+                        new FileChooser.ExtensionFilter("Word Document (*.docx)", "*.docx"),
+                        new FileChooser.ExtensionFilter("Rich Text Format (*.rtf)", "*.rtf"),
+                        new FileChooser.ExtensionFilter("OpenDocument Text (*.odt)", "*.odt"),
+                        new FileChooser.ExtensionFilter("Plain Text Document (*.txt)", "*.txt"),
+                        new FileChooser.ExtensionFilter("HTML Document (*.html)", "*.html")
+                );
+                case CALC -> chooser.getExtensionFilters().addAll(
+                        new FileChooser.ExtensionFilter("Excel Workbook (*.xlsx)", "*.xlsx"),
+                        new FileChooser.ExtensionFilter("Excel 97-2003 Workbook (*.xls)", "*.xls"),
+                        new FileChooser.ExtensionFilter("Comma-Separated Values (*.csv)", "*.csv")
+                );
+                case IMPRESS -> chooser.getExtensionFilters().addAll(
+                        new FileChooser.ExtensionFilter("PowerPoint Presentation (*.pptx)", "*.pptx")
+                );
+                default -> {
+                    String ext = doc.getType().getDefaultExtension();
+                    chooser.getExtensionFilters().add(
+                            new FileChooser.ExtensionFilter(doc.getType().getDisplayName() + " (*." + ext + ")", "*." + ext)
+                    );
+                }
+            }
+
             if (target != null) {
                 chooser.setInitialDirectory(target.getParentFile());
                 chooser.setInitialFileName(target.getName());
             } else {
-                chooser.setInitialFileName(doc.getTitle().endsWith("." + ext) ? doc.getTitle() : doc.getTitle() + "." + ext);
+                String defExt = doc.getType().getDefaultExtension();
+                chooser.setInitialFileName(doc.getTitle().contains(".") ? doc.getTitle() : doc.getTitle() + "." + defExt);
             }
             target = chooser.showSaveDialog(primaryStage);
             if (target == null) return;

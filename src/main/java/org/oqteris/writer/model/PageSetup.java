@@ -80,6 +80,21 @@ public class PageSetup {
         this.marginRight = Math.max(10.0, marginRight);
     }
 
+    public void setMargins(double top, double right, double bottom, double left) {
+        setMarginTop(top);
+        setMarginRight(right);
+        setMarginBottom(bottom);
+        setMarginLeft(left);
+    }
+
+    public void setPageWidth(double pageWidth) {
+        this.pageWidth = Math.max(100.0, pageWidth);
+    }
+
+    public void setPageHeight(double pageHeight) {
+        this.pageHeight = Math.max(100.0, pageHeight);
+    }
+
     public Orientation getOrientation() {
         return orientation;
     }

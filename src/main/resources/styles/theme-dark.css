@@ -1,97 +1,206 @@
-/* Dark Theme */
+/* ==========================================================================
+   Oqteris Obsidian Dark Theme - Deep Modern Executive Aesthetic
+   ========================================================================== */
+
 .root {
-    -fx-base: #1e1e1e;
-    -fx-background: #252526;
-    -fx-text-fill: #e0e0e0;
-    -fx-accent: #007acc;
-    -fx-focus-color: #007acc;
-    -fx-faint-focus-color: rgba(0, 122, 204, 0.3);
+    -fx-base: #090d16;
+    -fx-background: #0f172a;
+    -fx-text-fill: #f8fafc;
+    -fx-accent: #818cf8;
+    -fx-focus-color: #818cf8;
+    -fx-faint-focus-color: rgba(129, 140, 248, 0.25);
 }
 
+/* --- Menu Bar --- */
 .menu-bar {
-    -fx-background-color: #1f1f1f;
-    -fx-border-color: #333333;
+    -fx-background-color: #0b0f19;
+    -fx-border-color: #1e293b;
     -fx-border-width: 0 0 1 0;
 }
 
 .menu-bar .label {
-    -fx-text-fill: #e0e0e0;
+    -fx-text-fill: #f1f5f9;
 }
 
+.menu-bar .menu-button:hover, .menu-bar .menu-button:showing {
+    -fx-background-color: #1e293b;
+}
+
+.context-menu {
+    -fx-background-color: #0f172a;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8px;
+    -fx-border-width: 1px;
+}
+
+.menu-item .label {
+    -fx-text-fill: #e2e8f0;
+}
+
+.menu-item:hover, .menu-item:focused {
+    -fx-background-color: #1e293b;
+}
+
+.menu-item:hover .label, .menu-item:focused .label {
+    -fx-text-fill: #818cf8;
+}
+
+/* --- Ribbon Toolbar --- */
 .tool-bar, .ribbon-bar {
-    -fx-background-color: #252526;
-    -fx-border-color: #383838;
+    -fx-background-color: #0f172a;
+    -fx-border-color: #1e293b;
     -fx-border-width: 0 0 1 0;
 }
 
 .ribbon-button {
-    -fx-text-fill: #cccccc;
+    -fx-background-color: transparent;
+    -fx-text-fill: #cbd5e1;
+    -fx-border-color: transparent;
 }
 
 .ribbon-button:hover {
-    -fx-background-color: #383838;
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #818cf8;
+    -fx-border-color: #4338ca;
+    -fx-border-radius: 6px;
 }
 
 .ribbon-button:pressed {
-    -fx-background-color: #444444;
+    -fx-background-color: #312e81;
 }
 
+/* --- Standard Buttons & Inputs --- */
+.button {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #f8fafc;
+    -fx-border-color: #334155;
+    -fx-border-radius: 6px;
+    -fx-border-width: 1px;
+}
+
+.button:hover {
+    -fx-background-color: #273549;
+    -fx-border-color: #475569;
+}
+
+.button:pressed {
+    -fx-background-color: #334155;
+}
+
+.toggle-button {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #cbd5e1;
+    -fx-border-color: #334155;
+    -fx-border-radius: 6px;
+}
+
+.toggle-button:selected {
+    -fx-background-color: #312e81;
+    -fx-text-fill: #c7d2fe;
+    -fx-border-color: #6366f1;
+    -fx-font-weight: bold;
+}
+
+.text-field, .text-area {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #f8fafc;
+    -fx-border-color: #334155;
+    -fx-border-radius: 6px;
+    -fx-border-width: 1px;
+}
+
+.text-field:focused, .text-area:focused {
+    -fx-border-color: #818cf8;
+    -fx-effect: dropshadow(gaussian, rgba(129,140,248,0.3), 6, 0, 0, 0);
+}
+
+.combo-box {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-radius: 6px;
+}
+
+.combo-box .list-cell {
+    -fx-text-fill: #f8fafc;
+}
+
+.combo-box:hover {
+    -fx-border-color: #475569;
+}
+
+/* --- Document Tabs --- */
 .tab-pane > .tab-header-area > .tab-header-background {
-    -fx-background-color: #1e1e1e;
+    -fx-background-color: #0b0f19;
 }
 
 .tab-pane > .tab-header-area .tab {
-    -fx-background-color: #2d2d2d;
-    -fx-background-radius: 4 4 0 0;
-    -fx-padding: 4 12;
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-width: 1 1 0 1;
+    -fx-border-radius: 8 8 0 0;
 }
 
 .tab-pane > .tab-header-area .tab .tab-label {
-    -fx-text-fill: #aaaaaa;
+    -fx-text-fill: #94a3b8;
 }
 
 .tab-pane > .tab-header-area .tab:selected {
-    -fx-background-color: #252526;
+    -fx-background-color: #0f172a;
+    -fx-border-color: #818cf8 #334155 transparent #334155;
+    -fx-border-width: 2 1 0 1;
 }
 
 .tab-pane > .tab-header-area .tab:selected .tab-label {
     -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
 }
 
+/* --- Status Bar --- */
 .status-bar {
-    -fx-background-color: #1e1e1e;
-    -fx-border-color: #333333;
+    -fx-background-color: #0b0f19;
+    -fx-border-color: #1e293b;
     -fx-border-width: 1 0 0 0;
-    -fx-text-fill: #999999;
+    -fx-text-fill: #94a3b8;
+}
+
+/* --- Scrollbar Thumb --- */
+.scroll-bar .thumb {
+    -fx-background-color: #334155;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #475569;
+}
+
+/* --- Welcome / Start Center --- */
+.welcome-screen {
+    -fx-background-color: #090d16;
 }
 
 .action-card {
-    -fx-background-color: #2d2d30;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.35), 8, 0, 0, 2);
-    -fx-border-color: #3e3e42;
-    -fx-border-radius: 8px;
+    -fx-background-color: #0f172a;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 2);
+    -fx-border-color: #1e293b;
+    -fx-border-radius: 10px;
 }
 
 .action-card:hover {
-    -fx-background-color: #333337;
-    -fx-border-color: #007acc;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,122,204,0.3), 12, 0, 0, 3);
-}
-
-.welcome-screen {
-    -fx-background-color: #1e1e1e;
+    -fx-background-color: #172033;
+    -fx-border-color: #818cf8;
+    -fx-effect: dropshadow(gaussian, rgba(129,140,248,0.25), 14, 0, 0, 4);
 }
 
 .recent-list-view {
-    -fx-background-color: #252526;
-    -fx-border-color: #3e3e42;
-    -fx-border-radius: 6px;
+    -fx-background-color: #0f172a;
+    -fx-border-color: #1e293b;
+    -fx-border-radius: 8px;
 }
 
+/* --- Canvas Container & Pages --- */
 .editor-canvas-container {
-    -fx-background-color: #181818;
+    -fx-background-color: #050811;
 }
 
 .canvas-page {
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 14, 0, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 16, 0, 0, 4);
 }

@@ -41,23 +41,23 @@ public class AboutDialog extends Stage {
         }
 
         Label title = new Label("Oqteris Office Suite");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #0078d4;");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: #6366f1;");
 
-        Label version = new Label("Version 1.0.0 (Java 21 LTS, JavaFX 21)");
-        version.setStyle("-fx-font-size: 12px; -fx-text-fill: #777777;");
+        Label version = new Label("Version 1.0.0 LTS (Java 21 LTS, JavaFX 21)");
+        version.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b;");
 
         Label desc = new Label(
                 "Oqteris is a completely independent, cross-platform desktop office suite featuring:\n" +
-                " • Oqteris Writer: Full DOCX word processor with custom layout & pagination\n" +
-                " • Oqteris Calc: High-performance spreadsheet with DAG recalculation & Excel functions\n" +
-                " • Oqteris Impress: Presentation slide designer and presentation slideshow mode\n" +
-                " • Oqteris PDF: PDF viewer with cryptographic signature & certificate trust management"
+                " • Oqteris Writer: Full word processor supporting DOCX, DOC, RTF, ODT, TXT, and HTML\n" +
+                " • Oqteris Calc: High-performance spreadsheet supporting XLSX, XLS, ODS, CSV, and TSV\n" +
+                " • Oqteris Impress: Presentation designer supporting PPTX, PPT, ODP, and Vector PDF export\n" +
+                " • Oqteris PDF & Trust Center: PDF viewer with CMS / PKCS#7 signature validation & trust store"
         );
         desc.setWrapText(true);
-        desc.setStyle("-fx-font-size: 12px;");
+        desc.setStyle("-fx-font-size: 12px; -fx-line-spacing: 4px;");
 
-        Label notice = new Label("100% Standalone: Operates with zero external office suite dependencies.");
-        notice.setStyle("-fx-font-size: 11px; -fx-font-style: italic; -fx-text-fill: #28a745;");
+        Label notice = new Label("100% Standalone: Operates with zero external office suite or cloud dependencies.");
+        notice.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #10b981;");
 
         Button closeBtn = new Button("Close");
         closeBtn.setDefaultButton(true);

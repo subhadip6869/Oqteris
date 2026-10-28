@@ -1,9 +1,16 @@
 package org.oqteris.ui;
 
+import org.oqteris.calc.model.Workbook;
+import org.oqteris.calc.ui.CalcDocumentView;
 import org.oqteris.core.io.DocumentImporter;
 import org.oqteris.core.io.DocumentRegistry;
 import org.oqteris.core.model.DocumentModel;
 import org.oqteris.core.model.DocumentType;
+import org.oqteris.pdf.ui.PdfDocumentView;
+import org.oqteris.presentation.model.Presentation;
+import org.oqteris.presentation.ui.PresentationDocumentView;
+import org.oqteris.writer.model.WriterDocument;
+import org.oqteris.writer.ui.WriterDocumentView;
 
 import java.io.File;
 import java.util.Optional;
@@ -14,18 +21,35 @@ import java.util.Optional;
 public class AppBootstrap {
 
     public static void initialize(MainWindow mainWindow) {
-        // Register format adapters
+        // Register format adapters - PDF
         org.oqteris.pdf.io.PdfImporter.register();
+
+        // Calc adapters: XLSX, XLS, CSV, ODS
         org.oqteris.calc.io.XlsxImporter.register();
         org.oqteris.calc.io.XlsxExporter.register();
+        org.oqteris.calc.io.XlsImporter.register();
+        org.oqteris.calc.io.XlsExporter.register();
         org.oqteris.calc.io.CsvImporter.register();
         org.oqteris.calc.io.CsvExporter.register();
+        org.oqteris.calc.io.OdsImporter.register();
+
+        // Writer adapters: DOCX, DOC, RTF, HTML, ODT, TXT
         org.oqteris.writer.io.DocxImporter.register();
         org.oqteris.writer.io.DocxExporter.register();
-        org.oqteris.writer.io.TxtImporter.register();
+        org.oqteris.writer.io.DocImporter.register();
+        org.oqteris.writer.io.RtfImporter.register();
+        org.oqteris.writer.io.RtfExporter.register();
+        org.oqteris.writer.io.OdtImporter.register();
+        org.oqteris.writer.io.OdtExporter.register();
+        org.oqteris.writer.io.HtmlImporter.register();
         org.oqteris.writer.io.HtmlExporter.register();
+        org.oqteris.writer.io.TxtImporter.register();
+
+        // Presentation adapters: PPTX, PPT, ODP, PDF export
         org.oqteris.presentation.io.PptxImporter.register();
         org.oqteris.presentation.io.PptxExporter.register();
+        org.oqteris.presentation.io.PptImporter.register();
+        org.oqteris.presentation.io.OdpImporter.register();
 
         // Document creation handler
         mainWindow.setDocumentFactory(type -> {
@@ -76,17 +100,10 @@ public class AppBootstrap {
 
     // Dynamic hooks implemented in respective modules
     public static DocumentView createWriterView(DocumentModel existingDoc) {
-        try {
-            Class<?> clazz = Class.forName("org.oqteris.writer.ui.WriterDocumentView");
-            if (existingDoc != null) {
-                return (DocumentView) clazz.getConstructor(Class.forName("org.oqteris.writer.model.WriterDocument")).newInstance(existingDoc);
-            } else {
-                return (DocumentView) clazz.getDeclaredConstructor().newInstance();
-            }
-        } catch (Exception e) {
-            System.err.println("[AppBootstrap] Writer module not yet initialized: " + e.getMessage());
-            return null;
+        if (existingDoc instanceof WriterDocument wd) {
+            return new WriterDocumentView(wd);
         }
+        return new WriterDocumentView();
     }
 
     public static DocumentView openWriterView(File file) {
@@ -105,17 +122,10 @@ public class AppBootstrap {
     }
 
     public static DocumentView createCalcView(DocumentModel existingDoc) {
-        try {
-            Class<?> clazz = Class.forName("org.oqteris.calc.ui.CalcDocumentView");
-            if (existingDoc != null) {
-                return (DocumentView) clazz.getConstructor(Class.forName("org.oqteris.calc.model.Workbook")).newInstance(existingDoc);
-            } else {
-                return (DocumentView) clazz.getDeclaredConstructor().newInstance();
-            }
-        } catch (Exception e) {
-            System.err.println("[AppBootstrap] Calc module not yet initialized: " + e.getMessage());
-            return null;
+        if (existingDoc instanceof Workbook wb) {
+            return new CalcDocumentView(wb);
         }
+        return new CalcDocumentView();
     }
 
     public static DocumentView openCalcView(File file) {
@@ -134,17 +144,10 @@ public class AppBootstrap {
     }
 
     public static DocumentView createImpressView(DocumentModel existingDoc) {
-        try {
-            Class<?> clazz = Class.forName("org.oqteris.presentation.ui.PresentationDocumentView");
-            if (existingDoc != null) {
-                return (DocumentView) clazz.getConstructor(Class.forName("org.oqteris.presentation.model.Presentation")).newInstance(existingDoc);
-            } else {
-                return (DocumentView) clazz.getDeclaredConstructor().newInstance();
-            }
-        } catch (Exception e) {
-            System.err.println("[AppBootstrap] Presentation module not yet initialized: " + e.getMessage());
-            return null;
+        if (existingDoc instanceof Presentation p) {
+            return new PresentationDocumentView(p);
         }
+        return new PresentationDocumentView();
     }
 
     public static DocumentView openImpressView(File file) {
@@ -164,10 +167,9 @@ public class AppBootstrap {
 
     public static DocumentView openPdfView(File file) {
         try {
-            Class<?> clazz = Class.forName("org.oqteris.pdf.ui.PdfDocumentView");
-            return (DocumentView) clazz.getConstructor(File.class).newInstance(file);
+            return new PdfDocumentView(file);
         } catch (Exception e) {
-            System.err.println("[AppBootstrap] PDF module not yet initialized: " + e.getMessage());
+            System.err.println("[AppBootstrap] PDF module error: " + e.getMessage());
             return null;
         }
     }

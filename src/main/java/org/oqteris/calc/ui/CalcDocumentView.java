@@ -4,18 +4,24 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.print.PrinterJob;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import org.oqteris.calc.model.Cell;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.stage.Stage;
 import org.oqteris.calc.formula.FunctionRegistry;
 import org.oqteris.calc.model.*;
+import org.oqteris.calc.model.Cell;
 import org.oqteris.calc.render.SpreadsheetCanvas;
 import org.oqteris.core.model.DocumentModel;
 import org.oqteris.ui.DocumentView;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -39,6 +45,13 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
     // Contextual ribbon and status
     private final HBox ribbonBar = new HBox(6);
     private final Label statusStatsLabel = new Label("Ready");
+
+    // Search Bar
+    private final HBox searchBar = new HBox(8);
+    private final TextField searchField = new TextField();
+    private final Label searchResultLabel = new Label("");
+    private final List<int[]> searchMatches = new ArrayList<>();
+    private int currentMatchIndex = 0;
 
     // In-place cell editor
     private final TextField inPlaceEditor = new TextField();
@@ -101,7 +114,10 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
         sheetTabBar.setStyle("-fx-background-color: #f3f3f3; -fx-border-color: #e0e0e0; -fx-border-width: 1 0 0 0;");
         refreshSheetTabs();
 
-        VBox centerArea = new VBox(formulaBar, gridWithScroll, sheetTabBar);
+        // Search Bar setup
+        setupSearchBar();
+
+        VBox centerArea = new VBox(formulaBar, searchBar, gridWithScroll, sheetTabBar);
         VBox.setVgrow(gridWithScroll, Priority.ALWAYS);
         setCenter(centerArea);
 
@@ -258,12 +274,19 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
             }
         });
 
+        Button insertChartBtn = new Button("📊 Chart...");
+        insertChartBtn.setOnAction(e -> {
+            Stage stage = getScene() != null ? (Stage) getScene().getWindow() : null;
+            new SpreadsheetChartDialog(stage, canvas.getWorksheet(), canvas.getSelectedRange()).show();
+        });
+
         ribbonBar.getChildren().addAll(
                 fontCombo, sizeCombo, boldBtn, italicBtn, underlineBtn,
                 textColorPicker, fillPicker, new Separator(Orientation.VERTICAL),
                 alignLeft, alignCenter, alignRight, mergeCenterBtn, new Separator(Orientation.VERTICAL),
                 numFormatCombo, new Separator(Orientation.VERTICAL),
-                sortAsc, sortDesc, autoSumBtn
+                sortAsc, sortDesc, autoSumBtn, new Separator(Orientation.VERTICAL),
+                insertChartBtn
         );
     }
 
@@ -454,6 +477,95 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
         }
     }
 
+    private void setupSearchBar() {
+        searchBar.setAlignment(Pos.CENTER_LEFT);
+        searchBar.setPadding(new Insets(4, 10, 4, 10));
+        searchBar.setStyle("-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-border-width: 0 0 1 0;");
+        searchBar.setVisible(false);
+        searchBar.setManaged(false);
+
+        searchField.setPromptText("Find in worksheet...");
+        searchField.setPrefWidth(200);
+        searchField.setOnAction(e -> performSearch(searchField.getText(), true));
+
+        Button prevBtn = new Button("Prev");
+        prevBtn.setOnAction(e -> navigateSearch(-1));
+
+        Button nextBtn = new Button("Next");
+        nextBtn.setOnAction(e -> navigateSearch(1));
+
+        Button closeBtn = new Button("✕");
+        closeBtn.setStyle("-fx-background-color: transparent; -fx-font-weight: bold;");
+        closeBtn.setOnAction(e -> toggleSearch(false));
+
+        searchResultLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        searchBar.getChildren().addAll(
+                new Label("Find:"), searchField, prevBtn, nextBtn,
+                searchResultLabel, spacer, closeBtn
+        );
+    }
+
+    private void toggleSearch(boolean visible) {
+        searchBar.setVisible(visible);
+        searchBar.setManaged(visible);
+        if (visible) {
+            searchField.requestFocus();
+        } else {
+            searchMatches.clear();
+            searchResultLabel.setText("");
+        }
+    }
+
+    private void performSearch(String query, boolean jumpToFirst) {
+        searchMatches.clear();
+        if (query == null || query.isBlank() || canvas.getWorksheet() == null) {
+            searchResultLabel.setText("");
+            return;
+        }
+
+        Worksheet ws = canvas.getWorksheet();
+        String lowerQuery = query.toLowerCase();
+
+        for (int r = 0; r <= ws.getMaxRow(); r++) {
+            Row row = ws.getRow(r);
+            if (row != null) {
+                for (int c = 0; c <= ws.getMaxCol(); c++) {
+                    Cell cell = row.getCell(c);
+                    if (cell != null) {
+                        String str = cell.getStringValue().toLowerCase();
+                        String formula = cell.getFormula() != null ? cell.getFormula().toLowerCase() : "";
+                        if (str.contains(lowerQuery) || formula.contains(lowerQuery)) {
+                            searchMatches.add(new int[]{r, c});
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!searchMatches.isEmpty()) {
+            currentMatchIndex = 0;
+            searchResultLabel.setText("Match 1 of " + searchMatches.size());
+            if (jumpToFirst) {
+                int[] m = searchMatches.get(0);
+                canvas.setActiveCell(m[0], m[1]);
+            }
+        } else {
+            searchResultLabel.setText("No matches");
+        }
+    }
+
+    private void navigateSearch(int direction) {
+        if (searchMatches.isEmpty()) return;
+        currentMatchIndex = (currentMatchIndex + direction + searchMatches.size()) % searchMatches.size();
+        searchResultLabel.setText("Match " + (currentMatchIndex + 1) + " of " + searchMatches.size());
+        int[] m = searchMatches.get(currentMatchIndex);
+        canvas.setActiveCell(m[0], m[1]);
+    }
+
     @Override
     public DocumentModel getDocument() {
         return workbook;
@@ -467,6 +579,125 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
     @Override
     public Node getStatusBarNode() {
         return statusStatsLabel;
+    }
+
+    @Override
+    public double getZoom() {
+        return canvas.getZoom();
+    }
+
+    @Override
+    public void setZoom(double zoom) {
+        canvas.setZoom(zoom);
+    }
+
+    @Override
+    public void copy() {
+        CellRangeAddress range = canvas.getSelectedRange();
+        if (range == null || canvas.getWorksheet() == null) return;
+
+        Worksheet ws = canvas.getWorksheet();
+        StringBuilder tsv = new StringBuilder();
+
+        for (int r = range.getFirstRow(); r <= range.getLastRow(); r++) {
+            for (int c = range.getFirstCol(); c <= range.getLastCol(); c++) {
+                Cell cell = ws.getCell(r, c);
+                if (cell != null) {
+                    if (cell.getFormula() != null) {
+                        tsv.append("=").append(cell.getFormula());
+                    } else {
+                        tsv.append(cell.getStringValue());
+                    }
+                }
+                if (c < range.getLastCol()) tsv.append("\t");
+            }
+            if (r < range.getLastRow()) tsv.append("\n");
+        }
+
+        ClipboardContent content = new ClipboardContent();
+        content.putString(tsv.toString());
+        Clipboard.getSystemClipboard().setContent(content);
+    }
+
+    @Override
+    public void cut() {
+        copy();
+        CellRangeAddress range = canvas.getSelectedRange();
+        if (range != null && canvas.getWorksheet() != null) {
+            Worksheet ws = canvas.getWorksheet();
+            for (int r = range.getFirstRow(); r <= range.getLastRow(); r++) {
+                for (int c = range.getFirstCol(); c <= range.getLastCol(); c++) {
+                    Cell cell = ws.getCell(r, c);
+                    if (cell != null) {
+                        cell.setValue(null);
+                        cell.setFormula(null);
+                    }
+                }
+            }
+            workbook.recalculate();
+            canvas.render();
+            workbook.setModified(true);
+        }
+    }
+
+    @Override
+    public void paste() {
+        Clipboard cb = Clipboard.getSystemClipboard();
+        if (!cb.hasString() || canvas.getWorksheet() == null) return;
+
+        String text = cb.getString();
+        Worksheet ws = canvas.getWorksheet();
+        int baseR = canvas.getActiveRow();
+        int baseC = canvas.getActiveCol();
+
+        String[] lines = text.split("\\r?\\n");
+        for (int r = 0; r < lines.length; r++) {
+            String[] tokens = lines[r].split("\t", -1);
+            for (int c = 0; c < tokens.length; c++) {
+                String val = tokens[c];
+                Cell cell = ws.getOrCreateCell(baseR + r, baseC + c);
+                if (val.startsWith("=")) {
+                    cell.setFormula(val.substring(1));
+                } else {
+                    try {
+                        cell.setValue(Double.parseDouble(val));
+                    } catch (Exception ex) {
+                        if ("true".equalsIgnoreCase(val) || "false".equalsIgnoreCase(val)) {
+                            cell.setValue(Boolean.parseBoolean(val));
+                        } else {
+                            cell.setValue(val);
+                        }
+                    }
+                }
+            }
+        }
+
+        workbook.recalculate();
+        canvas.render();
+        workbook.setModified(true);
+    }
+
+    @Override
+    public void selectAll() {
+        Worksheet ws = canvas.getWorksheet();
+        if (ws != null) {
+            canvas.setSelectedRange(new CellRangeAddress(0, Math.max(10, ws.getMaxRow()), 0, Math.max(10, ws.getMaxCol())));
+        }
+    }
+
+    @Override
+    public void showSearch() {
+        toggleSearch(true);
+    }
+
+    @Override
+    public void print() {
+        PrinterJob job = PrinterJob.createPrinterJob();
+        if (job != null && job.showPrintDialog(getScene() != null ? getScene().getWindow() : null)) {
+            if (job.printPage(canvas)) {
+                job.endJob();
+            }
+        }
     }
 
     @Override

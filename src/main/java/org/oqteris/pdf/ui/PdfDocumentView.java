@@ -484,6 +484,44 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     @Override
+    public void copy() {
+        try {
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setStartPage(currentPage + 1);
+            stripper.setEndPage(currentPage + 1);
+            String pageText = stripper.getText(model.getPdDocument());
+            javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+            cc.putString(pageText);
+            javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Override
+    public void print() {
+        javafx.print.PrinterJob job = javafx.print.PrinterJob.createPrinterJob();
+        if (job != null && job.showPrintDialog(getScene() != null ? getScene().getWindow() : null)) {
+            boolean success = true;
+            for (int p = 0; p < model.getPageCount(); p++) {
+                try {
+                    Image pageImg = renderer.renderPage(p, 2.0, userRotation);
+                    ImageView iv = new ImageView(pageImg);
+                    if (!job.printPage(iv)) {
+                        success = false;
+                        break;
+                    }
+                } catch (Exception ex) {
+                    success = false;
+                    break;
+                }
+            }
+            if (success) {
+                job.endJob();
+            }
+        }
+    }
+
+    @Override
     public void close() {
         try {
             model.close();

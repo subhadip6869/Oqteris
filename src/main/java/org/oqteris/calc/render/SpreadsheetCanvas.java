@@ -24,6 +24,7 @@ public class SpreadsheetCanvas extends Canvas {
     private Worksheet worksheet;
     private double scrollX = 0;
     private double scrollY = 0;
+    private double zoom = 1.0;
 
     // Selection state
     private int activeRow = 0;
@@ -39,6 +40,15 @@ public class SpreadsheetCanvas extends Canvas {
         heightProperty().addListener(e -> render());
 
         setupMouseHandlers();
+    }
+
+    public double getZoom() {
+        return zoom;
+    }
+
+    public void setZoom(double zoom) {
+        this.zoom = Math.max(0.5, Math.min(3.0, zoom));
+        render();
     }
 
     public void setWorksheet(Worksheet worksheet) {
@@ -129,6 +139,8 @@ public class SpreadsheetCanvas extends Canvas {
     }
 
     private int[] hitTest(double mouseX, double mouseY) {
+        mouseX /= zoom;
+        mouseY /= zoom;
         if (worksheet == null || mouseX < HEADER_COL_WIDTH || mouseY < HEADER_ROW_HEIGHT) {
             return null;
         }
@@ -167,10 +179,12 @@ public class SpreadsheetCanvas extends Canvas {
 
     public void render() {
         GraphicsContext gc = getGraphicsContext2D();
-        double w = getWidth();
-        double h = getHeight();
+        double w = getWidth() / zoom;
+        double h = getHeight() / zoom;
         if (w <= 0 || h <= 0 || worksheet == null) return;
 
+        gc.save();
+        gc.scale(zoom, zoom);
         gc.clearRect(0, 0, w, h);
 
         // 1. Compute visible rows and columns
@@ -258,6 +272,8 @@ public class SpreadsheetCanvas extends Canvas {
         gc.fillRect(0, 0, HEADER_COL_WIDTH, HEADER_ROW_HEIGHT);
         gc.setStroke(Color.rgb(200, 200, 200));
         gc.strokeRect(0, 0, HEADER_COL_WIDTH, HEADER_ROW_HEIGHT);
+
+        gc.restore();
     }
 
     private void drawCell(GraphicsContext gc, Cell cell, int r, int c, double x, double y, double w, double h) {
