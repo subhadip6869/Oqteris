@@ -1,6 +1,16 @@
-# Oqteris Security & Digital Signature Trust Policy
+# Oqteris Security Policy & Trust Architecture
 
-## 1. Executive Security Mandate
+## 1. Vulnerability Reporting & Disclosure
+
+We take the security of Oqteris seriously. If you discover or suspect a security vulnerability, **please do not disclose it publicly in an issue or discussion.**
+
+- **Preferred Disclosure Channel**: Use GitHub's **Private Vulnerability Reporting** feature located under the repository's **Security** tab (`Security` -> `Advisories` -> `Report a vulnerability`).
+- **Response Timeline**: Security reports are acknowledged within 48 hours with a preliminary assessment.
+- **Coordination**: We ask you to follow responsible disclosure guidelines and allow time for a patch and release before public disclosure.
+
+---
+
+## 2. Executive Security Mandate
 
 In enterprise document workflows, digital signatures protect legal, regulatory, and financial integrity. A common failure in naive PDF viewers is confusing **mathematical signature validity** with **identity trust**:
 > *Anyone can generate a mathematically flawless self-signed RSA-4096 signature claiming to be "Chief Justice of the Supreme Court" or "CEO of Acme Corporation". If a viewer displays a green checkmark merely because the cryptographic hash matches the public key, users are vulnerable to impersonation and fraud.*
@@ -13,7 +23,7 @@ In enterprise document workflows, digital signatures protect legal, regulatory, 
 
 ---
 
-## 2. Digital Signature Status Hierarchy
+## 3. Digital Signature Status Hierarchy
 
 When a user opens a signed PDF document, Oqteris evaluates the signature dictionary and assigns one of four verification states:
 
@@ -27,7 +37,7 @@ When a user opens a signed PDF document, Oqteris evaluates the signature diction
 
 ---
 
-## 3. Cryptographic Verification Pipeline
+## 4. Cryptographic Verification Pipeline
 
 The verification engine (`org.originsd.oqteris.crypto.signature.PdfSignatureVerifier`) performs a three-stage verification on every signed PDF:
 
@@ -55,7 +65,7 @@ The verification engine (`org.originsd.oqteris.crypto.signature.PdfSignatureVeri
 
 ---
 
-## 4. Trust Store Architecture & Certificate Manager
+## 5. Trust Store Architecture & Certificate Manager
 
 ### 4.1 Application-Managed PKCS#12 Trust Store
 Oqteris maintains an independent, application-managed keystore located at:
@@ -85,7 +95,7 @@ Users and system administrators can inspect and manage certificates directly ins
 
 ---
 
-## 5. Security Best Practices
+## 6. Security Best Practices
 
 1. **Never Accept Red Badges**: Documents flagged with `MODIFIED_AFTER_SIGNING` or `INVALID_SIGNATURE` must be rejected immediately.
 2. **Audit Yellow Badges**: Verify the signer's identity and certificate fingerprint through an out-of-band channel (e.g. phone confirmation, corporate directory) before importing a self-signed certificate into the trust store.
