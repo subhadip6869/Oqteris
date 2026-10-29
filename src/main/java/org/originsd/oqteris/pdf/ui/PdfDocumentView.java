@@ -22,6 +22,7 @@ import org.originsd.oqteris.pdf.model.PdfBookmarkNode;
 import org.originsd.oqteris.pdf.model.PdfDocumentModel;
 import org.originsd.oqteris.pdf.render.PdfPageRenderer;
 import org.originsd.oqteris.pdf.render.PdfPageView;
+import org.originsd.oqteris.pdf.render.SignatureValidityAppearance;
 import org.originsd.oqteris.ui.AsyncExecutor;
 import org.originsd.oqteris.ui.DocumentView;
 import org.originsd.oqteris.ui.icon.AppIcons;
@@ -29,7 +30,9 @@ import org.originsd.oqteris.ui.icon.AppIcons;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Main UI view for viewing and inspecting PDF documents and digital signatures.
@@ -67,6 +70,11 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private int userRotation = 0;
     private int currentPage = 0;
 
+    // Signatures whose appearance layers were redrawn with the real validity state, and the
+    // verification results they were computed from (to detect re-verification).
+    private Set<PdfSignatureInfo> layeredSignatures = Collections.emptySet();
+    private List<PdfSignatureInfo> verifiedSnapshot = new ArrayList<>();
+
     public PdfDocumentView(File file) throws IOException {
         this(file, null);
     }
@@ -80,10 +88,38 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         this.renderer = new PdfPageRenderer(model.getPdDocument());
         this.signaturePanel = new PdfSignaturePanel(model);
 
-        model.addDocumentListener(doc -> Platform.runLater(this::updateSignatureBadge));
+        // Re-verification (e.g. after "Trust Signer...") creates new PdfSignatureInfo objects:
+        // redraw the signature appearance layers and re-render the pages.
+        model.addDocumentListener(doc -> Platform.runLater(() -> {
+            if (signaturesChanged()) {
+                applyValidityAppearance();
+                renderer.clearCache();
+                refreshPageViews();
+            }
+            updateSignatureBadge();
+        }));
 
+        applyValidityAppearance();   // before the first render, so the first paint is already correct
         buildUI();
         loadPages();
+    }
+
+    private boolean signaturesChanged() {
+        List<PdfSignatureInfo> cur = model.getSignatures();
+        if (cur.size() != verifiedSnapshot.size()) return true;
+        for (int i = 0; i < cur.size(); i++) {
+            if (cur.get(i) != verifiedSnapshot.get(i)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Rewrites the validity layers (n1 / n3 / n4) of layered signature appearances in the in-memory
+     * document, like Acrobat and Foxit do at display time. The file on disk is not modified.
+     */
+    private void applyValidityAppearance() {
+        verifiedSnapshot = new ArrayList<>(model.getSignatures());
+        layeredSignatures = SignatureValidityAppearance.apply(model.getPdDocument(), verifiedSnapshot);
     }
 
     private void buildUI() {
@@ -317,6 +353,19 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         return badge;
     }
 
+    /**
+     * Hands the current verified signatures to a page view so it can draw the tick / ? / X badge
+     * on top of the signature field, and wires the click action to open the Signatures tab.
+     */
+    private void applySignatures(PdfPageView pv) {
+        pv.setSignatures(model.getSignatures(), userRotation, layeredSignatures);
+        pv.setOnSignatureClicked(sig -> {
+            sideTabPane.setVisible(true);
+            sideTabPane.setManaged(true);
+            sideTabPane.getSelectionModel().select(2); // Signatures tab
+        });
+    }
+
     private void loadPages() {
         int count = model.getPageCount();
         pagesContainer.getChildren().clear();
@@ -376,6 +425,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
                         if (img != null) {
                             pv.updatePageImage(img, currentZoom);
                             pv.setAnnotations(model.getAnnotations());
+                            applySignatures(pv);
                         }
                     },
                     null
