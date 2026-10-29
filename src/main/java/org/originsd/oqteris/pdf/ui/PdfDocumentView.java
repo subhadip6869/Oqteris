@@ -267,9 +267,6 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     public void updateSignatureBadge() {
         sigGroup.getNodes().clear();
         sigGroup.getNodes().add(createSignatureToolbarBadge());
-        for (PdfPageView pv : pageViews) {
-            pv.setSignatures(model.getSignatures());
-        }
     }
 
     private Node createSignatureToolbarBadge() {
@@ -328,7 +325,6 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         for (int i = 0; i < count; i++) {
             PdfPageView pageView = new PdfPageView(i);
-            pageView.setSignatures(model.getSignatures());
             pageViews.add(pageView);
             pagesContainer.getChildren().add(pageView);
 
