@@ -15,6 +15,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * Handles rendering PDF pages to JavaFX Images with caching and rotation support.
  */
 public class PdfPageRenderer {
+    /** Screen DPI used for the 100 % display size of a page. */
+    public static final double SCREEN_DPI = 96.0;
+    /** Extra pixels rendered per screen pixel so text and vectors stay sharp. */
+    public static final double SUPERSAMPLE = 1.5;
+
     private final PDDocument pdDocument;
     private final PDFRenderer pdfRenderer;
     private final Map<String, Image> pageCache = new ConcurrentHashMap<>();
@@ -22,6 +27,14 @@ public class PdfPageRenderer {
     public PdfPageRenderer(PDDocument pdDocument) {
         this.pdDocument = pdDocument;
         this.pdfRenderer = new PDFRenderer(pdDocument);
+    }
+
+    /**
+     * DPI used to rasterize a page at the given zoom. The displayed size of the resulting image is
+     * {@code image.getWidth() * SCREEN_DPI * zoom / dpiFor(zoom)} (see PdfPageView).
+     */
+    public static float dpiFor(double zoom) {
+        return (float) Math.max(72.0, Math.min(300.0, SCREEN_DPI * SUPERSAMPLE * zoom));
     }
 
     public Image renderPage(int pageIndex, double zoom) {
@@ -36,8 +49,7 @@ public class PdfPageRenderer {
             return null;
         }
 
-        // High-DPI supersampling: render at 144 DPI (scaled by zoom) so text and vectors are razor-sharp
-        float dpi = (float) Math.max(96.0, Math.min(300.0, 144.0 * Math.max(1.0, zoom)));
+        float dpi = dpiFor(zoom);
         int rotation = (additionalRotation % 360 + 360) % 360;
         String cacheKey = pageIndex + ":" + ((int) dpi) + ":" + rotation;
 

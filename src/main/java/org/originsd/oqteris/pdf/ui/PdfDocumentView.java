@@ -418,12 +418,15 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         for (int i = 0; i < pageViews.size(); i++) {
             final int pageIdx = i;
             final PdfPageView pv = pageViews.get(i);
+            // Capture the state this render was requested for; a late result for an older zoom is dropped
+            final double zoomAtRequest = currentZoom;
+            final int rotationAtRequest = userRotation;
 
             AsyncExecutor.execute(
-                    () -> renderer.renderPage(pageIdx, currentZoom, userRotation),
+                    () -> renderer.renderPage(pageIdx, zoomAtRequest, rotationAtRequest),
                     img -> {
-                        if (img != null) {
-                            pv.updatePageImage(img, currentZoom);
+                        if (img != null && zoomAtRequest == currentZoom && rotationAtRequest == userRotation) {
+                            pv.updatePageImage(img, zoomAtRequest);
                             pv.setAnnotations(model.getAnnotations());
                             applySignatures(pv);
                         }

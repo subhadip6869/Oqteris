@@ -100,10 +100,11 @@ public class PdfPageView extends StackPane {
         loadingLabel.setVisible(false);
         loadingLabel.setManaged(false);
 
-        // High-DPI supersampling: rendered raster is 144 DPI, downsampled to 96 DPI display
-        double scaleRatio = 144.0 / 96.0;
-        double displayW = image.getWidth() / scaleRatio;
-        double displayH = image.getHeight() / scaleRatio;
+        // The raster was rendered at dpiFor(zoom); the page is shown at 96 DPI * zoom, so its displayed
+        // size scales with the zoom level (this also scales the signature field, which is part of the page).
+        double dpi = PdfPageRenderer.dpiFor(zoom);
+        double displayW = image.getWidth() * PdfPageRenderer.SCREEN_DPI * zoom / dpi;
+        double displayH = image.getHeight() * PdfPageRenderer.SCREEN_DPI * zoom / dpi;
 
         // Set preferred size based on sharp display dimensions
         setPrefSize(displayW, displayH);
