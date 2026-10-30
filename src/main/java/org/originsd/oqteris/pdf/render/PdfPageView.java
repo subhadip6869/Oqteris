@@ -10,14 +10,20 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
 import org.originsd.oqteris.crypto.signature.PdfSignatureInfo;
+import org.originsd.oqteris.crypto.signature.PdfSignatureVerifier;
+import org.originsd.oqteris.crypto.signature.SignatureVerificationStatus;
 import org.originsd.oqteris.pdf.model.PdfAnnotation;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Visual node representing an individual PDF page on the document surface.
@@ -29,8 +35,14 @@ public class PdfPageView extends StackPane {
     private final Canvas overlayCanvas = new Canvas();
     private final Label loadingLabel;
     private final List<PdfAnnotation> annotations = new ArrayList<>();
-    private final List<PdfSignatureInfo> signatures = new ArrayList<>();
     private final List<double[]> searchHighlights = new ArrayList<>(); // [x, y, w, h] in relative ratios
+
+    // Digital signature overlay state
+    private final List<PdfSignatureInfo> pageSignatures = new ArrayList<>();
+    private int viewRotation = 0;
+    private Consumer<PdfSignatureInfo> onSignatureClicked;
+    // Signatures whose own appearance already shows the validity mark (layered appearance); no overlay needed
+    private Set<PdfSignatureInfo> layeredSignatures = Collections.emptySet();
 
     public PdfPageView(int pageIndex) {
         this.pageIndex = pageIndex;
@@ -52,6 +64,26 @@ public class PdfPageView extends StackPane {
 
         overlayCanvas.setMouseTransparent(true);
         getChildren().addAll(loadingLabel, imageView, overlayCanvas);
+
+        // Clicking a signature field opens its details (the canvas is mouse-transparent, so listen here)
+        setOnMouseClicked(e -> {
+            if (onSignatureClicked == null) return;
+            double pw = overlayCanvas.getWidth();
+            double ph = overlayCanvas.getHeight();
+            // The canvas is centered in the StackPane; convert to canvas coordinates
+            double offX = (getWidth() - pw) / 2.0;
+            double offY = (getHeight() - ph) / 2.0;
+            double mx = e.getX() - offX;
+            double my = e.getY() - offY;
+            for (PdfSignatureInfo s : pageSignatures) {
+                double[] r = signatureRect(s);
+                if (mx >= r[0] * pw && mx <= (r[0] + r[2]) * pw
+                        && my >= r[1] * ph && my <= (r[1] + r[3]) * ph) {
+                    onSignatureClicked.accept(s);
+                    return;
+                }
+            }
+        });
     }
 
     public int getPageIndex() {
@@ -68,10 +100,11 @@ public class PdfPageView extends StackPane {
         loadingLabel.setVisible(false);
         loadingLabel.setManaged(false);
 
-        // High-DPI supersampling: rendered raster is 144 DPI, downsampled to 96 DPI display
-        double scaleRatio = 144.0 / 96.0;
-        double displayW = image.getWidth() / scaleRatio;
-        double displayH = image.getHeight() / scaleRatio;
+        // The raster was rendered at dpiFor(zoom); the page is shown at 96 DPI * zoom, so its displayed
+        // size scales with the zoom level (this also scales the signature field, which is part of the page).
+        double dpi = PdfPageRenderer.dpiFor(zoom);
+        double displayW = image.getWidth() * PdfPageRenderer.SCREEN_DPI * zoom / dpi;
+        double displayH = image.getHeight() * PdfPageRenderer.SCREEN_DPI * zoom / dpi;
 
         // Set preferred size based on sharp display dimensions
         setPrefSize(displayW, displayH);
@@ -109,16 +142,32 @@ public class PdfPageView extends StackPane {
         redrawOverlay();
     }
 
-    public void setSignatures(List<PdfSignatureInfo> sigs) {
-        signatures.clear();
+    /**
+     * Supplies the verified signatures of the document. Only visible signatures located on this page are drawn.
+     *
+     * @param userRotation the extra rotation (0/90/180/270) applied by the viewer's Rotate button
+     */
+    public void setSignatures(List<PdfSignatureInfo> sigs, int userRotation, Set<PdfSignatureInfo> layered) {
+        pageSignatures.clear();
+        layeredSignatures = layered != null ? layered : Collections.emptySet();
+        viewRotation = ((userRotation % 360) + 360) % 360;
         if (sigs != null) {
             for (PdfSignatureInfo s : sigs) {
-                if (s.isVisual() && s.getPageIndex() == pageIndex) {
-                    signatures.add(s);
+                if (s.isVisual() && s.getVisualRect() != null && s.getPageIndex() == pageIndex) {
+                    pageSignatures.add(s);
                 }
             }
         }
         redrawOverlay();
+    }
+
+    public void setOnSignatureClicked(Consumer<PdfSignatureInfo> callback) {
+        this.onSignatureClicked = callback;
+    }
+
+    private double[] signatureRect(PdfSignatureInfo s) {
+        double[] v = s.getVisualRect();
+        return PdfSignatureVerifier.rotateNormRect(v[0], v[1], v[2], v[3], viewRotation);
     }
 
     public void redrawOverlay() {
@@ -167,130 +216,51 @@ public class PdfPageView extends StackPane {
             }
         }
 
-        // 3. Draw Digital Signatures (Authentic Foxit/Adobe signature UI as in official verification)
-        for (PdfSignatureInfo sig : signatures) {
-            double[] r = sig.getVisualRect();
-            if (r == null || r.length < 4) continue;
+        // 3. Digital signature badges (green tick / yellow ? / red X).
+        // Skipped for layered appearances: there the signature's own n1/n3/n4 layers already show the state.
+        for (PdfSignatureInfo s : pageSignatures) {
+            if (layeredSignatures.contains(s)) continue;
+            double[] r = signatureRect(s);
             double sx = r[0] * pageW;
             double sy = r[1] * pageH;
             double sw = r[2] * pageW;
             double sh = r[3] * pageH;
 
-            // Pure white background to cleanly cover the unverified raster from PDFBox
-            gc.setFill(Color.WHITE);
-            gc.fillRect(sx, sy, sw, sh);
+            SignatureVerificationStatus st = s.getStatus();
+            boolean trusted = st == SignatureVerificationStatus.VALID_AND_TRUSTED;
+            boolean untrusted = st == SignatureVerificationStatus.VALID_BUT_UNTRUSTED;
+            Color c = Color.web(st.getColorHex());
 
-            boolean isTrusted = sig.getStatus() == org.originsd.oqteris.crypto.signature.SignatureVerificationStatus.VALID_AND_TRUSTED;
-            boolean isUntrusted = sig.getStatus() == org.originsd.oqteris.crypto.signature.SignatureVerificationStatus.VALID_BUT_UNTRUSTED;
+            // Field outline
+            gc.setStroke(c);
+            gc.setLineWidth(1.5);
+            gc.strokeRect(sx, sy, sw, sh);
 
-            // Heading: 'Signature valid' when trusted, 'Signature Not Verified' when untrusted
-            String heading = isTrusted ? "Signature valid" : (isUntrusted ? "Signature Not Verified" : "Signature invalid");
-            double headingSize = Math.max(11.0, Math.min(16.0, sh * 0.22));
+            // Round badge in the top-left corner of the field
+            double d = Math.max(14, Math.min(26, Math.min(sw, sh) * 0.45));
+            double cx = sx + d / 2 + 2;
+            double cy = sy + d / 2 + 2;
+            gc.setFill(c);
+            gc.fillOval(cx - d / 2, cy - d / 2, d, d);
 
-            gc.setFill(Color.BLACK);
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, headingSize));
-            gc.setTextAlign(TextAlignment.LEFT);
-            gc.setTextBaseline(VPos.TOP);
-            gc.fillText(heading, sx + 2, sy + 2);
-
-            // Detail text lines (preserving original layout: Digitally Signed., Name, Date, Reason, Location)
-            double textSize = Math.max(8.0, Math.min(10.5, sh * 0.14));
-            double lineSpacing = textSize * 1.30;
-            double textY = sy + headingSize + 6;
-            gc.setFont(Font.font("Segoe UI", FontWeight.NORMAL, textSize));
-
-            // Line 1: Digitally Signed.
-            gc.fillText("Digitally Signed.", sx + 2, textY);
-            textY += lineSpacing;
-
-            // Line 2: Name
-            String signerName = sig.getSignerName() != null ? sig.getSignerName() : "Unknown";
-            gc.fillText("Name: " + signerName, sx + 2, textY);
-            textY += lineSpacing;
-
-            // Line 3: Date
-            if (sig.getSigningTime() != null) {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd-MMM-yyyy HH:mm:ss", java.util.Locale.ENGLISH);
-                gc.fillText("Date: " + sdf.format(sig.getSigningTime()), sx + 2, textY);
-                textY += lineSpacing;
-            }
-
-            // Line 4: Reason (if present)
-            if (sig.getReason() != null && !sig.getReason().isBlank()) {
-                gc.fillText("Reason: " + sig.getReason(), sx + 2, textY);
-                textY += lineSpacing;
-            }
-
-            // Line 5: Location (if present)
-            if (sig.getLocation() != null && !sig.getLocation().isBlank()) {
-                gc.fillText("Location: " + sig.getLocation(), sx + 2, textY);
-            }
-
-            // Status icon: Green checkmark with black border on the right (like Foxit/Adobe)
-            double iconW = Math.max(28.0, Math.min(42.0, sw * 0.32));
-            double iconH = Math.max(34.0, Math.min(50.0, sh * 0.72));
-            double iconX = sx + Math.max(sw * 0.40, sw * 0.58);
-            double iconY = sy + Math.max(2.0, (sh - iconH) / 2.0 - 2);
-
-            if (isTrusted) {
-                drawAdobeFoxitCheckmark(gc, iconX, iconY, iconW, iconH);
-            } else if (isUntrusted) {
-                drawAdobeFoxitQuestionMark(gc, iconX, iconY, iconW, iconH);
-            } else {
-                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, iconH * 0.95));
+            Color glyph = untrusted ? Color.web("#1e293b") : Color.WHITE;
+            gc.setStroke(glyph);
+            gc.setFill(glyph);
+            gc.setLineWidth(Math.max(2, d / 8));
+            gc.setLineCap(StrokeLineCap.ROUND);
+            double u = d / 4;
+            if (trusted) {                                                // green tick
+                gc.strokeLine(cx - u, cy, cx - u / 3, cy + u * 0.8);
+                gc.strokeLine(cx - u / 3, cy + u * 0.8, cx + u, cy - u * 0.8);
+            } else if (untrusted) {                                       // yellow ?
+                gc.setFont(Font.font("System", FontWeight.BOLD, d * 0.75));
                 gc.setTextAlign(TextAlignment.CENTER);
                 gc.setTextBaseline(VPos.CENTER);
-                gc.setFill(Color.rgb(220, 38, 38));
-                gc.setStroke(Color.BLACK);
-                gc.setLineWidth(1.6);
-                gc.strokeText("✗", iconX + iconW / 2.0, iconY + iconH / 2.0);
-                gc.fillText("✗", iconX + iconW / 2.0, iconY + iconH / 2.0);
+                gc.fillText("?", cx, cy + 1);
+            } else {                                                      // red X
+                gc.strokeLine(cx - u, cy - u, cx + u, cy + u);
+                gc.strokeLine(cx - u, cy + u, cx + u, cy - u);
             }
         }
-    }
-
-    private void drawAdobeFoxitCheckmark(GraphicsContext gc, double x, double y, double w, double h) {
-        // Authentic Foxit / Adobe green checkmark with black outline
-        double[] px = {
-                x + w * 0.05,
-                x + w * 0.35,
-                x + w * 0.88,
-                x + w * 1.00,
-                x + w * 0.38,
-                x + w * 0.00
-        };
-        double[] py = {
-                y + h * 0.58,
-                y + h * 0.88,
-                y + h * 0.00,
-                y + h * 0.08,
-                y + h * 1.00,
-                y + h * 0.68
-        };
-
-        gc.setFill(Color.rgb(0, 166, 81)); // Authentic Foxit/Adobe signature green #00a651
-        gc.fillPolygon(px, py, 6);
-
-        gc.setStroke(Color.BLACK);
-        gc.setLineWidth(1.6);
-        gc.setLineJoin(javafx.scene.shape.StrokeLineJoin.ROUND);
-        gc.strokePolygon(px, py, 6);
-    }
-
-    private void drawAdobeFoxitQuestionMark(GraphicsContext gc, double x, double y, double w, double h) {
-        // Authentic Foxit / Adobe yellow question mark with black outline
-        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, h * 0.95));
-        gc.setTextAlign(TextAlignment.CENTER);
-        gc.setTextBaseline(VPos.CENTER);
-
-        double cx = x + w / 2.0;
-        double cy = y + h / 2.0;
-
-        gc.setFill(Color.rgb(255, 204, 0)); // Foxit yellow
-        gc.setStroke(Color.BLACK);
-        gc.setLineWidth(1.6);
-
-        gc.strokeText("?", cx, cy);
-        gc.fillText("?", cx, cy);
     }
 }
