@@ -1,7 +1,12 @@
 package org.originsd.oqteris.crypto.signature;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
+import org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
@@ -67,68 +72,89 @@ public class PdfSignatureVerifier {
                 }
             }
 
-            // Associate visual location for signatures if visible on any page
-            try {
-                if (document.getSignatureFields() != null) {
-                    for (org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField sigField : document.getSignatureFields()) {
-                        for (org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget widget : sigField.getWidgets()) {
-                            org.apache.pdfbox.pdmodel.PDPage page = widget.getPage();
-                            int pIdx = page != null ? document.getPages().indexOf(page) : 0;
-                            if (pIdx < 0) pIdx = 0;
-                            org.apache.pdfbox.pdmodel.PDPage targetPage = document.getPage(pIdx);
-                            org.apache.pdfbox.pdmodel.common.PDRectangle rect = widget.getRectangle();
-                            if (rect != null && rect.getWidth() > 2 && rect.getHeight() > 2) {
-                                org.apache.pdfbox.pdmodel.common.PDRectangle box = targetPage.getCropBox() != null ? targetPage.getCropBox() : targetPage.getMediaBox();
-                                double normX = (rect.getLowerLeftX() - box.getLowerLeftX()) / box.getWidth();
-                                double normY = (box.getUpperRightY() - (rect.getLowerLeftY() + rect.getHeight())) / box.getHeight();
-                                double normW = rect.getWidth() / box.getWidth();
-                                double normH = rect.getHeight() / box.getHeight();
-                                for (PdfSignatureInfo info : results) {
-                                    if (!info.isVisual()) {
-                                        info.setVisualLocation(pIdx, new double[]{normX, normY, normW, normH});
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (Exception ignored) {
-            }
-
-            // Fallback: check page annotations for Sig widgets
-            try {
-                for (int p = 0; p < document.getNumberOfPages(); p++) {
-                    org.apache.pdfbox.pdmodel.PDPage page = document.getPage(p);
-                    org.apache.pdfbox.pdmodel.common.PDRectangle box = page.getCropBox() != null ? page.getCropBox() : page.getMediaBox();
-                    for (org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation annot : page.getAnnotations()) {
-                        if (annot instanceof org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget widget) {
-                            org.apache.pdfbox.cos.COSDictionary dict = widget.getCOSObject();
-                            if (org.apache.pdfbox.cos.COSName.SIG.equals(dict.getCOSName(org.apache.pdfbox.cos.COSName.FT)) || dict.containsKey(org.apache.pdfbox.cos.COSName.V)) {
-                                org.apache.pdfbox.pdmodel.common.PDRectangle rect = widget.getRectangle();
-                                if (rect != null && rect.getWidth() > 5 && rect.getHeight() > 5) {
-                                    double normX = (rect.getLowerLeftX() - box.getLowerLeftX()) / box.getWidth();
-                                    double normY = (box.getUpperRightY() - (rect.getLowerLeftY() + rect.getHeight())) / box.getHeight();
-                                    double normW = rect.getWidth() / box.getWidth();
-                                    double normH = rect.getHeight() / box.getHeight();
-                                    for (PdfSignatureInfo info : results) {
-                                        if (!info.isVisual()) {
-                                            info.setVisualLocation(p, new double[]{normX, normY, normW, normH});
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (Exception ignored) {
-            }
+            // Link each verified signature to the visible widget (if any) of its own form field.
+            // results lines up with signatures by index because verifySingleSignature never returns null.
+            associateVisualLocations(document, signatures, results);
         } catch (Exception e) {
             System.err.println("[PdfSignatureVerifier] Error reading PDF signatures: " + e.getMessage());
         }
 
         return results;
+    }
+
+    /**
+     * Finds the on-page rectangle of each signed field and stores it (normalized, top-left origin,
+     * already rotated to match how PDFRenderer draws the page) on the matching PdfSignatureInfo.
+     */
+    private static void associateVisualLocations(PDDocument document, List<PDSignature> sigDicts,
+                                                 List<PdfSignatureInfo> results) {
+        try {
+            for (PDSignatureField field : document.getSignatureFields()) {
+                PDSignature fieldSig = field.getSignature();
+                if (fieldSig == null) continue;                       // unsigned field
+                int idx = indexOfSignature(sigDicts, fieldSig);
+                if (idx < 0 || idx >= results.size()) continue;
+                PdfSignatureInfo info = results.get(idx);
+                if (info.isVisual()) continue;
+
+                for (PDAnnotationWidget widget : field.getWidgets()) {
+                    PDPage page = widget.getPage();
+                    if (page == null) page = findPageOf(document, widget);
+                    PDRectangle rect = widget.getRectangle();
+                    if (page == null || rect == null || rect.getWidth() <= 2 || rect.getHeight() <= 2) continue;
+
+                    int pIdx = document.getPages().indexOf(page);
+                    if (pIdx < 0) continue;
+                    PDRectangle box = page.getCropBox() != null ? page.getCropBox() : page.getMediaBox();
+
+                    double x = (rect.getLowerLeftX() - box.getLowerLeftX()) / box.getWidth();
+                    double y = (box.getUpperRightY() - rect.getUpperRightY()) / box.getHeight();
+                    double w = rect.getWidth() / box.getWidth();
+                    double h = rect.getHeight() / box.getHeight();
+
+                    // PDFRenderer applies the page's /Rotate, so rotate the rect to match
+                    int rot = ((page.getRotation() % 360) + 360) % 360;
+                    info.setVisualLocation(pIdx, rotateNormRect(x, y, w, h, rot));
+                    break;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static int indexOfSignature(List<PDSignature> sigDicts, PDSignature target) {
+        for (int i = 0; i < sigDicts.size(); i++) {
+            if (sigDicts.get(i).getCOSObject() == target.getCOSObject()) return i;
+        }
+        int[] tr = target.getByteRange();
+        if (tr != null) {
+            for (int i = 0; i < sigDicts.size(); i++) {
+                if (Arrays.equals(sigDicts.get(i).getByteRange(), tr)) return i;
+            }
+        }
+        return -1;
+    }
+
+    private static PDPage findPageOf(PDDocument doc, PDAnnotationWidget widget) {
+        try {
+            for (PDPage p : doc.getPages()) {
+                for (PDAnnotation a : p.getAnnotations()) {
+                    if (a.getCOSObject() == widget.getCOSObject()) return p;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    /** Rotates a normalized top-left-origin rect clockwise by 0/90/180/270 degrees. */
+    public static double[] rotateNormRect(double x, double y, double w, double h, int deg) {
+        return switch (deg) {
+            case 90 -> new double[]{1 - (y + h), x, h, w};
+            case 180 -> new double[]{1 - (x + w), 1 - (y + h), w, h};
+            case 270 -> new double[]{y, 1 - (x + w), h, w};
+            default -> new double[]{x, y, w, h};
+        };
     }
 
     private static PdfSignatureInfo verifySingleSignature(PDSignature sig, byte[] fileBytes, long fileLength) {

@@ -37,23 +37,23 @@ mvn test
 
 Expected output:
 ```
-[INFO] Running org.oqteris.calc.SpreadsheetFormulaTest
+[INFO] Running org.originsd.oqteris.calc.SpreadsheetFormulaTest
 [INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.oqteris.calc.SpreadsheetModelTest
+[INFO] Running org.originsd.oqteris.calc.SpreadsheetModelTest
 [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.oqteris.crypto.CertificateTrustManagerTest
+[INFO] Running org.originsd.oqteris.crypto.CertificateTrustManagerTest
 [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.oqteris.crypto.PdfSignatureVerifierTest
+[INFO] Running org.originsd.oqteris.crypto.PdfSignatureVerifierTest
 [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.oqteris.presentation.PresentationModelTest
+[INFO] Running org.originsd.oqteris.presentation.PresentationModelTest
 [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.oqteris.samples.SampleDataGeneratorTest
+[INFO] Running org.originsd.oqteris.samples.SampleDataGeneratorTest
 [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.oqteris.samples.SampleFilesVerificationTest
+[INFO] Running org.originsd.oqteris.samples.SampleFilesVerificationTest
 [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.oqteris.writer.DocxRoundTripTest
+[INFO] Running org.originsd.oqteris.writer.DocxRoundTripTest
 [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.oqteris.writer.WordProcessorLayoutTest
+[INFO] Running org.originsd.oqteris.writer.WordProcessorLayoutTest
 [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 [INFO] 
 [INFO] Results:
@@ -110,7 +110,7 @@ jpackage `
   --icon "src/main/resources/icons/oqteris-logo.png" `
   --input target `
   --main-jar oqteris-office-1.0.0-SNAPSHOT.jar `
-  --main-class org.oqteris.ui.OqterisLauncher `
+  --main-class org.originsd.oqteris.ui.OqterisLauncher `
   --win-menu `
   --win-shortcut `
   --win-dir-chooser `
@@ -129,7 +129,7 @@ jpackage \
   --icon "src/main/resources/icons/oqteris-logo.png" \
   --input target \
   --main-jar oqteris-office-1.0.0-SNAPSHOT.jar \
-  --main-class org.oqteris.ui.OqterisLauncher \
+  --main-class org.originsd.oqteris.ui.OqterisLauncher \
   --linux-shortcut \
   --linux-menu-group "Office" \
   --dest target/installer
@@ -148,7 +148,7 @@ jpackage \
   --app-version "1.0.0" \
   --input target \
   --main-jar oqteris-office-1.0.0-SNAPSHOT.jar \
-  --main-class org.oqteris.ui.OqterisLauncher \
+  --main-class org.originsd.oqteris.ui.OqterisLauncher \
   --linux-shortcut \
   --dest target/installer
 ```
