@@ -20,8 +20,8 @@
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/oqteris/oqteris-office.git
-cd oqteris-office
+git clone https://github.com/subhadip6869/Oqteris.git
+cd Oqteris
 ```
 
 ### Compile Codebase
@@ -72,19 +72,21 @@ mvn javafx:run
 ```
 
 ### Packaging & Running the Standalone JAR
-Build the application JAR in `target/`:
+Build the application JAR and stage runtime dependencies:
 ```bash
 mvn package
+mvn dependency:copy-dependencies -DoutputDirectory=target/app-input
+cp target/oqteris-1.0.0-SNAPSHOT.jar target/app-input/
 ```
 
 Run using the standard Java launcher:
 ```bash
-java -jar target/oqteris-office-1.0.0-SNAPSHOT.jar
+java -jar target/app-input/oqteris-1.0.0-SNAPSHOT.jar
 ```
 
 Or pass a document file path directly to open it on startup:
 ```bash
-java -jar target/oqteris-office-1.0.0-SNAPSHOT.jar samples/sample_document.docx
+java -jar target/app-input/oqteris-1.0.0-SNAPSHOT.jar samples/sample_document.docx
 ```
 
 ---
@@ -93,23 +95,47 @@ java -jar target/oqteris-office-1.0.0-SNAPSHOT.jar samples/sample_document.docx
 
 Using the JDK `jpackage` utility, you can package Oqteris into a self-contained native desktop application that bundles a minimal Java runtime (created via `jlink`) without requiring users to have Java pre-installed.
 
-### Step 1: Copy Dependencies
+> **Excluding Build Artifacts & Loose Class Files:**
+> `jpackage` packages everything inside the specified `--input` directory. Do not point `--input` directly at `target`, as this bundles Maven's intermediate `classes/`, `test-classes/`, and metadata files into your application package. Instead, stage only the required JARs into a clean input directory (`target/app-input`).
+
+### Step 1: Prepare Clean Packaging Staging Directory
+
+Run in **PowerShell (Windows)**:
+```powershell
+# 1. Compile and package the project
+mvn clean package -DskipTests
+
+# 2. Stage all dependency JARs into a clean input directory
+mvn dependency:copy-dependencies -DoutputDirectory=target/app-input
+
+# 3. Copy only the main JAR into the staging directory
+Copy-Item target\oqteris-1.0.0-SNAPSHOT.jar target\app-input\
+```
+
+Run in **Bash (Linux / macOS)**:
 ```bash
-mvn dependency:copy-dependencies -DoutputDirectory=target/libs
+# 1. Compile and package the project
+mvn clean package -DskipTests
+
+# 2. Stage all dependency JARs into a clean input directory
+mvn dependency:copy-dependencies -DoutputDirectory=target/app-input
+
+# 3. Copy only the main JAR into the staging directory
+cp target/oqteris-1.0.0-SNAPSHOT.jar target/app-input/
 ```
 
 ### Step 2A: Windows Packaging (MSI / EXE Installer)
-Run in PowerShell (requires WiX Toolset 3.11+ for MSI creation):
+Run in PowerShell (requires WiX Toolset 3.11+ on PATH for MSI/EXE installers; Windows icons must be `.ico` format):
 ```powershell
 jpackage `
-  --type msi `
+  --type exe `
   --name "Oqteris Office" `
   --app-version "1.0.0" `
   --vendor "Oqteris Open Source Project" `
   --description "Modern Independent Desktop Office Suite" `
-  --icon "src/main/resources/icons/oqteris-logo.png" `
-  --input target `
-  --main-jar oqteris-office-1.0.0-SNAPSHOT.jar `
+  --icon "src/main/resources/icons/oqteris-logo.ico" `
+  --input target/app-input `
+  --main-jar oqteris-1.0.0-SNAPSHOT.jar `
   --main-class org.originsd.oqteris.ui.OqterisLauncher `
   --win-menu `
   --win-shortcut `
@@ -117,18 +143,20 @@ jpackage `
   --dest target/installer
 ```
 
+> **Tip (Portable App Image without WiX):** If WiX Toolset is not installed, you can create a standalone portable directory without an installer by using `--type app-image` instead of `--type exe`.
+
 ### Step 2B: Linux Packaging (DEB & RPM Installers)
 On Ubuntu / Debian:
 ```bash
 jpackage \
   --type deb \
-  --name "oqteris-office" \
+  --name "oqteris" \
   --app-version "1.0.0" \
   --vendor "Oqteris" \
   --description "Modern Independent Desktop Office Suite" \
   --icon "src/main/resources/icons/oqteris-logo.png" \
-  --input target \
-  --main-jar oqteris-office-1.0.0-SNAPSHOT.jar \
+  --input target/app-input \
+  --main-jar oqteris-1.0.0-SNAPSHOT.jar \
   --main-class org.originsd.oqteris.ui.OqterisLauncher \
   --linux-shortcut \
   --linux-menu-group "Office" \
@@ -137,17 +165,17 @@ jpackage \
 
 Install via `dpkg`:
 ```bash
-sudo dpkg -i target/installer/oqteris-office_1.0.0-1_amd64.deb
+sudo dpkg -i target/installer/oqteris_1.0.0-1_amd64.deb
 ```
 
 On Fedora / RHEL / CentOS:
 ```bash
 jpackage \
   --type rpm \
-  --name "oqteris-office" \
+  --name "oqteris" \
   --app-version "1.0.0" \
-  --input target \
-  --main-jar oqteris-office-1.0.0-SNAPSHOT.jar \
+  --input target/app-input \
+  --main-jar oqteris-1.0.0-SNAPSHOT.jar \
   --main-class org.originsd.oqteris.ui.OqterisLauncher \
   --linux-shortcut \
   --dest target/installer
@@ -160,7 +188,7 @@ jpackage \
 To perform manual user-acceptance testing across all modules, follow these step-by-step procedures:
 
 ### Test Case 1: Word Processor (Oqteris Writer)
-1. Launch Oqteris: `java -jar target/oqteris-office-1.0.0-SNAPSHOT.jar`.
+1. Launch Oqteris: `java -jar target/app-input/oqteris-1.0.0-SNAPSHOT.jar` (or `mvn javafx:run`).
 2. On the Welcome Screen, click **New Document** (or press `Ctrl+N`).
 3. Type text: `Oqteris Word Processor Verification`.
 4. Select text and click **Bold**, change font size to **20**, and choose a color.
