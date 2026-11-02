@@ -1,17 +1,16 @@
 package org.originsd.oqteris.writer.ui;
 
+import com.pixelduke.control.Ribbon;
+import com.pixelduke.control.ribbon.RibbonGroup;
+import com.pixelduke.control.ribbon.RibbonTab;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
-import javafx.application.Platform;
-import javafx.print.PageLayout;
-import javafx.print.PageOrientation;
-import javafx.print.Paper;
-import javafx.print.Printer;
-import javafx.print.PrinterJob;
+import javafx.print.*;
 import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -25,9 +24,6 @@ import javafx.stage.Modality;
 import javafx.util.Duration;
 import org.controlsfx.control.SegmentedButton;
 import org.controlsfx.control.textfield.TextFields;
-import com.pixelduke.control.Ribbon;
-import com.pixelduke.control.ribbon.RibbonGroup;
-import com.pixelduke.control.ribbon.RibbonTab;
 import org.kordamp.ikonli.materialdesign2.*;
 import org.originsd.oqteris.core.model.DocumentModel;
 import org.originsd.oqteris.core.render.FontManager;
@@ -44,7 +40,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Main UI view and interactive multi-page canvas for Oqteris Writer.
+ * Main UI view and interactive multipage canvas for Oqteris Writer.
  */
 public class WriterDocumentView extends BorderPane implements DocumentView {
     private final WriterDocument document;
@@ -93,6 +89,34 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         buildUI();
         relayout();
         setupCaretBlink();
+    }
+
+    private static Spinner<Double> inchSpinner(double initial) {
+        SpinnerValueFactory.DoubleSpinnerValueFactory factory =
+                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 4.0, initial, 0.05);
+        factory.setConverter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(Double v) {
+                return v == null ? "0.00" : String.format("%.2f", v);
+            }
+
+            @Override
+            public Double fromString(String s) {
+                try {
+                    return Double.parseDouble(s.trim());
+                } catch (Exception e) {
+                    return 0.0;
+                }
+            }
+        });
+        Spinner<Double> sp = new Spinner<>(factory);
+        sp.setEditable(true);
+        sp.setPrefWidth(90);
+        return sp;
+    }
+
+    private static String PatternQuote(String s) {
+        return java.util.regex.Pattern.quote(s);
     }
 
     private void buildUI() {
@@ -309,7 +333,11 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         RibbonGroup mediaGroup = new RibbonGroup();
         mediaGroup.setTitle("Illustrations");
         Button insertImageBtn = AppIcons.button("Pictures", MaterialDesignI.IMAGE, e -> handleInsertImage());
-        mediaGroup.getNodes().add(insertImageBtn);
+        Button rotateImgBtn = AppIcons.button("Rotate", MaterialDesignR.ROTATE_RIGHT, e -> rotateSelectedImage(90));
+        Button cropImgBtn = AppIcons.button("Crop", MaterialDesignC.CROP, e -> cropSelectedImage());
+        Button brightenBtn = AppIcons.button("Bright+", MaterialDesignB.BRIGHTNESS_6, e -> adjustImageBrightness(0.15));
+        Button darkenBtn = AppIcons.button("Bright−", MaterialDesignB.BRIGHTNESS_4, e -> adjustImageBrightness(-0.15));
+        mediaGroup.getNodes().addAll(insertImageBtn, rotateImgBtn, cropImgBtn, brightenBtn, darkenBtn);
 
         RibbonGroup linksGroup = new RibbonGroup();
         linksGroup.setTitle("Links");
@@ -337,29 +365,43 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
         ComboBox<String> orientCombo = new ComboBox<>();
         orientCombo.getItems().addAll("Portrait", "Landscape");
-        orientCombo.setValue("Portrait");
+        orientCombo.setValue(document.getPageSetup().getOrientation() == PageSetup.Orientation.LANDSCAPE ? "Landscape" : "Portrait");
+        orientCombo.setPrefWidth(100);
         orientCombo.setOnAction(e -> {
             document.getPageSetup().setOrientation("Landscape".equals(orientCombo.getValue()) ? PageSetup.Orientation.LANDSCAPE : PageSetup.Orientation.PORTRAIT);
             document.setModified(true);
             relayout();
         });
 
-        ComboBox<String> paperCombo = new ComboBox<>();
-        paperCombo.getItems().addAll("A4 (210 x 297 mm)", "Letter (8.5 x 11 in)");
-        paperCombo.setValue("A4 (210 x 297 mm)");
-        paperCombo.setOnAction(e -> {
-            if (paperCombo.getValue() != null && paperCombo.getValue().startsWith("Letter")) {
-                document.getPageSetup().setPageWidth(612.0);
-                document.getPageSetup().setPageHeight(792.0);
-            } else {
-                document.getPageSetup().setPageWidth(595.28);
-                document.getPageSetup().setPageHeight(841.89);
+        ComboBox<PageSetup.PaperSize> paperCombo = new ComboBox<>();
+        paperCombo.getItems().addAll(
+                PageSetup.PaperSize.A4, PageSetup.PaperSize.A3, PageSetup.PaperSize.A5, PageSetup.PaperSize.A6,
+                PageSetup.PaperSize.LETTER, PageSetup.PaperSize.LEGAL, PageSetup.PaperSize.TABLOID,
+                PageSetup.PaperSize.EXECUTIVE, PageSetup.PaperSize.STATEMENT
+        );
+        paperCombo.setValue(document.getPageSetup().getPaperSize());
+        paperCombo.setPrefWidth(165);
+        paperCombo.setConverter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(PageSetup.PaperSize s) {
+                return s == null ? "" : s.displayName;
             }
-            document.setModified(true);
-            relayout();
+
+            @Override
+            public PageSetup.PaperSize fromString(String s) {
+                return PageSetup.PaperSize.A4;
+            }
+        });
+        paperCombo.setOnAction(e -> {
+            PageSetup.PaperSize sel = paperCombo.getValue();
+            if (sel != null) {
+                document.getPageSetup().setPaperSize(sel);
+                document.setModified(true);
+                relayout();
+            }
         });
 
-        Button pageSetupBtn = AppIcons.button("More Options...", MaterialDesignC.COG, e -> showPageSetupDialog());
+        Button pageSetupBtn = AppIcons.button("Margins…", MaterialDesignC.COG, e -> showPageSetupDialog());
         pageSetupGroup.getNodes().addAll(orientCombo, paperCombo, pageSetupBtn);
 
         layoutTab.getRibbonGroups().add(pageSetupGroup);
@@ -427,6 +469,75 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         }
     }
 
+    /**
+     * Find the nearest DocumentImage to the caret (prefer previous element).
+     */
+    private DocumentImage findNearbyImage() {
+        int idx = currentElementIndex;
+        if (idx >= 0 && idx < document.getElements().size()) {
+            DocumentElement el = document.getElements().get(idx);
+            if (el instanceof DocumentImage img) return img;
+        }
+        for (int i = Math.min(idx, document.getElements().size() - 1); i >= 0; i--) {
+            if (document.getElements().get(i) instanceof DocumentImage img) return img;
+        }
+        for (DocumentElement el : document.getElements()) {
+            if (el instanceof DocumentImage img) return img;
+        }
+        return null;
+    }
+
+    private void rotateSelectedImage(int degrees) {
+        DocumentImage img = findNearbyImage();
+        if (img == null) {
+            new Alert(Alert.AlertType.INFORMATION, "Place the caret near an image first.", ButtonType.OK).showAndWait();
+            return;
+        }
+        img.rotateClockwise90();
+        // Swap displayed width/height when rotating 90°
+        if (degrees % 180 != 0) {
+            double t = img.getWidth();
+            img.setWidth(img.getHeight());
+            img.setHeight(t);
+        }
+        document.setModified(true);
+        relayout();
+    }
+
+    private void cropSelectedImage() {
+        DocumentImage img = findNearbyImage();
+        if (img == null || img.getImage() == null) {
+            new Alert(Alert.AlertType.INFORMATION, "Place the caret near an image first.", ButtonType.OK).showAndWait();
+            return;
+        }
+        // Simple 10% crop from each side (Office-style quick crop)
+        double L = img.getCropLeft() + 0.08;
+        double T = img.getCropTop() + 0.08;
+        double R = img.getCropRight() + 0.08;
+        double B = img.getCropBottom() + 0.08;
+        if (L + R >= 0.9 || T + B >= 0.9) {
+            img.clearCrop();
+        } else {
+            img.setCrop(L, T, R, B);
+            // shrink layout size proportionally
+            img.setWidth(img.getWidth() * (1 - 0.16));
+            img.setHeight(img.getHeight() * (1 - 0.16));
+        }
+        document.setModified(true);
+        relayout();
+    }
+
+    private void adjustImageBrightness(double delta) {
+        DocumentImage img = findNearbyImage();
+        if (img == null) {
+            new Alert(Alert.AlertType.INFORMATION, "Place the caret near an image first.", ButtonType.OK).showAndWait();
+            return;
+        }
+        img.setBrightness(img.getBrightness() + delta);
+        document.setModified(true);
+        relayout();
+    }
+
     private void handleInsertLink() {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Insert Hyperlink");
@@ -465,7 +576,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
     private void showPageSetupDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Page Setup - Oqteris Writer");
+        dialog.setTitle("Page Setup – Oqteris Writer");
         dialog.initModality(Modality.APPLICATION_MODAL);
         if (getScene() != null) dialog.initOwner(getScene().getWindow());
 
@@ -473,44 +584,86 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
         GridPane gp = new GridPane();
         gp.setHgap(12);
-        gp.setVgap(12);
+        gp.setVgap(10);
         gp.setPadding(new Insets(20));
 
-        ComboBox<String> paperCombo = new ComboBox<>();
-        paperCombo.getItems().addAll("A4 (210 x 297 mm)", "Letter (8.5 x 11 in)", "Legal (8.5 x 14 in)");
-        paperCombo.setValue(ps.getPageWidth() == 612 ? "Letter (8.5 x 11 in)" : "A4 (210 x 297 mm)");
+        ComboBox<PageSetup.PaperSize> paperCombo = new ComboBox<>();
+        paperCombo.getItems().addAll(
+                PageSetup.PaperSize.A4, PageSetup.PaperSize.A3, PageSetup.PaperSize.A5, PageSetup.PaperSize.A6,
+                PageSetup.PaperSize.LETTER, PageSetup.PaperSize.LEGAL, PageSetup.PaperSize.TABLOID,
+                PageSetup.PaperSize.EXECUTIVE, PageSetup.PaperSize.STATEMENT, PageSetup.PaperSize.CUSTOM
+        );
+        paperCombo.setValue(ps.getPaperSize());
+        paperCombo.setConverter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(PageSetup.PaperSize s) {
+                return s == null ? "" : s.displayName;
+            }
+
+            @Override
+            public PageSetup.PaperSize fromString(String s) {
+                return PageSetup.PaperSize.A4;
+            }
+        });
 
         ComboBox<String> orientCombo = new ComboBox<>();
         orientCombo.getItems().addAll("Portrait", "Landscape");
         orientCombo.setValue(ps.getOrientation() == PageSetup.Orientation.LANDSCAPE ? "Landscape" : "Portrait");
 
-        ComboBox<String> marginCombo = new ComboBox<>();
-        marginCombo.getItems().addAll("Normal (1.0 in)", "Narrow (0.5 in)", "Wide (1.5 in)");
-        marginCombo.setValue("Normal (1.0 in)");
+        // Exact margin spinners in inches (document values are in points)
+        Spinner<Double> topSp = inchSpinner(ps.getMarginTop() / 72.0);
+        Spinner<Double> bottomSp = inchSpinner(ps.getMarginBottom() / 72.0);
+        Spinner<Double> leftSp = inchSpinner(ps.getMarginLeft() / 72.0);
+        Spinner<Double> rightSp = inchSpinner(ps.getMarginRight() / 72.0);
+
+        ComboBox<String> presetMargins = new ComboBox<>();
+        presetMargins.getItems().addAll("Normal (1\")", "Narrow (0.5\")", "Moderate (0.75\")", "Wide (1.5\")", "Custom");
+        presetMargins.setValue("Custom");
+        presetMargins.setOnAction(ev -> {
+            String v = presetMargins.getValue();
+            double m = switch (v != null ? v : "") {
+                case "Normal (1\")" -> 1.0;
+                case "Narrow (0.5\")" -> 0.5;
+                case "Moderate (0.75\")" -> 0.75;
+                case "Wide (1.5\")" -> 1.5;
+                default -> -1;
+            };
+            if (m > 0) {
+                topSp.getValueFactory().setValue(m);
+                bottomSp.getValueFactory().setValue(m);
+                leftSp.getValueFactory().setValue(m);
+                rightSp.getValueFactory().setValue(m);
+            }
+        });
 
         gp.addRow(0, new Label("Paper Size:"), paperCombo);
         gp.addRow(1, new Label("Orientation:"), orientCombo);
-        gp.addRow(2, new Label("Margins:"), marginCombo);
+        gp.addRow(2, new Label("Margin preset:"), presetMargins);
+        gp.addRow(3, new Label("Top (in):"), topSp);
+        gp.addRow(4, new Label("Bottom (in):"), bottomSp);
+        gp.addRow(5, new Label("Left (in):"), leftSp);
+        gp.addRow(6, new Label("Right (in):"), rightSp);
 
         dialog.getDialogPane().setContent(gp);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setPrefWidth(380);
 
         Optional<ButtonType> res = dialog.showAndWait();
         if (res.isPresent() && res.get() == ButtonType.OK) {
-            boolean isLandscape = "Landscape".equals(orientCombo.getValue());
-            ps.setOrientation(isLandscape ? PageSetup.Orientation.LANDSCAPE : PageSetup.Orientation.PORTRAIT);
+            ps.setOrientation("Landscape".equals(orientCombo.getValue())
+                    ? PageSetup.Orientation.LANDSCAPE : PageSetup.Orientation.PORTRAIT);
 
-            double m = "Narrow (0.5 in)".equals(marginCombo.getValue()) ? 36.0 :
-                    ("Wide (1.5 in)".equals(marginCombo.getValue()) ? 108.0 : 72.0);
-            ps.setMargins(m, m, m, m);
-
-            if (paperCombo.getValue() != null && paperCombo.getValue().startsWith("Letter")) {
-                ps.setPageWidth(612.0);
-                ps.setPageHeight(792.0);
-            } else {
-                ps.setPageWidth(595.28);
-                ps.setPageHeight(841.89);
+            PageSetup.PaperSize sel = paperCombo.getValue();
+            if (sel != null && sel != PageSetup.PaperSize.CUSTOM) {
+                ps.setPaperSize(sel);
             }
+
+            ps.setMargins(
+                    topSp.getValue() * 72.0,
+                    rightSp.getValue() * 72.0,
+                    bottomSp.getValue() * 72.0,
+                    leftSp.getValue() * 72.0
+            );
 
             document.setModified(true);
             relayout();
@@ -569,6 +722,8 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         rulerBar.redraw();
     }
 
+
+
     public void render() {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
@@ -582,9 +737,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         double pageX = (canvas.getWidth() / currentZoom - pageW) / 2.0;
         double currentY = gap;
 
-        for (int pIdx = 0; pIdx < pages.size(); pIdx++) {
-            LayoutPage page = pages.get(pIdx);
-
+        for (LayoutPage page : pages) {
             // 1. Draw page paper with modern subtle drop shadow
             gc.setFill(Color.rgb(0, 0, 0, 0.12));
             gc.fillRect(pageX + 4, currentY + 4, pageW, pageH);
@@ -610,21 +763,24 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
                 drawLine(gc, page.getFooterLine(), pageX, currentY);
             }
 
-            // 4. Draw Lines
+            // 4. Draw images that are behind text first
+            for (LayoutPage.ImageBox imgBox : page.getImageBoxes()) {
+                if (imgBox.behindText) drawImageBox(gc, imgBox, pageX, currentY);
+            }
+
+            // 5. Draw Lines
             for (LayoutLine line : page.getLines()) {
                 drawLine(gc, line, pageX, currentY);
             }
 
-            // 5. Draw Tables
+            // 6. Draw Tables
             for (LayoutPage.TableBox tBox : page.getTableBoxes()) {
                 drawTableBox(gc, tBox, pageX, currentY);
             }
 
-            // 6. Draw Images
+            // 7. Draw floating / inline images in front of text
             for (LayoutPage.ImageBox imgBox : page.getImageBoxes()) {
-                if (imgBox.image != null) {
-                    gc.drawImage(imgBox.image, pageX + imgBox.x, currentY + imgBox.y, imgBox.width, imgBox.height);
-                }
+                if (!imgBox.behindText) drawImageBox(gc, imgBox, pageX, currentY);
             }
 
             currentY += pageH + gap;
@@ -638,6 +794,23 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         }
 
         gc.restore();
+    }
+
+    private void drawImageBox(GraphicsContext gc, LayoutPage.ImageBox imgBox, double pageX, double pageY) {
+        if (imgBox.image == null) return;
+        double ix = pageX + imgBox.x;
+        double iy = pageY + imgBox.y;
+        if (imgBox.rotationDegrees != 0) {
+            gc.save();
+            double cx = ix + imgBox.width / 2.0;
+            double cy = iy + imgBox.height / 2.0;
+            gc.translate(cx, cy);
+            gc.rotate(imgBox.rotationDegrees);
+            gc.drawImage(imgBox.image, -imgBox.width / 2.0, -imgBox.height / 2.0, imgBox.width, imgBox.height);
+            gc.restore();
+        } else {
+            gc.drawImage(imgBox.image, ix, iy, imgBox.width, imgBox.height);
+        }
     }
 
     private void drawLine(GraphicsContext gc, LayoutLine line, double pageX, double pageY) {
@@ -733,7 +906,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
         // Find clicked page
         int pageIdx = (int) ((mouseY - gap) / (pageH + gap));
-        pageIdx = Math.max(0, Math.min(pages.size() - 1, pageIdx));
+        pageIdx = Math.clamp(pageIdx, 0, pages.size() - 1);
         LayoutPage page = pages.get(pageIdx);
         double pageTop = gap + pageIdx * (pageH + gap);
 
@@ -770,7 +943,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
                     String text = seg.getText();
                     double charW = text.isEmpty() ? 0 : segW / text.length();
                     int cIdx = (int) Math.round((mouseX - segLeft) / Math.max(1, charW));
-                    cIdx = Math.max(0, Math.min(text.length(), cIdx));
+                    cIdx = Math.clamp(cIdx, 0, text.length());
                     currentCharOffset = cIdx;
                     caretX = segLeft + (cIdx * charW);
                     placed = true;
@@ -978,7 +1151,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             currentRunIndex = Math.min(currentRunIndex, p.getRuns().size() - 1);
             TextRun run = p.getRuns().get(currentRunIndex);
             String txt = run.getText();
-            currentCharOffset = Math.max(0, Math.min(currentCharOffset, txt.length()));
+            currentCharOffset = Math.clamp(currentCharOffset, 0, txt.length());
             run.setText(txt.substring(0, currentCharOffset) + str + txt.substring(currentCharOffset));
             currentCharOffset += str.length();
         }
@@ -993,12 +1166,12 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         insertText(ch);
     }
 
+    // --- Search & Replace Implementation ---
+
     private void updateStatus() {
         statusStatsLabel.setText(String.format("Pages: %d | Words: %d | Characters: %d",
                 pages.size(), document.getWordCount(), document.getCharacterCount()));
     }
-
-    // --- Search & Replace Implementation ---
 
     private void toggleSearch(boolean visible) {
         searchBar.setVisible(visible);
@@ -1036,7 +1209,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             currentMatchIndex = 0;
             searchResultLabel.setText("Match 1 of " + searchResults.size());
             if (jumpToFirst) {
-                jumpToMatch(searchResults.get(0));
+                jumpToMatch(searchResults.getFirst());
             }
         } else {
             searchResultLabel.setText("No matches");
@@ -1082,7 +1255,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
                 SearchResult sr = searchResults.get(currentMatchIndex);
                 Paragraph p = (Paragraph) document.getElements().get(sr.elemIndex);
                 if (!p.getRuns().isEmpty()) {
-                    TextRun r = p.getRuns().get(0);
+                    TextRun r = p.getRuns().getFirst();
                     r.setText(r.getText().replaceFirst(PatternQuote(find), replace));
                     document.setModified(true);
                     relayout();
@@ -1092,28 +1265,12 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         }
     }
 
-    private static String PatternQuote(String s) {
-        return java.util.regex.Pattern.quote(s);
-    }
-
-    private static class SearchResult {
-        final int elemIndex;
-        final int charIndex;
-        final int length;
-
-        SearchResult(int elemIndex, int charIndex, int length) {
-            this.elemIndex = elemIndex;
-            this.charIndex = charIndex;
-            this.length = length;
-        }
-    }
-
-    // --- DocumentView Interface Implementations ---
-
     @Override
     public DocumentModel getDocument() {
         return document;
     }
+
+    // --- DocumentView Interface Implementations ---
 
     public WriterDocument getWriterDocument() {
         return document;
@@ -1136,7 +1293,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
     @Override
     public void setZoom(double zoom) {
-        this.currentZoom = Math.max(0.25, Math.min(4.0, zoom));
+        this.currentZoom = Math.clamp(zoom, 0.25, 4.0);
         relayout();
     }
 
@@ -1234,5 +1391,8 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         if (caretBlink != null) {
             caretBlink.stop();
         }
+    }
+
+    private record SearchResult(int elemIndex, int charIndex, int length) {
     }
 }

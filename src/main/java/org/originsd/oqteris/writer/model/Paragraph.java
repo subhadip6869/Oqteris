@@ -1,34 +1,18 @@
 package org.originsd.oqteris.writer.model;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
  * Paragraph element containing text runs with paragraph-level formatting.
  */
 public class Paragraph implements DocumentElement {
-    public enum Alignment {
-        LEFT,
-        CENTER,
-        RIGHT,
-        JUSTIFY
-    }
+    public enum Alignment {LEFT, CENTER, RIGHT, JUSTIFY}
 
-    public enum HeadingStyle {
-        NORMAL,
-        TITLE,
-        SUBTITLE,
-        HEADING_1,
-        HEADING_2,
-        HEADING_3
-    }
+    public enum HeadingStyle {NORMAL, TITLE, SUBTITLE, HEADING_1, HEADING_2, HEADING_3}
 
-    public enum ListType {
-        NONE,
-        BULLET,
-        NUMBERED
-    }
+    public enum ListType {NONE, BULLET, NUMBERED}
 
     private final List<TextRun> runs = new ArrayList<>();
     private final List<TabStop> tabStops = new ArrayList<>();
@@ -36,7 +20,7 @@ public class Paragraph implements DocumentElement {
     private HeadingStyle headingStyle = HeadingStyle.NORMAL;
     private ListType listType = ListType.NONE;
     private int listLevel = 0;
-    private int listIndex = 1; // For numbered lists
+    private int listIndex = 1;
 
     private double lineSpacing = 1.15;
     private double spaceBefore = 0.0;
@@ -70,7 +54,7 @@ public class Paragraph implements DocumentElement {
     public void addTabStop(TabStop tabStop) {
         if (tabStop != null) {
             tabStops.add(tabStop);
-            tabStops.sort((a, b) -> Double.compare(a.getPosition(), b.getPosition()));
+            tabStops.sort(Comparator.comparingDouble(TabStop::getPosition));
         }
     }
 
@@ -83,15 +67,13 @@ public class Paragraph implements DocumentElement {
     }
 
     public void addRun(TextRun run) {
-        if (run != null) {
-            runs.add(run);
-        }
+        if (run != null) runs.add(run);
     }
 
     public void addText(String text) {
         if (text != null && !text.isEmpty()) {
             if (!runs.isEmpty()) {
-                TextRun last = runs.get(runs.size() - 1);
+                TextRun last = runs.getLast();
                 last.setText(last.getText() + text);
             } else {
                 runs.add(new TextRun(text));
@@ -154,6 +136,8 @@ public class Paragraph implements DocumentElement {
                 setSpaceBefore(0);
                 setSpaceAfter(6);
             }
+            default -> {
+            }
         }
     }
 
@@ -209,8 +193,11 @@ public class Paragraph implements DocumentElement {
         return leftIndent;
     }
 
+    /**
+     * Negative allowed: hanging into the page margin (common in official letters).
+     */
     public void setLeftIndent(double leftIndent) {
-        this.leftIndent = Math.max(0, leftIndent);
+        this.leftIndent = leftIndent;
     }
 
     public double getRightIndent() {
@@ -218,7 +205,7 @@ public class Paragraph implements DocumentElement {
     }
 
     public void setRightIndent(double rightIndent) {
-        this.rightIndent = Math.max(0, rightIndent);
+        this.rightIndent = rightIndent;
     }
 
     public double getFirstLineIndent() {
@@ -231,9 +218,7 @@ public class Paragraph implements DocumentElement {
 
     public String getPlainText() {
         StringBuilder sb = new StringBuilder();
-        for (TextRun r : runs) {
-            sb.append(r.getText());
-        }
+        for (TextRun r : runs) sb.append(r.getText());
         return sb.toString();
     }
 

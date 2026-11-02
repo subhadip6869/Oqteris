@@ -54,6 +54,18 @@ public class LayoutPage {
         public final double width;
         public final double height;
         public final Image image;
+        /**
+         * Rotation in degrees (0/90/180/270) applied at draw time.
+         */
+        public int rotationDegrees = 0;
+        /**
+         * If true, draw under text; otherwise draw after text (in front).
+         */
+        public boolean behindText = false;
+        /**
+         * True when image is floating (not in text flow).
+         */
+        public boolean floating = false;
 
         public ImageBox(double x, double y, double width, double height, Image image) {
             this.x = x;
