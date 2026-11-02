@@ -34,6 +34,10 @@ public class Worksheet {
         return rows.get(rowIndex);
     }
 
+    public Map<Integer, Row> getRows() {
+        return Collections.unmodifiableMap(rows);
+    }
+
     public Row getOrCreateRow(int rowIndex) {
         return rows.computeIfAbsent(rowIndex, Row::new);
     }

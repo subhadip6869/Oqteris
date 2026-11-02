@@ -27,7 +27,7 @@ public class TextRun {
     public TextRun(String text, String fontFamily, double fontSize, boolean bold, boolean italic,
                    boolean underline, boolean strikethrough, Color textColor, Color highlightColor) {
         this.text = text != null ? text : "";
-        this.fontFamily = fontFamily != null ? fontFamily : "Calibri";
+        this.fontFamily = fontFamily != null && !fontFamily.isBlank() ? fontFamily : "Calibri";
         this.fontSize = fontSize;
         this.bold = bold;
         this.italic = italic;
@@ -64,7 +64,7 @@ public class TextRun {
     }
 
     public void setFontFamily(String fontFamily) {
-        this.fontFamily = fontFamily != null ? fontFamily : "Calibri";
+        this.fontFamily = fontFamily != null && !fontFamily.isBlank() ? fontFamily : "Calibri";
     }
 
     public double getFontSize() {

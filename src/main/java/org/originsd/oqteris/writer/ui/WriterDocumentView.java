@@ -40,30 +40,30 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Main UI view and interactive multipage canvas for Oqteris Writer.
+ * Main UI view and interactive multi-page canvas for Oqteris Writer.
  */
 public class WriterDocumentView extends BorderPane implements DocumentView {
+    /**
+     * Prism/GPU textures usually fail above ~8192px on a side.
+     * Long lab reports must not expand a single Canvas past this limit.
+     */
+    private static final double MAX_CANVAS_DIMENSION = 8192.0;
     private final WriterDocument document;
     private final List<LayoutPage> pages = new ArrayList<>();
-
     // Multi-page canvas
     private final Canvas canvas = new Canvas(800, 1000);
     private final ScrollPane scrollPane = new ScrollPane();
     private final StackPane canvasContainer = new StackPane();
-
     // Ribbon toolbar
     private final Ribbon ribbon = new Ribbon();
     private final Label statusStatsLabel = new Label("Page 1 of 1 | Words: 0");
-
     // Caret & selection state
     private int currentElementIndex = 0;
     private int currentRunIndex = 0;
     private int currentCharOffset = 0;
-
     private boolean hasSelection = false;
     private int selStartElem = 0, selStartRun = 0, selStartChar = 0;
     private int selEndElem = 0, selEndRun = 0, selEndChar = 0;
-
     private boolean caretVisible = true;
     private double caretX = 72;
     private double caretY = 72;
@@ -71,7 +71,6 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
     private Timeline caretBlink;
     private double currentZoom = 1.0;
     private final RulerBar rulerBar = new RulerBar(this);
-
     // Search and Replace Bar
     private final HBox searchBar = new HBox(8);
     private final TextField searchField = TextFields.createClearableTextField();
@@ -80,6 +79,32 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
     private final List<SearchResult> searchResults = new ArrayList<>();
     private int currentMatchIndex = 0;
 
+    // Formatting Toolbar controls
+    private final ComboBox<String> fontCombo = new ComboBox<>();
+    private final ComboBox<Double> sizeCombo = new ComboBox<>();
+    private final ToggleButton boldBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_BOLD, "Bold (Ctrl+B)");
+    private final ToggleButton italicBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_ITALIC, "Italic (Ctrl+I)");
+    private final ToggleButton underlineBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_UNDERLINE, "Underline (Ctrl+U)");
+    private final ToggleButton strikeBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_STRIKETHROUGH, "Strikethrough");
+    private final ColorPicker textColor = new ColorPicker(Color.BLACK);
+    private final ColorPicker highlightColor = new ColorPicker(Color.TRANSPARENT);
+    private final ToggleButton alignLeft = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_LEFT, "Align Left");
+    private final ToggleButton alignCenter = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_CENTER, "Center");
+    private final ToggleButton alignRight = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_RIGHT, "Align Right");
+    private final ToggleButton alignJustify = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_JUSTIFY, "Justify");
+    private final ToggleButton bulletBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_LIST_BULLETED, "Bulleted List");
+    private final ToggleButton numberBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_LIST_NUMBERED, "Numbered List");
+    private final ColorPicker cellShadingPicker = new ColorPicker(Color.WHITE);
+    private final ColorPicker tableBorderColorPicker = new ColorPicker(Color.rgb(200, 200, 200));
+    private final ComboBox<Double> borderWidthCombo = new ComboBox<>();
+    private final ComboBox<Double> lineSpacingCombo = new ComboBox<>();
+    private Paragraph activeParagraph = null;
+    private DocumentTable activeTable = null;
+    private DocumentTableCell activeCell = null;
+    private int activeRowIndex = -1;
+    private int activeColIndex = -1;
+    private boolean updatingToolbar = false;
+
     public WriterDocumentView() {
         this(new WriterDocument());
     }
@@ -87,6 +112,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
     public WriterDocumentView(WriterDocument document) {
         this.document = document;
         buildUI();
+        updateToolbarFromDocument();
         relayout();
         setupCaretBlink();
     }
@@ -219,62 +245,130 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         RibbonGroup fontGroup = new RibbonGroup();
         fontGroup.setTitle("Font");
 
-        ComboBox<String> fontCombo = new ComboBox<>();
-        fontCombo.getItems().addAll("Calibri", "Segoe UI", "Arial", "Times New Roman", "Courier New", "Georgia", "Verdana");
-        fontCombo.setValue("Calibri");
-        fontCombo.setPrefWidth(125);
-        fontCombo.setOnAction(e -> applyRunStyle(r -> r.setFontFamily(fontCombo.getValue())));
+        // All installed system fonts (Word-like font picker)
+        fontCombo.getItems().clear();
+        fontCombo.getItems().addAll(FontManager.getInstance().getAvailableFontFamilies());
+        String detected = document != null ? document.getDetectedFontFamily() : "Calibri";
+        if (fontCombo.getItems().contains(detected)) {
+            fontCombo.setValue(detected);
+        } else if (!fontCombo.getItems().isEmpty()) {
+            fontCombo.setValue(fontCombo.getItems().get(0));
+        }
+        fontCombo.setPrefWidth(160);
+        fontCombo.setEditable(true);
+        fontCombo.setOnAction(e -> {
+            if (updatingToolbar) return;
+            String fam = fontCombo.getValue();
+            if (fam != null && !fam.isBlank()) applyRunStyle(r -> r.setFontFamily(fam));
+        });
 
-        ComboBox<Double> sizeCombo = new ComboBox<>();
+        sizeCombo.getItems().clear();
         sizeCombo.getItems().addAll(8.0, 9.0, 10.0, 11.0, 12.0, 14.0, 16.0, 18.0, 20.0, 24.0, 28.0, 32.0, 48.0, 72.0);
-        sizeCombo.setValue(11.0);
+        sizeCombo.setValue(document != null ? document.getDefaultFontSize() : 11.0);
         sizeCombo.setPrefWidth(70);
-        sizeCombo.setOnAction(e -> applyRunStyle(r -> r.setFontSize(sizeCombo.getValue())));
+        sizeCombo.setEditable(true);
+        sizeCombo.setOnAction(e -> {
+            if (updatingToolbar) return;
+            Double sz = sizeCombo.getValue();
+            if (sz != null && sz > 0) applyRunStyle(r -> r.setFontSize(sz));
+        });
+        sizeCombo.getEditor().setOnAction(e -> {
+            if (updatingToolbar) return;
+            try {
+                double v = Double.parseDouble(sizeCombo.getEditor().getText().trim());
+                if (v > 0) {
+                    sizeCombo.setValue(v);
+                    applyRunStyle(r -> r.setFontSize(v));
+                }
+            } catch (Exception ignored) {}
+        });
 
-        ToggleButton boldBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_BOLD, "Bold (Ctrl+B)");
-        boldBtn.setOnAction(e -> applyRunStyle(r -> r.setBold(boldBtn.isSelected())));
+        Button growFontBtn = AppIcons.button("A+", MaterialDesignF.FORMAT_FONT_SIZE_INCREASE, e -> changeFontSize(2.0));
+        Button shrinkFontBtn = AppIcons.button("A−", MaterialDesignF.FORMAT_FONT_SIZE_DECREASE, e -> changeFontSize(-2.0));
+        Button clearFmtBtn = AppIcons.button("Clear", MaterialDesignF.FORMAT_CLEAR, e -> clearSelectionFormatting());
 
-        ToggleButton italicBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_ITALIC, "Italic (Ctrl+I)");
-        italicBtn.setOnAction(e -> applyRunStyle(r -> r.setItalic(italicBtn.isSelected())));
+        boldBtn.setOnAction(e -> {
+            if (updatingToolbar) return;
+            applyRunStyle(r -> r.setBold(boldBtn.isSelected()));
+        });
 
-        ToggleButton underlineBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_UNDERLINE, "Underline (Ctrl+U)");
-        underlineBtn.setOnAction(e -> applyRunStyle(r -> r.setUnderline(underlineBtn.isSelected())));
+        italicBtn.setOnAction(e -> {
+            if (updatingToolbar) return;
+            applyRunStyle(r -> r.setItalic(italicBtn.isSelected()));
+        });
 
-        ToggleButton strikeBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_STRIKETHROUGH, "Strikethrough");
-        strikeBtn.setOnAction(e -> applyRunStyle(r -> r.setStrikethrough(strikeBtn.isSelected())));
+        underlineBtn.setOnAction(e -> {
+            if (updatingToolbar) return;
+            applyRunStyle(r -> r.setUnderline(underlineBtn.isSelected()));
+        });
 
-        ColorPicker textColor = new ColorPicker(Color.BLACK);
+        strikeBtn.setOnAction(e -> {
+            if (updatingToolbar) return;
+            applyRunStyle(r -> r.setStrikethrough(strikeBtn.isSelected()));
+        });
+
         textColor.setPrefWidth(46);
         textColor.setTooltip(new Tooltip("Text Color"));
-        textColor.setOnAction(e -> applyRunStyle(r -> r.setTextColor(textColor.getValue())));
+        textColor.setOnAction(e -> {
+            if (updatingToolbar) return;
+            applyRunStyle(r -> r.setTextColor(textColor.getValue()));
+        });
 
-        ColorPicker highlightColor = new ColorPicker(Color.TRANSPARENT);
         highlightColor.setPrefWidth(46);
         highlightColor.setTooltip(new Tooltip("Highlight Color"));
-        highlightColor.setOnAction(e -> applyRunStyle(r -> r.setHighlightColor(highlightColor.getValue())));
+        highlightColor.setOnAction(e -> {
+            if (updatingToolbar) return;
+            applyRunStyle(r -> r.setHighlightColor(highlightColor.getValue()));
+        });
 
-        fontGroup.getNodes().addAll(fontCombo, sizeCombo, boldBtn, italicBtn, underlineBtn, strikeBtn, textColor, highlightColor);
+        fontGroup.getNodes().addAll(fontCombo, sizeCombo, growFontBtn, shrinkFontBtn, boldBtn, italicBtn, underlineBtn, strikeBtn, textColor, highlightColor, clearFmtBtn);
 
         // Group: Paragraph
         RibbonGroup paragraphGroup = new RibbonGroup();
         paragraphGroup.setTitle("Paragraph");
 
-        ToggleButton alignLeft = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_LEFT, "Align Left");
-        alignLeft.setOnAction(e -> setParagraphAlignment(Paragraph.Alignment.LEFT));
+        alignLeft.setOnAction(e -> {
+            if (updatingToolbar) return;
+            setParagraphAlignment(Paragraph.Alignment.LEFT);
+        });
 
-        ToggleButton alignCenter = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_CENTER, "Center");
-        alignCenter.setOnAction(e -> setParagraphAlignment(Paragraph.Alignment.CENTER));
+        alignCenter.setOnAction(e -> {
+            if (updatingToolbar) return;
+            setParagraphAlignment(Paragraph.Alignment.CENTER);
+        });
 
-        ToggleButton alignRight = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_RIGHT, "Align Right");
-        alignRight.setOnAction(e -> setParagraphAlignment(Paragraph.Alignment.RIGHT));
+        alignRight.setOnAction(e -> {
+            if (updatingToolbar) return;
+            setParagraphAlignment(Paragraph.Alignment.RIGHT);
+        });
 
-        ToggleButton alignJustify = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_JUSTIFY, "Justify");
-        alignJustify.setOnAction(e -> setParagraphAlignment(Paragraph.Alignment.JUSTIFY));
+        alignJustify.setOnAction(e -> {
+            if (updatingToolbar) return;
+            setParagraphAlignment(Paragraph.Alignment.JUSTIFY);
+        });
 
         SegmentedButton alignSegmented = new SegmentedButton(alignLeft, alignCenter, alignRight, alignJustify);
 
-        ToggleButton bulletBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_LIST_BULLETED, "Bulleted List");
+        lineSpacingCombo.getItems().clear();
+        lineSpacingCombo.getItems().addAll(1.0, 1.15, 1.5, 2.0, 2.5, 3.0);
+        lineSpacingCombo.setValue(1.0);
+        lineSpacingCombo.setPrefWidth(65);
+        lineSpacingCombo.setTooltip(new Tooltip("Line Spacing"));
+        lineSpacingCombo.setOnAction(e -> {
+            if (updatingToolbar) return;
+            Double ls = lineSpacingCombo.getValue();
+            if (ls != null && ls > 0) {
+                Paragraph p = getActiveParagraph();
+                if (p != null) {
+                    p.setLineSpacing(ls);
+                    document.setModified(true);
+                    relayout();
+                }
+            }
+        });
+
         bulletBtn.setOnAction(e -> {
+            if (updatingToolbar) return;
             Paragraph p = getActiveParagraph();
             if (p != null) {
                 p.setListType(p.getListType() == Paragraph.ListType.BULLET ? Paragraph.ListType.NONE : Paragraph.ListType.BULLET);
@@ -283,8 +377,8 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             }
         });
 
-        ToggleButton numberBtn = AppIcons.toggleButton(MaterialDesignF.FORMAT_LIST_NUMBERED, "Numbered List");
         numberBtn.setOnAction(e -> {
+            if (updatingToolbar) return;
             Paragraph p = getActiveParagraph();
             if (p != null) {
                 p.setListType(p.getListType() == Paragraph.ListType.NUMBERED ? Paragraph.ListType.NONE : Paragraph.ListType.NUMBERED);
@@ -293,7 +387,10 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             }
         });
 
-        paragraphGroup.getNodes().addAll(alignSegmented, bulletBtn, numberBtn);
+        Button indentIncBtn = AppIcons.button("+Indent", MaterialDesignF.FORMAT_INDENT_INCREASE, e -> adjustIndent(18.0));
+        Button indentDecBtn = AppIcons.button("−Indent", MaterialDesignF.FORMAT_INDENT_DECREASE, e -> adjustIndent(-18.0));
+
+        paragraphGroup.getNodes().addAll(alignSegmented, lineSpacingCombo, bulletBtn, numberBtn, indentDecBtn, indentIncBtn);
 
         // Group: Styles
         RibbonGroup styleGroup = new RibbonGroup();
@@ -304,12 +401,29 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         styleCombo.setValue(Paragraph.HeadingStyle.NORMAL);
         styleCombo.setPrefWidth(125);
         styleCombo.setOnAction(e -> {
+            if (updatingToolbar) return;
+            Paragraph.HeadingStyle style = styleCombo.getValue();
+            if (style == null) return;
+            if (hasSelection) {
+                int startE = Math.min(selStartElem, selEndElem);
+                int endE = Math.max(selStartElem, selEndElem);
+                if (startE >= 0 && endE >= 0) {
+                    for (int elIdx = startE; elIdx <= endE && elIdx < document.getElements().size(); elIdx++) {
+                        DocumentElement el = document.getElements().get(elIdx);
+                        if (el instanceof Paragraph p) {
+                            p.setHeadingStyle(style);
+                            applyHeadingStyleToRuns(p, style);
+                        }
+                    }
+                }
+            }
             Paragraph p = getActiveParagraph();
             if (p != null) {
-                p.setHeadingStyle(styleCombo.getValue());
-                document.setModified(true);
-                relayout();
+                p.setHeadingStyle(style);
+                applyHeadingStyleToRuns(p, style);
             }
+            document.setModified(true);
+            relayout();
         });
         styleGroup.getNodes().add(styleCombo);
 
@@ -324,11 +438,64 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         tableGroup.setTitle("Tables");
         Button insertTableBtn = AppIcons.button("Table (3x3)", MaterialDesignT.TABLE, e -> {
             DocumentTable table = new DocumentTable(3, 3);
-            document.addElement(table);
-            document.addElement(new Paragraph());
+            int idx = currentElementIndex >= 0 ? currentElementIndex + 1 : document.getElements().size();
+            document.getElements().add(idx, table);
+            Paragraph afterP = new Paragraph();
+            document.getElements().add(idx + 1, afterP);
+            currentElementIndex = idx + 1;
+            activeParagraph = afterP;
+            activeTable = table;
+            document.setModified(true);
             relayout();
         });
-        tableGroup.getNodes().add(insertTableBtn);
+        Button customTableBtn = AppIcons.button("Custom Table…", MaterialDesignT.TABLE_PLUS, e -> showInsertTableDialog());
+        Button addRowAboveBtn = AppIcons.button("+Row Above", MaterialDesignT.TABLE_ROW_PLUS_BEFORE, e -> insertTableRow(false));
+        Button addRowBelowBtn = AppIcons.button("+Row Below", MaterialDesignT.TABLE_ROW_PLUS_AFTER, e -> insertTableRow(true));
+        Button addColLeftBtn = AppIcons.button("+Col Left", MaterialDesignT.TABLE_COLUMN_PLUS_BEFORE, e -> insertTableColumn(false));
+        Button addColRightBtn = AppIcons.button("+Col Right", MaterialDesignT.TABLE_COLUMN_PLUS_AFTER, e -> insertTableColumn(true));
+        Button delRowBtn = AppIcons.button("−Row", MaterialDesignT.TABLE_ROW_REMOVE, e -> deleteTableRow());
+        Button delColBtn = AppIcons.button("−Col", MaterialDesignT.TABLE_COLUMN_REMOVE, e -> deleteTableColumn());
+        Button delTableBtn = AppIcons.button("Delete Table", MaterialDesignT.TABLE_REMOVE, e -> deleteActiveTable());
+        tableGroup.getNodes().addAll(insertTableBtn, customTableBtn, addRowAboveBtn, addRowBelowBtn, addColLeftBtn, addColRightBtn, delRowBtn, delColBtn, delTableBtn);
+
+        // Group: Table Styling
+        RibbonGroup tableDesignGroup = new RibbonGroup();
+        tableDesignGroup.setTitle("Table Styling");
+        cellShadingPicker.setPrefWidth(46);
+        cellShadingPicker.setTooltip(new Tooltip("Cell Shading / Background"));
+        cellShadingPicker.setOnAction(e -> applyCellShading(cellShadingPicker.getValue()));
+
+        tableBorderColorPicker.setPrefWidth(46);
+        tableBorderColorPicker.setTooltip(new Tooltip("Table Border Color"));
+        tableBorderColorPicker.setOnAction(e -> applyTableBorderColor(tableBorderColorPicker.getValue()));
+
+        borderWidthCombo.getItems().clear();
+        borderWidthCombo.getItems().addAll(0.0, 0.5, 1.0, 1.5, 2.25, 3.0, 4.5, 6.0);
+        borderWidthCombo.setValue(1.0);
+        borderWidthCombo.setPrefWidth(65);
+        borderWidthCombo.setTooltip(new Tooltip("Border Width (pt)"));
+        borderWidthCombo.setOnAction(e -> {
+            Double bw = borderWidthCombo.getValue();
+            if (bw != null) applyTableBorderWidth(bw);
+        });
+
+        ToggleButton tblAlignLeft = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_LEFT, "Table Align Left");
+        tblAlignLeft.setOnAction(e -> applyTableAlignment(DocumentTable.Alignment.LEFT));
+        ToggleButton tblAlignCenter = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_CENTER, "Table Align Center");
+        tblAlignCenter.setOnAction(e -> applyTableAlignment(DocumentTable.Alignment.CENTER));
+        ToggleButton tblAlignRight = AppIcons.toggleButton(MaterialDesignF.FORMAT_ALIGN_RIGHT, "Table Align Right");
+        tblAlignRight.setOnAction(e -> applyTableAlignment(DocumentTable.Alignment.RIGHT));
+        SegmentedButton tblAlignSeg = new SegmentedButton(tblAlignLeft, tblAlignCenter, tblAlignRight);
+
+        ToggleButton cellVTop = AppIcons.toggleButton(MaterialDesignF.FORMAT_VERTICAL_ALIGN_TOP, "Cell Top Align");
+        cellVTop.setOnAction(e -> applyCellVerticalAlignment(DocumentTableCell.VAlign.TOP));
+        ToggleButton cellVCenter = AppIcons.toggleButton(MaterialDesignF.FORMAT_VERTICAL_ALIGN_CENTER, "Cell Center Align");
+        cellVCenter.setOnAction(e -> applyCellVerticalAlignment(DocumentTableCell.VAlign.CENTER));
+        ToggleButton cellVBottom = AppIcons.toggleButton(MaterialDesignF.FORMAT_VERTICAL_ALIGN_BOTTOM, "Cell Bottom Align");
+        cellVBottom.setOnAction(e -> applyCellVerticalAlignment(DocumentTableCell.VAlign.BOTTOM));
+        SegmentedButton cellVSeg = new SegmentedButton(cellVTop, cellVCenter, cellVBottom);
+
+        tableDesignGroup.getNodes().addAll(cellShadingPicker, tableBorderColorPicker, borderWidthCombo, tblAlignSeg, cellVSeg);
 
         RibbonGroup mediaGroup = new RibbonGroup();
         mediaGroup.setTitle("Illustrations");
@@ -346,14 +513,17 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
         RibbonGroup pagesGroup = new RibbonGroup();
         pagesGroup.setTitle("Pages");
-        Button insertPageBreakBtn = AppIcons.button("Page Break", MaterialDesignP.PAGE_NEXT, e -> {
-            document.addElement(new PageBreakElement());
-            document.addElement(new Paragraph());
-            relayout();
-        });
-        pagesGroup.getNodes().add(insertPageBreakBtn);
+        Button insertPageBreakBtn = AppIcons.button("Page Break", MaterialDesignP.PAGE_NEXT, e -> insertPageBreak());
+        Button insertBlankPageBtn = AppIcons.button("Blank Page", MaterialDesignP.PAGE_LAYOUT_BODY, e -> insertBlankPage());
+        pagesGroup.getNodes().addAll(insertPageBreakBtn, insertBlankPageBtn);
 
-        insertTab.getRibbonGroups().addAll(tableGroup, mediaGroup, linksGroup, pagesGroup);
+        RibbonGroup symbolsGroup = new RibbonGroup();
+        symbolsGroup.setTitle("Rules & Text");
+        Button horizRuleBtn = AppIcons.button("Horizontal Line", MaterialDesignM.MINUS, e -> insertHorizontalRule());
+        Button dateTimeBtn = AppIcons.button("Date & Time", MaterialDesignC.CALENDAR_CLOCK, e -> insertDateTime());
+        symbolsGroup.getNodes().addAll(horizRuleBtn, dateTimeBtn);
+
+        insertTab.getRibbonGroups().addAll(tableGroup, tableDesignGroup, mediaGroup, linksGroup, pagesGroup, symbolsGroup);
 
         // =========================================================================
         // Tab 3: LAYOUT
@@ -404,7 +574,40 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         Button pageSetupBtn = AppIcons.button("Margins…", MaterialDesignC.COG, e -> showPageSetupDialog());
         pageSetupGroup.getNodes().addAll(orientCombo, paperCombo, pageSetupBtn);
 
-        layoutTab.getRibbonGroups().add(pageSetupGroup);
+        RibbonGroup paragraphSpacingGroup = new RibbonGroup();
+        paragraphSpacingGroup.setTitle("Paragraph Spacing");
+
+        Spinner<Double> beforeSp = new Spinner<>(0.0, 72.0, 0.0, 2.0);
+        beforeSp.setPrefWidth(75);
+        beforeSp.setEditable(true);
+        beforeSp.setTooltip(new Tooltip("Space Before (pt)"));
+        beforeSp.valueProperty().addListener((obs, oldV, newV) -> {
+            if (updatingToolbar || newV == null) return;
+            Paragraph p = getActiveParagraph();
+            if (p != null) {
+                p.setSpaceBefore(newV);
+                document.setModified(true);
+                relayout();
+            }
+        });
+
+        Spinner<Double> afterSp = new Spinner<>(0.0, 72.0, 6.0, 2.0);
+        afterSp.setPrefWidth(75);
+        afterSp.setEditable(true);
+        afterSp.setTooltip(new Tooltip("Space After (pt)"));
+        afterSp.valueProperty().addListener((obs, oldV, newV) -> {
+            if (updatingToolbar || newV == null) return;
+            Paragraph p = getActiveParagraph();
+            if (p != null) {
+                p.setSpaceAfter(newV);
+                document.setModified(true);
+                relayout();
+            }
+        });
+
+        paragraphSpacingGroup.getNodes().addAll(new Label("Before:"), beforeSp, new Label("After:"), afterSp);
+
+        layoutTab.getRibbonGroups().addAll(pageSetupGroup, paragraphSpacingGroup);
 
         // =========================================================================
         // Tab 4: REVIEW & VIEW
@@ -670,26 +873,206 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         }
     }
 
-    private void applyRunStyle(java.util.function.Consumer<TextRun> modifier) {
+    public void updateToolbarFromDocument() {
+        if (document == null) return;
+        String appliedFont = document.getDetectedFontFamily();
+        updatingToolbar = true;
+        try {
+            if (appliedFont != null && !appliedFont.isBlank()) {
+                if (!fontCombo.getItems().contains(appliedFont)) {
+                    fontCombo.getItems().add(0, appliedFont);
+                }
+                fontCombo.setValue(appliedFont);
+            }
+            double sz = document.getDefaultFontSize();
+            if (sz > 0) {
+                if (!sizeCombo.getItems().contains(sz)) {
+                    sizeCombo.getItems().add(sz);
+                }
+                sizeCombo.setValue(sz);
+            }
+        } finally {
+            updatingToolbar = false;
+        }
+    }
+
+    public void updateToolbarFromSelection() {
         Paragraph p = getActiveParagraph();
-        if (p != null && !p.getRuns().isEmpty()) {
-            TextRun r = p.getRuns().get(Math.min(currentRunIndex, p.getRuns().size() - 1));
-            modifier.accept(r);
+        if (p == null) return;
+
+        updatingToolbar = true;
+        try {
+            alignLeft.setSelected(p.getAlignment() == Paragraph.Alignment.LEFT);
+            alignCenter.setSelected(p.getAlignment() == Paragraph.Alignment.CENTER);
+            alignRight.setSelected(p.getAlignment() == Paragraph.Alignment.RIGHT);
+            alignJustify.setSelected(p.getAlignment() == Paragraph.Alignment.JUSTIFY);
+
+            bulletBtn.setSelected(p.getListType() == Paragraph.ListType.BULLET);
+            numberBtn.setSelected(p.getListType() == Paragraph.ListType.NUMBERED);
+
+            if (!p.getRuns().isEmpty()) {
+                int rIdx = Math.min(Math.max(0, currentRunIndex), p.getRuns().size() - 1);
+                TextRun run = p.getRuns().get(rIdx);
+
+                if (run.getFontFamily() != null && !run.getFontFamily().isBlank()) {
+                    if (!fontCombo.getItems().contains(run.getFontFamily())) {
+                        fontCombo.getItems().add(0, run.getFontFamily());
+                    }
+                    fontCombo.setValue(run.getFontFamily());
+                }
+                if (run.getFontSize() > 0) {
+                    if (!sizeCombo.getItems().contains(run.getFontSize())) {
+                        sizeCombo.getItems().add(run.getFontSize());
+                    }
+                    sizeCombo.setValue(run.getFontSize());
+                }
+
+                boldBtn.setSelected(run.isBold());
+                italicBtn.setSelected(run.isItalic());
+                underlineBtn.setSelected(run.isUnderline());
+                strikeBtn.setSelected(run.isStrikethrough());
+
+                if (run.getTextColor() != null) {
+                    textColor.setValue(run.getTextColor());
+                }
+                if (run.getHighlightColor() != null) {
+                    highlightColor.setValue(run.getHighlightColor());
+                }
+            }
+        } finally {
+            updatingToolbar = false;
+        }
+    }
+
+    private void applyRunStyle(java.util.function.Consumer<TextRun> modifier) {
+        if (hasSelection) {
+            applyStyleToSelection(modifier);
             document.setModified(true);
             relayout();
+            return;
+        }
+
+        Paragraph p = getActiveParagraph();
+        if (p != null) {
+            if (!p.getRuns().isEmpty()) {
+                TextRun r = p.getRuns().get(Math.min(currentRunIndex, p.getRuns().size() - 1));
+                modifier.accept(r);
+            } else {
+                TextRun r = new TextRun("");
+                modifier.accept(r);
+                p.addRun(r);
+            }
+            document.setModified(true);
+            relayout();
+        }
+    }
+
+    private void applyStyleToSelection(java.util.function.Consumer<TextRun> modifier) {
+        if (selStartElem == selEndElem && selStartElem >= 0 && selStartElem < document.getElements().size()) {
+            DocumentElement el = document.getElements().get(selStartElem);
+            if (el instanceof Paragraph p && !p.getRuns().isEmpty()) {
+                int sRun = Math.min(selStartRun, selEndRun);
+                int eRun = Math.max(selStartRun, selEndRun);
+                sRun = Math.max(0, Math.min(p.getRuns().size() - 1, sRun));
+                eRun = Math.max(0, Math.min(p.getRuns().size() - 1, eRun));
+
+                int sChar = (selStartRun <= selEndRun) ? selStartChar : selEndChar;
+                int eChar = (selStartRun <= selEndRun) ? selEndChar : selStartChar;
+
+                if (sRun == eRun) {
+                    TextRun r = p.getRuns().get(sRun);
+                    String txt = r.getText();
+                    int c1 = Math.min(sChar, eChar);
+                    int c2 = Math.max(sChar, eChar);
+                    c1 = Math.max(0, Math.min(txt.length(), c1));
+                    c2 = Math.max(0, Math.min(txt.length(), c2));
+
+                    if (c1 < c2) {
+                        String prefix = txt.substring(0, c1);
+                        String middle = txt.substring(c1, c2);
+                        String suffix = txt.substring(c2);
+
+                        r.setText(prefix);
+                        TextRun midRun = r.copy();
+                        midRun.setText(middle);
+                        modifier.accept(midRun);
+
+                        int insertAt = sRun + 1;
+                        if (!middle.isEmpty()) {
+                            p.getRuns().add(insertAt++, midRun);
+                        }
+                        if (!suffix.isEmpty()) {
+                            TextRun sufRun = r.copy();
+                            sufRun.setText(suffix);
+                            p.getRuns().add(insertAt, sufRun);
+                        }
+                        if (prefix.isEmpty()) {
+                            p.getRuns().remove(sRun);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+
+        int startE = Math.min(selStartElem, selEndElem);
+        int endE = Math.max(selStartElem, selEndElem);
+        for (int e = Math.max(0, startE); e <= endE && e < document.getElements().size(); e++) {
+            DocumentElement el = document.getElements().get(e);
+            if (el instanceof Paragraph p) {
+                for (TextRun r : p.getRuns()) {
+                    modifier.accept(r);
+                }
+            }
+        }
+    }
+
+    private void applyHeadingStyleToRuns(Paragraph p, Paragraph.HeadingStyle style) {
+        if (p == null) return;
+        double sz = switch (style) {
+            case TITLE -> 26.0;
+            case HEADING_1 -> 20.0;
+            case HEADING_2 -> 16.0;
+            case HEADING_3 -> 14.0;
+            default -> document != null ? document.getDefaultFontSize() : 11.0;
+        };
+        boolean bold = (style != Paragraph.HeadingStyle.NORMAL);
+        if (p.getRuns().isEmpty()) {
+            TextRun r = new TextRun("");
+            r.setFontSize(sz);
+            r.setBold(bold);
+            p.addRun(r);
+        } else {
+            for (TextRun r : p.getRuns()) {
+                r.setFontSize(sz);
+                r.setBold(bold);
+            }
         }
     }
 
     private void setParagraphAlignment(Paragraph.Alignment align) {
+        if (hasSelection) {
+            int startE = Math.min(selStartElem, selEndElem);
+            int endE = Math.max(selStartElem, selEndElem);
+            if (startE >= 0 && endE >= 0) {
+                for (int e = startE; e <= endE && e < document.getElements().size(); e++) {
+                    DocumentElement el = document.getElements().get(e);
+                    if (el instanceof Paragraph p) {
+                        p.setAlignment(align);
+                    }
+                }
+            }
+        }
         Paragraph p = getActiveParagraph();
         if (p != null) {
             p.setAlignment(align);
-            document.setModified(true);
-            relayout();
         }
+        document.setModified(true);
+        relayout();
     }
 
     public Paragraph getActiveParagraph() {
+        if (activeParagraph != null) return activeParagraph;
         if (currentElementIndex >= 0 && currentElementIndex < document.getElements().size()) {
             DocumentElement el = document.getElements().get(currentElementIndex);
             if (el instanceof Paragraph p) return p;
@@ -698,6 +1081,219 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             if (el instanceof Paragraph p) return p;
         }
         return null;
+    }
+
+    public void insertPageBreak() {
+        Paragraph p = getActiveParagraph();
+        int insertIdx = currentElementIndex >= 0 ? currentElementIndex + 1 : document.getElements().size();
+
+        Paragraph newP = new Paragraph();
+        if (p != null && !p.getRuns().isEmpty() && currentRunIndex < p.getRuns().size()) {
+            TextRun currentRun = p.getRuns().get(currentRunIndex);
+            String txt = currentRun.getText();
+            if (currentCharOffset < txt.length()) {
+                String tail = txt.substring(currentCharOffset);
+                currentRun.setText(txt.substring(0, currentCharOffset));
+                TextRun newRun = currentRun.copy();
+                newRun.setText(tail);
+                newP.addRun(newRun);
+            }
+        }
+
+        document.getElements().add(insertIdx, new PageBreakElement());
+        document.getElements().add(insertIdx + 1, newP);
+        currentElementIndex = insertIdx + 1;
+        activeParagraph = newP;
+        currentRunIndex = 0;
+        currentCharOffset = 0;
+        document.setModified(true);
+        relayout();
+    }
+
+    public void insertBlankPage() {
+        int insertIdx = currentElementIndex >= 0 ? currentElementIndex + 1 : document.getElements().size();
+        document.getElements().add(insertIdx, new PageBreakElement());
+        Paragraph emptyP = new Paragraph();
+        document.getElements().add(insertIdx + 1, emptyP);
+        document.getElements().add(insertIdx + 2, new PageBreakElement());
+        Paragraph nextP = new Paragraph();
+        document.getElements().add(insertIdx + 3, nextP);
+        currentElementIndex = insertIdx + 3;
+        activeParagraph = nextP;
+        currentRunIndex = 0;
+        currentCharOffset = 0;
+        document.setModified(true);
+        relayout();
+    }
+
+    public void insertHorizontalRule() {
+        Paragraph p = new Paragraph("____________________________________________________________");
+        p.setSpaceBefore(6.0);
+        p.setSpaceAfter(6.0);
+        int idx = currentElementIndex >= 0 ? currentElementIndex + 1 : document.getElements().size();
+        document.getElements().add(idx, p);
+        Paragraph nextP = new Paragraph();
+        document.getElements().add(idx + 1, nextP);
+        currentElementIndex = idx + 1;
+        activeParagraph = nextP;
+        document.setModified(true);
+        relayout();
+    }
+
+    public void insertDateTime() {
+        insertText(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+    }
+
+    private void showInsertTableDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Insert Table");
+        dialog.setHeaderText("Specify table dimensions");
+
+        Spinner<Integer> colSpinner = new Spinner<>(1, 50, 3);
+        colSpinner.setEditable(true);
+        Spinner<Integer> rowSpinner = new Spinner<>(1, 100, 3);
+        rowSpinner.setEditable(true);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+        grid.add(new Label("Columns:"), 0, 0);
+        grid.add(colSpinner, 1, 0);
+        grid.add(new Label("Rows:"), 0, 1);
+        grid.add(rowSpinner, 1, 1);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        Optional<ButtonType> res = dialog.showAndWait();
+        if (res.isPresent() && res.get() == ButtonType.OK) {
+            int rows = rowSpinner.getValue();
+            int cols = colSpinner.getValue();
+            DocumentTable table = new DocumentTable(rows, cols);
+            int idx = currentElementIndex >= 0 ? currentElementIndex + 1 : document.getElements().size();
+            document.getElements().add(idx, table);
+            Paragraph afterP = new Paragraph();
+            document.getElements().add(idx + 1, afterP);
+            currentElementIndex = idx + 1;
+            activeParagraph = afterP;
+            activeTable = table;
+            document.setModified(true);
+            relayout();
+        }
+    }
+
+    private void insertTableRow(boolean below) {
+        if (activeTable == null) return;
+        int target = below ? (activeRowIndex + 1) : Math.max(0, activeRowIndex);
+        activeTable.insertRow(target);
+        document.setModified(true);
+        relayout();
+    }
+
+    private void deleteTableRow() {
+        if (activeTable == null) return;
+        activeTable.removeRow(activeRowIndex);
+        document.setModified(true);
+        relayout();
+    }
+
+    private void insertTableColumn(boolean right) {
+        if (activeTable == null) return;
+        int target = right ? (activeColIndex + 1) : Math.max(0, activeColIndex);
+        activeTable.insertColumn(target);
+        document.setModified(true);
+        relayout();
+    }
+
+    private void deleteTableColumn() {
+        if (activeTable == null) return;
+        activeTable.removeColumn(activeColIndex);
+        document.setModified(true);
+        relayout();
+    }
+
+    private void deleteActiveTable() {
+        if (activeTable == null) return;
+        document.getElements().remove(activeTable);
+        activeTable = null;
+        activeCell = null;
+        document.setModified(true);
+        relayout();
+    }
+
+    private void applyCellShading(Color color) {
+        if (activeCell != null) {
+            activeCell.setBackgroundColor(color);
+            document.setModified(true);
+            render();
+        }
+    }
+
+    private void applyTableBorderColor(Color color) {
+        if (activeTable != null) {
+            activeTable.setBorderColor(color);
+            document.setModified(true);
+            render();
+        }
+    }
+
+    private void applyTableBorderWidth(double width) {
+        if (activeTable != null) {
+            activeTable.setBorderWidth(width);
+            document.setModified(true);
+            render();
+        }
+    }
+
+    private void applyTableAlignment(DocumentTable.Alignment align) {
+        if (activeTable != null) {
+            activeTable.setAlignment(align);
+            document.setModified(true);
+            relayout();
+        }
+    }
+
+    private void applyCellVerticalAlignment(DocumentTableCell.VAlign va) {
+        if (activeCell != null) {
+            activeCell.setVerticalAlignment(va);
+            document.setModified(true);
+            relayout();
+        }
+    }
+
+    private void changeFontSize(double delta) {
+        Paragraph p = getActiveParagraph();
+        if (p == null) return;
+        double currentSz = 11.0;
+        if (!p.getRuns().isEmpty()) {
+            currentSz = p.getRuns().get(Math.min(currentRunIndex, p.getRuns().size() - 1)).getFontSize();
+        }
+        double newSz = Math.max(4.0, Math.min(144.0, currentSz + delta));
+        sizeCombo.setValue(newSz);
+        applyRunStyle(r -> r.setFontSize(newSz));
+    }
+
+    private void clearSelectionFormatting() {
+        applyRunStyle(r -> {
+            r.setBold(false);
+            r.setItalic(false);
+            r.setUnderline(false);
+            r.setStrikethrough(false);
+            r.setFontFamily(document != null ? document.getDetectedFontFamily() : "Calibri");
+            r.setFontSize(document != null ? document.getDefaultFontSize() : 11.0);
+            r.setTextColor(Color.BLACK);
+            r.setHighlightColor(null);
+        });
+    }
+
+    private void adjustIndent(double delta) {
+        Paragraph p = getActiveParagraph();
+        if (p != null) {
+            p.setLeftIndent(Math.max(0.0, p.getLeftIndent() + delta));
+            document.setModified(true);
+            relayout();
+        }
     }
 
     public double getCurrentZoom() {
@@ -711,10 +1307,16 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         double pageW = document.getPageSetup().getPageWidth() * currentZoom;
         double pageH = document.getPageSetup().getPageHeight() * currentZoom;
         double gap = 24.0 * currentZoom;
-        double totalH = pages.size() * (pageH + gap) + gap;
+        double totalH = pages.isEmpty()
+                ? pageH + 2 * gap
+                : pages.size() * (pageH + gap) + gap;
+        double totalW = pageW + 48.0 * currentZoom;
 
-        canvas.setWidth(pageW + 48.0 * currentZoom);
-        canvas.setHeight(totalH);
+        // Avoid Prism RTTexture NPE: never request a canvas larger than GPU max texture
+        double safeW = Math.max(1.0, Math.min(totalW, MAX_CANVAS_DIMENSION));
+        double safeH = Math.max(1.0, Math.min(totalH, MAX_CANVAS_DIMENSION));
+        canvas.setWidth(safeW);
+        canvas.setHeight(safeH);
 
         updateCaretFromPosition();
         updateStatus();
@@ -722,99 +1324,147 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         rulerBar.redraw();
     }
 
-
-
     public void render() {
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-
-        gc.save();
-        gc.scale(currentZoom, currentZoom);
-
-        double pageW = document.getPageSetup().getPageWidth();
-        double pageH = document.getPageSetup().getPageHeight();
-        double gap = 24.0;
-        double pageX = (canvas.getWidth() / currentZoom - pageW) / 2.0;
-        double currentY = gap;
-
-        for (LayoutPage page : pages) {
-            // 1. Draw page paper with modern subtle drop shadow
-            gc.setFill(Color.rgb(0, 0, 0, 0.12));
-            gc.fillRect(pageX + 4, currentY + 4, pageW, pageH);
-
-            gc.setFill(Color.WHITE);
-            gc.fillRect(pageX, currentY, pageW, pageH);
-
-            gc.setStroke(Color.rgb(226, 232, 240));
-            gc.setLineWidth(1.0);
-            gc.strokeRect(pageX, currentY, pageW, pageH);
-
-            // 2. Draw margin guides
-            PageSetup setup = page.getPageSetup();
-            gc.setStroke(Color.rgb(241, 245, 249));
-            gc.strokeRect(pageX + setup.getMarginLeft(), currentY + setup.getMarginTop(),
-                    setup.getPrintableWidth(), setup.getPrintableHeight());
-
-            // 3. Draw Header & Footer
-            if (page.getHeaderLine() != null) {
-                drawLine(gc, page.getHeaderLine(), pageX, currentY);
-            }
-            if (page.getFooterLine() != null) {
-                drawLine(gc, page.getFooterLine(), pageX, currentY);
-            }
-
-            // 4. Draw images that are behind text first
-            for (LayoutPage.ImageBox imgBox : page.getImageBoxes()) {
-                if (imgBox.behindText) drawImageBox(gc, imgBox, pageX, currentY);
-            }
-
-            // 5. Draw Lines
-            for (LayoutLine line : page.getLines()) {
-                drawLine(gc, line, pageX, currentY);
-            }
-
-            // 6. Draw Tables
-            for (LayoutPage.TableBox tBox : page.getTableBoxes()) {
-                drawTableBox(gc, tBox, pageX, currentY);
-            }
-
-            // 7. Draw floating / inline images in front of text
-            for (LayoutPage.ImageBox imgBox : page.getImageBoxes()) {
-                if (!imgBox.behindText) drawImageBox(gc, imgBox, pageX, currentY);
-            }
-
-            currentY += pageH + gap;
+        double cw = canvas.getWidth();
+        double ch = canvas.getHeight();
+        if (cw <= 0 || ch <= 0 || Double.isNaN(cw) || Double.isNaN(ch)) {
+            return;
         }
 
-        // 7. Draw Caret
-        if (caretVisible) {
-            gc.setStroke(Color.rgb(30, 41, 59));
-            gc.setLineWidth(1.6);
-            gc.strokeLine(caretX, caretY, caretX, caretY + caretHeight);
+        GraphicsContext gc;
+        try {
+            gc = canvas.getGraphicsContext2D();
+        } catch (Exception ex) {
+            return;
         }
 
-        gc.restore();
+        try {
+            gc.clearRect(0, 0, cw, ch);
+
+            gc.save();
+            gc.scale(currentZoom, currentZoom);
+
+            double pageW = document.getPageSetup().getPageWidth();
+            double pageH = document.getPageSetup().getPageHeight();
+            double gap = 24.0;
+            double pageX = (cw / currentZoom - pageW) / 2.0;
+            double currentY = gap;
+            // Logical height available for drawing (canvas is capped)
+            double maxDrawY = ch / Math.max(0.01, currentZoom);
+
+            for (int pIdx = 0; pIdx < pages.size(); pIdx++) {
+                // Stop before overflowing the capped canvas (prevents RTTexture failure mid-paint)
+                if (currentY > maxDrawY) {
+                    break;
+                }
+                LayoutPage page = pages.get(pIdx);
+
+                // 1. Draw page paper with modern subtle drop shadow
+                gc.setFill(Color.rgb(0, 0, 0, 0.12));
+                gc.fillRect(pageX + 4, currentY + 4, pageW, pageH);
+
+                gc.setFill(Color.WHITE);
+                gc.fillRect(pageX, currentY, pageW, pageH);
+
+                gc.setStroke(Color.rgb(226, 232, 240));
+                gc.setLineWidth(1.0);
+                gc.strokeRect(pageX, currentY, pageW, pageH);
+
+                // 2. Draw margin guides
+                PageSetup setup = page.getPageSetup();
+                gc.setStroke(Color.rgb(241, 245, 249));
+                gc.strokeRect(pageX + setup.getMarginLeft(), currentY + setup.getMarginTop(),
+                        setup.getPrintableWidth(), setup.getPrintableHeight());
+
+                // 3. Draw Header & Footer
+                if (page.getHeaderLine() != null) {
+                    drawLine(gc, page.getHeaderLine(), pageX, currentY);
+                }
+                if (page.getFooterLine() != null) {
+                    drawLine(gc, page.getFooterLine(), pageX, currentY);
+                }
+
+                // 4. Draw images that are behind text first
+                for (LayoutPage.ImageBox imgBox : page.getImageBoxes()) {
+                    if (imgBox.behindText) drawImageBox(gc, imgBox, pageX, currentY);
+                }
+
+                // 5. Draw Lines
+                for (LayoutLine line : page.getLines()) {
+                    drawLine(gc, line, pageX, currentY);
+                }
+
+                // 6. Draw Tables
+                for (LayoutPage.TableBox tBox : page.getTableBoxes()) {
+                    drawTableBox(gc, tBox, pageX, currentY);
+                }
+
+                // 7. Draw floating / inline images in front of text
+                for (LayoutPage.ImageBox imgBox : page.getImageBoxes()) {
+                    if (!imgBox.behindText) drawImageBox(gc, imgBox, pageX, currentY);
+                }
+
+                currentY += pageH + gap;
+            }
+
+            // Draw Caret (only if still inside canvas)
+            if (caretVisible && caretY >= 0 && caretY < maxDrawY) {
+                gc.setStroke(Color.rgb(30, 41, 59));
+                gc.setLineWidth(1.6);
+                gc.strokeLine(caretX, caretY, caretX, caretY + caretHeight);
+            }
+
+            gc.restore();
+        } catch (Exception ex) {
+            // Swallow Prism/canvas paint failures on oversized docs so the app stays up
+            System.err.println("Writer render skipped: " + ex.getMessage());
+        }
     }
 
     private void drawImageBox(GraphicsContext gc, LayoutPage.ImageBox imgBox, double pageX, double pageY) {
-        if (imgBox.image == null) return;
-        double ix = pageX + imgBox.x;
-        double iy = pageY + imgBox.y;
-        if (imgBox.rotationDegrees != 0) {
-            gc.save();
-            double cx = ix + imgBox.width / 2.0;
-            double cy = iy + imgBox.height / 2.0;
-            gc.translate(cx, cy);
-            gc.rotate(imgBox.rotationDegrees);
-            gc.drawImage(imgBox.image, -imgBox.width / 2.0, -imgBox.height / 2.0, imgBox.width, imgBox.height);
-            gc.restore();
-        } else {
-            gc.drawImage(imgBox.image, ix, iy, imgBox.width, imgBox.height);
+        if (imgBox == null || imgBox.image == null || imgBox.image.isError()) return;
+        if (imgBox.width <= 0 || imgBox.height <= 0) return;
+        try {
+            double ix = pageX + imgBox.x;
+            double iy = pageY + imgBox.y;
+            if (imgBox.rotationDegrees != 0) {
+                gc.save();
+                double cx = ix + imgBox.width / 2.0;
+                double cy = iy + imgBox.height / 2.0;
+                gc.translate(cx, cy);
+                gc.rotate(imgBox.rotationDegrees);
+                gc.drawImage(imgBox.image, -imgBox.width / 2.0, -imgBox.height / 2.0, imgBox.width, imgBox.height);
+                gc.restore();
+            } else {
+                gc.drawImage(imgBox.image, ix, iy, imgBox.width, imgBox.height);
+            }
+        } catch (Exception ignored) {
+            // broken image / graphics context — skip
         }
     }
 
     private void drawLine(GraphicsContext gc, LayoutLine line, double pageX, double pageY) {
         gc.setTextBaseline(VPos.BASELINE);
+
+        // Selection highlight for this line's paragraph
+        if (hasSelection && line.getParagraph() != null) {
+            int elemIdx = document.getElements().indexOf(line.getParagraph());
+            int a = Math.min(selStartElem, selEndElem);
+            int b = Math.max(selStartElem, selEndElem);
+            if (elemIdx >= a && elemIdx <= b) {
+                gc.setFill(Color.rgb(147, 197, 253, 0.45)); // light blue selection
+                double x0 = pageX + line.getX();
+                double w = Math.max(line.getWidth(), 4);
+                // Full-line selection when paragraph is inside range (simple but visible)
+                if (a != b || elemIdx != a) {
+                    gc.fillRect(x0, pageY + line.getY(), w, line.getHeight());
+                } else {
+                    // Same paragraph: approximate by full line when any selection exists
+                    gc.fillRect(x0, pageY + line.getY(), w, line.getHeight());
+                }
+            }
+        }
+
         for (LayoutLine.LineSegment seg : line.getSegments()) {
             gc.setFont(seg.getFont());
 
@@ -845,20 +1495,33 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
     }
 
     private void drawTableBox(GraphicsContext gc, LayoutPage.TableBox tBox, double pageX, double pageY) {
-        gc.setStroke(tBox.borderColor);
-        gc.setLineWidth(tBox.borderWidth);
-
         for (LayoutPage.TableCellBox cBox : tBox.cells) {
             double cx = pageX + cBox.x;
             double cy = pageY + cBox.y;
 
+            // 1. Shading / background
             if (cBox.cell.getBackgroundColor() != null) {
                 gc.setFill(cBox.cell.getBackgroundColor());
                 gc.fillRect(cx, cy, cBox.width, cBox.height);
             }
 
-            gc.strokeRect(cx, cy, cBox.width, cBox.height);
+            // 2. Borders
+            if (tBox.borderWidth > 0 && tBox.borderColor != null) {
+                gc.setStroke(tBox.borderColor);
+                gc.setLineWidth(tBox.borderWidth);
 
+                if (cBox.cell.isBorderTop() && cBox.cell.isBorderBottom()
+                        && cBox.cell.isBorderLeft() && cBox.cell.isBorderRight()) {
+                    gc.strokeRect(cx, cy, cBox.width, cBox.height);
+                } else {
+                    if (cBox.cell.isBorderTop()) gc.strokeLine(cx, cy, cx + cBox.width, cy);
+                    if (cBox.cell.isBorderBottom()) gc.strokeLine(cx, cy + cBox.height, cx + cBox.width, cy + cBox.height);
+                    if (cBox.cell.isBorderLeft()) gc.strokeLine(cx, cy, cx, cy + cBox.height);
+                    if (cBox.cell.isBorderRight()) gc.strokeLine(cx + cBox.width, cy, cx + cBox.width, cy + cBox.height);
+                }
+            }
+
+            // 3. Cell text lines
             for (LayoutLine line : cBox.lines) {
                 drawLine(gc, line, pageX, pageY);
             }
@@ -876,6 +1539,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         selStartRun = currentRunIndex;
         selStartChar = currentCharOffset;
         caretVisible = true;
+        updateToolbarFromSelection();
         render();
     }
 
@@ -896,6 +1560,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         if (selStartElem == selEndElem && selStartRun == selEndRun && selStartChar == selEndChar) {
             hasSelection = false;
         }
+        updateToolbarFromSelection();
     }
 
     private void hitTestCaret(double mouseX, double mouseY) {
@@ -906,7 +1571,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
         // Find clicked page
         int pageIdx = (int) ((mouseY - gap) / (pageH + gap));
-        pageIdx = Math.clamp(pageIdx, 0, pages.size() - 1);
+        pageIdx = Math.max(0, Math.min(pages.size() - 1, pageIdx));
         LayoutPage page = pages.get(pageIdx);
         double pageTop = gap + pageIdx * (pageH + gap);
 
@@ -922,10 +1587,52 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
                 bestLine = line;
             }
         }
+        // Also consider text inside table cells so table content is selectable/caret-navigable
+        for (LayoutPage.TableBox tBox : page.getTableBoxes()) {
+            for (LayoutPage.TableCellBox cBox : tBox.cells) {
+                for (LayoutLine line : cBox.lines) {
+                    double lineY = pageTop + line.getY();
+                    double dist = Math.abs(mouseY - (lineY + line.getHeight() / 2.0));
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestLine = line;
+                    }
+                }
+            }
+        }
 
         if (bestLine != null) {
             Paragraph p = bestLine.getParagraph();
-            currentElementIndex = document.getElements().indexOf(p);
+            activeParagraph = p;
+            int elemIdx = document.getElements().indexOf(p);
+            if (elemIdx >= 0) {
+                currentElementIndex = elemIdx;
+            }
+
+            activeTable = null;
+            activeCell = null;
+            activeRowIndex = -1;
+            activeColIndex = -1;
+            for (int e = 0; e < document.getElements().size(); e++) {
+                DocumentElement el = document.getElements().get(e);
+                if (el instanceof DocumentTable table) {
+                    for (int r = 0; r < table.getRows().size(); r++) {
+                        DocumentTableRow row = table.getRows().get(r);
+                        for (int c = 0; c < row.getCells().size(); c++) {
+                            DocumentTableCell cell = row.getCells().get(c);
+                            if (cell.getParagraphs().contains(p)) {
+                                activeTable = table;
+                                activeCell = cell;
+                                activeRowIndex = r;
+                                activeColIndex = c;
+                                currentElementIndex = e;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             caretHeight = Math.max(12, bestLine.getHeight() * 0.85);
             caretY = pageTop + bestLine.getY() + (bestLine.getHeight() - caretHeight) / 2.0;
 
@@ -943,7 +1650,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
                     String text = seg.getText();
                     double charW = text.isEmpty() ? 0 : segW / text.length();
                     int cIdx = (int) Math.round((mouseX - segLeft) / Math.max(1, charW));
-                    cIdx = Math.clamp(cIdx, 0, text.length());
+                    cIdx = Math.max(0, Math.min(text.length(), cIdx));
                     currentCharOffset = cIdx;
                     caretX = segLeft + (cIdx * charW);
                     placed = true;
@@ -976,6 +1683,12 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         Paragraph p = getActiveParagraph();
         if (p == null) return;
 
+        if (e.isControlDown() && e.getCode() == KeyCode.ENTER) {
+            insertPageBreak();
+            e.consume();
+            return;
+        }
+
         if (e.getCode() == KeyCode.ENTER) {
             // Split paragraph
             Paragraph newP = new Paragraph();
@@ -991,19 +1704,30 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
                 }
             }
 
-            int insertIdx = currentElementIndex + 1;
-            if (insertIdx <= document.getElements().size()) {
-                document.getElements().add(insertIdx, newP);
+            if (activeCell != null) {
+                int pIdx = activeCell.getParagraphs().indexOf(p);
+                if (pIdx >= 0) {
+                    activeCell.getParagraphs().add(pIdx + 1, newP);
+                } else {
+                    activeCell.addParagraph(newP);
+                }
             } else {
-                document.addElement(newP);
+                int insertIdx = currentElementIndex >= 0 ? currentElementIndex + 1 : document.getElements().size();
+                if (insertIdx <= document.getElements().size()) {
+                    document.getElements().add(insertIdx, newP);
+                } else {
+                    document.addElement(newP);
+                }
+                currentElementIndex = insertIdx;
             }
 
-            currentElementIndex = insertIdx;
+            activeParagraph = newP;
             currentRunIndex = 0;
             currentCharOffset = 0;
             document.setModified(true);
             relayout();
             e.consume();
+            return;
 
         } else if (e.getCode() == KeyCode.TAB) {
             insertText("\t");
@@ -1026,22 +1750,85 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             e.consume();
 
         } else if (e.getCode() == KeyCode.UP) {
-            caretY -= 16;
-            caretVisible = true;
-            render();
+            moveCaretVertical(-1);
             e.consume();
 
         } else if (e.getCode() == KeyCode.DOWN) {
-            caretY += 16;
-            caretVisible = true;
-            render();
+            moveCaretVertical(1);
             e.consume();
         }
+    }
+
+    /**
+     * Move caret to the previous/next layout line and clamp inside the document.
+     */
+    private void moveCaretVertical(int direction) {
+        if (pages.isEmpty()) return;
+
+        double pageW = document.getPageSetup().getPageWidth();
+        double pageH = document.getPageSetup().getPageHeight();
+        double gap = 24.0;
+        double pageX = (canvas.getWidth() / currentZoom - pageW) / 2.0;
+
+        // Build flat list of (pageIndex, line) for navigation
+        record LineRef(int pageIndex, LayoutLine line, double absY) {
+        }
+        java.util.ArrayList<LineRef> all = new java.util.ArrayList<>();
+        for (int pi = 0; pi < pages.size(); pi++) {
+            LayoutPage page = pages.get(pi);
+            double pageTop = gap + pi * (pageH + gap);
+            for (LayoutLine line : page.getLines()) {
+                all.add(new LineRef(pi, line, pageTop + line.getY()));
+            }
+        }
+        if (all.isEmpty()) {
+            // Clamp visual caret to first page content area
+            caretY = Math.max(gap + document.getPageSetup().getMarginTop(),
+                    Math.min(caretY, gap + pageH - document.getPageSetup().getMarginBottom() - caretHeight));
+            caretVisible = true;
+            render();
+            return;
+        }
+
+        // Find closest line to current caretY
+        int idx = 0;
+        double best = Double.MAX_VALUE;
+        for (int i = 0; i < all.size(); i++) {
+            double d = Math.abs(all.get(i).absY - caretY);
+            if (d < best) {
+                best = d;
+                idx = i;
+            }
+        }
+        int next = Math.max(0, Math.min(all.size() - 1, idx + direction));
+        LineRef ref = all.get(next);
+        LayoutLine line = ref.line;
+        Paragraph p = line.getParagraph();
+        currentElementIndex = document.getElements().indexOf(p);
+        if (currentElementIndex < 0) currentElementIndex = 0;
+        currentRunIndex = 0;
+        currentCharOffset = 0;
+        if (!p.getRuns().isEmpty()) {
+            // Keep roughly same X: find char under caretX
+            hitTestCaret(caretX, ref.absY + line.getHeight() / 2.0);
+        } else {
+            caretHeight = Math.max(12, line.getHeight() * 0.85);
+            caretY = ref.absY + (line.getHeight() - caretHeight) / 2.0;
+            caretX = pageX + line.getX();
+        }
+        // Hard clamp inside document canvas content
+        double minY = gap + document.getPageSetup().getMarginTop();
+        double maxY = gap + pages.size() * (pageH + gap) - gap
+                - document.getPageSetup().getMarginBottom() - caretHeight;
+        caretY = Math.max(minY, Math.min(caretY, maxY));
+        caretVisible = true;
+        render();
     }
 
     private void updateCaretFromPosition() {
         Paragraph p = getActiveParagraph();
         if (p == null) return;
+        updateToolbarFromSelection();
 
         double pageW = document.getPageSetup().getPageWidth();
         double pageH = document.getPageSetup().getPageHeight();
@@ -1151,7 +1938,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             currentRunIndex = Math.min(currentRunIndex, p.getRuns().size() - 1);
             TextRun run = p.getRuns().get(currentRunIndex);
             String txt = run.getText();
-            currentCharOffset = Math.clamp(currentCharOffset, 0, txt.length());
+            currentCharOffset = Math.max(0, Math.min(currentCharOffset, txt.length()));
             run.setText(txt.substring(0, currentCharOffset) + str + txt.substring(currentCharOffset));
             currentCharOffset += str.length();
         }
@@ -1209,7 +1996,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
             currentMatchIndex = 0;
             searchResultLabel.setText("Match 1 of " + searchResults.size());
             if (jumpToFirst) {
-                jumpToMatch(searchResults.getFirst());
+                jumpToMatch(searchResults.get(0));
             }
         } else {
             searchResultLabel.setText("No matches");
@@ -1255,7 +2042,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
                 SearchResult sr = searchResults.get(currentMatchIndex);
                 Paragraph p = (Paragraph) document.getElements().get(sr.elemIndex);
                 if (!p.getRuns().isEmpty()) {
-                    TextRun r = p.getRuns().getFirst();
+                    TextRun r = p.getRuns().get(0);
                     r.setText(r.getText().replaceFirst(PatternQuote(find), replace));
                     document.setModified(true);
                     relayout();
@@ -1293,7 +2080,7 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
 
     @Override
     public void setZoom(double zoom) {
-        this.currentZoom = Math.clamp(zoom, 0.25, 4.0);
+        this.currentZoom = Math.max(0.25, Math.min(4.0, zoom));
         relayout();
     }
 
@@ -1393,6 +2180,15 @@ public class WriterDocumentView extends BorderPane implements DocumentView {
         }
     }
 
-    private record SearchResult(int elemIndex, int charIndex, int length) {
+    private static class SearchResult {
+        final int elemIndex;
+        final int charIndex;
+        final int length;
+
+        SearchResult(int elemIndex, int charIndex, int length) {
+            this.elemIndex = elemIndex;
+            this.charIndex = charIndex;
+            this.length = length;
+        }
     }
 }

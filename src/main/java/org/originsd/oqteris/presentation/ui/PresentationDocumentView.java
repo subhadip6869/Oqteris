@@ -249,6 +249,23 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
         RibbonGroup textGroup = new RibbonGroup();
         textGroup.setTitle("Text Formatting");
 
+        ComboBox<String> fontCombo = new ComboBox<>();
+        fontCombo.getItems().addAll(org.originsd.oqteris.core.render.FontManager.getInstance().getAvailableFontFamilies());
+        String detectedFont = presentation != null ? presentation.getDetectedFontFamily() : "Calibri";
+        if (!fontCombo.getItems().contains(detectedFont)) {
+            fontCombo.getItems().add(0, detectedFont);
+        }
+        fontCombo.setValue(detectedFont);
+        fontCombo.setEditable(true);
+        fontCombo.setPrefWidth(140);
+        fontCombo.setOnAction(e -> {
+            if (selectedShape instanceof TextBoxShape tb) {
+                tb.setFontFamily(fontCombo.getValue());
+                presentation.setModified(true);
+                renderActiveSlide();
+            }
+        });
+
         ComboBox<Double> fontSizeCombo = new ComboBox<>();
         fontSizeCombo.getItems().addAll(12.0, 14.0, 16.0, 18.0, 20.0, 24.0, 28.0, 32.0, 40.0, 48.0);
         fontSizeCombo.setValue(18.0);
@@ -290,7 +307,7 @@ public class PresentationDocumentView extends BorderPane implements DocumentView
             }
         });
 
-        textGroup.getNodes().addAll(fontSizeCombo, boldBtn, italicBtn, textColorPicker);
+        textGroup.getNodes().addAll(fontCombo, fontSizeCombo, boldBtn, italicBtn, textColorPicker);
 
         // Style Group
         RibbonGroup styleGroup = new RibbonGroup();

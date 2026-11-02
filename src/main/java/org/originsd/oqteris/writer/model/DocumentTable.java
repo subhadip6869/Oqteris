@@ -9,11 +9,14 @@ import java.util.List;
  * Table element containing rows, columns, borders, and cells.
  */
 public class DocumentTable implements DocumentElement {
+    public enum Alignment { LEFT, CENTER, RIGHT }
+
     private final List<DocumentTableRow> rows = new ArrayList<>();
     private int columnCount = 1;
     private double[] columnWidths = null;
     private Color borderColor = Color.rgb(200, 200, 200);
     private double borderWidth = 1.0;
+    private Alignment alignment = Alignment.LEFT;
 
     public DocumentTable() {
     }
@@ -79,6 +82,14 @@ public class DocumentTable implements DocumentElement {
         this.borderWidth = Math.max(0.5, borderWidth);
     }
 
+    public Alignment getAlignment() {
+        return alignment;
+    }
+
+    public void setAlignment(Alignment alignment) {
+        this.alignment = alignment != null ? alignment : Alignment.LEFT;
+    }
+
     public DocumentTableCell getCell(int row, int col) {
         if (row >= 0 && row < rows.size()) {
             DocumentTableRow r = rows.get(row);
@@ -87,5 +98,49 @@ public class DocumentTable implements DocumentElement {
             }
         }
         return null;
+    }
+
+    public void insertRow(int index) {
+        DocumentTableRow newRow = new DocumentTableRow();
+        for (int c = 0; c < columnCount; c++) {
+            newRow.addCell(new DocumentTableCell());
+        }
+        if (index >= 0 && index <= rows.size()) {
+            rows.add(index, newRow);
+        } else {
+            rows.add(newRow);
+        }
+    }
+
+    public void removeRow(int index) {
+        if (rows.size() > 1 && index >= 0 && index < rows.size()) {
+            rows.remove(index);
+        }
+    }
+
+    public void insertColumn(int colIndex) {
+        int targetCol = Math.max(0, Math.min(columnCount, colIndex));
+        for (DocumentTableRow r : rows) {
+            DocumentTableCell cell = new DocumentTableCell();
+            if (targetCol <= r.getCells().size()) {
+                r.getCells().add(targetCol, cell);
+            } else {
+                r.addCell(cell);
+            }
+        }
+        columnCount++;
+        columnWidths = null; // reset to recalculate proportionally
+    }
+
+    public void removeColumn(int colIndex) {
+        if (columnCount > 1 && colIndex >= 0 && colIndex < columnCount) {
+            for (DocumentTableRow r : rows) {
+                if (colIndex < r.getCells().size()) {
+                    r.getCells().remove(colIndex);
+                }
+            }
+            columnCount--;
+            columnWidths = null;
+        }
     }
 }

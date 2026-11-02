@@ -245,9 +245,14 @@ public class CalcDocumentView extends BorderPane implements DocumentView {
         fontGroup.setTitle("Font");
 
         ComboBox<String> fontCombo = new ComboBox<>();
-        fontCombo.getItems().addAll("Calibri", "Segoe UI", "Arial", "Times New Roman", "Courier New");
-        fontCombo.setValue("Calibri");
-        fontCombo.setPrefWidth(120);
+        fontCombo.getItems().addAll(org.originsd.oqteris.core.render.FontManager.getInstance().getAvailableFontFamilies());
+        String detectedFont = workbook != null ? workbook.getDetectedFontFamily() : "Calibri";
+        if (!fontCombo.getItems().contains(detectedFont)) {
+            fontCombo.getItems().add(0, detectedFont);
+        }
+        fontCombo.setValue(detectedFont);
+        fontCombo.setEditable(true);
+        fontCombo.setPrefWidth(140);
         fontCombo.setOnAction(e -> applyStyle(s -> s.setFontFamily(fontCombo.getValue())));
 
         ComboBox<Double> sizeCombo = new ComboBox<>();

@@ -133,4 +133,22 @@ public class Presentation extends AbstractDocumentModel {
             notifyChanged();
         }
     }
+
+    public String getDetectedFontFamily() {
+        java.util.Map<String, Integer> counts = new java.util.HashMap<>();
+        for (Slide slide : slides) {
+            for (SlideShape shape : slide.getShapes()) {
+                if (shape instanceof TextBoxShape tb && tb.getFontFamily() != null) {
+                    String f = tb.getFontFamily().trim();
+                    if (!f.isEmpty()) {
+                        counts.put(f, counts.getOrDefault(f, 0) + 1);
+                    }
+                }
+            }
+        }
+        return counts.entrySet().stream()
+                .max(java.util.Map.Entry.comparingByValue())
+                .map(java.util.Map.Entry::getKey)
+                .orElse("Calibri");
+    }
 }

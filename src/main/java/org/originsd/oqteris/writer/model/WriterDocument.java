@@ -17,6 +17,9 @@ public class WriterDocument extends AbstractDocumentModel {
     private Paragraph header = null;
     private Paragraph footer = null;
 
+    private String defaultFontFamily = null;
+    private double defaultFontSize = 11.0;
+
     public WriterDocument() {
         this("Document 1");
     }
@@ -91,6 +94,64 @@ public class WriterDocument extends AbstractDocumentModel {
         this.footer = footer;
         setModified(true);
         notifyChanged();
+    }
+
+    public String getDefaultFontFamily() {
+        return defaultFontFamily;
+    }
+
+    public void setDefaultFontFamily(String defaultFontFamily) {
+        this.defaultFontFamily = defaultFontFamily;
+    }
+
+    public double getDefaultFontSize() {
+        return defaultFontSize;
+    }
+
+    public void setDefaultFontSize(double defaultFontSize) {
+        this.defaultFontSize = defaultFontSize > 0 ? defaultFontSize : 11.0;
+    }
+
+    /**
+     * Detects which font is applied in the document.
+     * Uses explicit defaultFontFamily if set, otherwise scans all paragraphs,
+     * runs, and tables to determine the most prevalent font family.
+     */
+    public String getDetectedFontFamily() {
+        if (defaultFontFamily != null && !defaultFontFamily.isBlank()) {
+            return defaultFontFamily;
+        }
+        java.util.Map<String, Integer> counts = new java.util.HashMap<>();
+        for (DocumentElement el : elements) {
+            if (el instanceof Paragraph p) {
+                tallyParagraphFonts(p, counts);
+            } else if (el instanceof DocumentTable t) {
+                for (DocumentTableRow row : t.getRows()) {
+                    for (DocumentTableCell cell : row.getCells()) {
+                        for (Paragraph cp : cell.getParagraphs()) {
+                            tallyParagraphFonts(cp, counts);
+                        }
+                    }
+                }
+            }
+        }
+        if (!counts.isEmpty()) {
+            return counts.entrySet().stream()
+                    .max(java.util.Map.Entry.comparingByValue())
+                    .map(java.util.Map.Entry::getKey)
+                    .orElse("Calibri");
+        }
+        return "Calibri";
+    }
+
+    private void tallyParagraphFonts(Paragraph p, java.util.Map<String, Integer> counts) {
+        for (TextRun r : p.getRuns()) {
+            String f = r.getFontFamily();
+            if (f != null && !f.isBlank()) {
+                int len = Math.max(1, r.getText().length());
+                counts.merge(f, len, Integer::sum);
+            }
+        }
     }
 
     public int getWordCount() {

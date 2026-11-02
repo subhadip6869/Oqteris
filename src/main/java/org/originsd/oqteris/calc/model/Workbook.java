@@ -104,4 +104,24 @@ public class Workbook extends AbstractDocumentModel {
         calculationEngine.recalculateWorkbook(this);
         notifyChanged();
     }
+
+    public String getDetectedFontFamily() {
+        java.util.Map<String, Integer> counts = new java.util.HashMap<>();
+        for (Worksheet sheet : sheets) {
+            for (Row row : sheet.getRows().values()) {
+                for (Cell cell : row.getCells().values()) {
+                    if (cell.getStyle() != null && cell.getStyle().getFontFamily() != null) {
+                        String f = cell.getStyle().getFontFamily().trim();
+                        if (!f.isEmpty()) {
+                            counts.put(f, counts.getOrDefault(f, 0) + 1);
+                        }
+                    }
+                }
+            }
+        }
+        return counts.entrySet().stream()
+                .max(java.util.Map.Entry.comparingByValue())
+                .map(java.util.Map.Entry::getKey)
+                .orElse("Calibri");
+    }
 }

@@ -100,6 +100,8 @@ public class LayoutEngine {
                     // Horizontal position
                     if (img.getHAlign() == DocumentImage.HAlign.RIGHT) {
                         if (img.getHRelative() == DocumentImage.HRelative.PAGE) {
+                            imgX = setup.getPageWidth() - targetW - Math.max(0, setup.getMarginRight() * 0.15);
+                            // Word "align right relative to page" typically pins near right edge
                             imgX = setup.getPageWidth() - targetW;
                         } else {
                             imgX = setup.getMarginLeft() + printableW - targetW;
@@ -113,6 +115,9 @@ public class LayoutEngine {
                     } else if (img.getHAlign() == DocumentImage.HAlign.ABSOLUTE) {
                         if (img.getHRelative() == DocumentImage.HRelative.PAGE) {
                             imgX = img.getHOffsetPt();
+                        } else if (img.getHRelative() == DocumentImage.HRelative.MARGIN
+                                || img.getHRelative() == DocumentImage.HRelative.COLUMN) {
+                            imgX = setup.getMarginLeft() + img.getHOffsetPt();
                         } else {
                             imgX = setup.getMarginLeft() + img.getHOffsetPt();
                         }
@@ -138,13 +143,20 @@ public class LayoutEngine {
                     // Keep image on current page if possible
                     if (imgY + targetH > setup.getPageHeight() - 4
                             && img.getVRelative() != DocumentImage.VRelative.PAGE) {
-                        if (targetH > printableH * 0.4
-                                && cursorY + targetH > setup.getPageHeight() - setup.getMarginBottom()) {
+                        // allow slight overflow for header logos; only force new page for large images
+                        if (targetH > printableH * 0.4 && cursorY + targetH > setup.getPageHeight() - setup.getMarginBottom()) {
                             currentPage = new LayoutPage(pages.size(), setup);
                             pages.add(currentPage);
                             cursorY = setup.getMarginTop();
                             imgY = cursorY + img.getVOffsetPt();
                         }
+                    }
+
+                    // Clamp image into page bounds (avoid negative Y covering wrong area)
+                    if (imgY < 0) imgY = 0;
+                    if (imgX < 0) imgX = 0;
+                    if (imgX + targetW > setup.getPageWidth()) {
+                        imgX = Math.max(0, setup.getPageWidth() - targetW);
                     }
 
                     LayoutPage.ImageBox box = new LayoutPage.ImageBox(imgX, imgY, targetW, targetH, display);
@@ -154,16 +166,24 @@ public class LayoutEngine {
                     box.floating = true;
                     currentPage.addImageBox(box);
 
-                    // Only TOP_AND_BOTTOM / SQUARE / TIGHT displace text vertically
-                    if (img.getWrapMode() == DocumentImage.WrapMode.TOP_AND_BOTTOM
-                            || img.getWrapMode() == DocumentImage.WrapMode.SQUARE
-                            || img.getWrapMode() == DocumentImage.WrapMode.TIGHT) {
-                        double bottom = imgY + targetH + img.getDistBottom();
+                    // Vertical space for text:
+                    // - TOP_AND_BOTTOM / SQUARE / TIGHT always reserve space
+                    // - Wide banner images (header logos) also reserve space even when
+                    //   wrap is IN_FRONT_OF_TEXT, otherwise body text sits under the logo
+                    //   and is unreadable (matches typical Word memo layout).
+                    boolean reserveSpace =
+                            img.getWrapMode() == DocumentImage.WrapMode.TOP_AND_BOTTOM
+                                    || img.getWrapMode() == DocumentImage.WrapMode.SQUARE
+                                    || img.getWrapMode() == DocumentImage.WrapMode.TIGHT
+                                    || (targetW >= setup.getPageWidth() * 0.55
+                                    && img.getWrapMode() != DocumentImage.WrapMode.BEHIND_TEXT
+                                    && !img.isBehindText());
+                    if (reserveSpace) {
+                        double bottom = imgY + targetH + Math.max(img.getDistBottom(), 6.0);
                         if (bottom > cursorY) {
-                            cursorY = bottom + 4;
+                            cursorY = bottom;
                         }
                     }
-                    // IN_FRONT_OF_TEXT / BEHIND_TEXT: cursorY unchanged
 
                 } else {
                     // Inline image in document flow
@@ -223,15 +243,15 @@ public class LayoutEngine {
     }
 
     /**
-     * @param contentWidth width available for text after left/right indents
-     * @param leftIndent   paragraph left indent (so tab positions can be converted
-     *                     from page-margin origin to content origin)
+     * @param contentWidth   width available for text after left/right indents
+     * @param leftIndent     paragraph left indent (so tab positions can be converted
+     *                       from page-margin origin to content origin)
      */
     private static List<LayoutLine> layoutParagraph(Paragraph p, double contentWidth, double leftIndent) {
         List<LayoutLine> lines = new ArrayList<>();
         List<TextRun> runs = p.getRuns();
         if (runs.isEmpty()) {
-            Font font = FONTS.getFont("Segoe UI", 11.0, false, false);
+            Font font = FONTS.getFont("Calibri", 11.0, false, false);
             double h = Math.max(FONTS.measureHeight(font), 11.0) * p.getLineSpacing();
             lines.add(new LayoutLine(p, 0, 0, h, h * 0.78));
             return lines;
@@ -253,9 +273,9 @@ public class LayoutEngine {
             Font font = FONTS.getFont(run.getFontFamily(), run.getFontSize(), run.isBold(), run.isItalic());
             double measuredH = FONTS.measureHeight(font);
             double runLineH = Math.max(measuredH, run.getFontSize()) * p.getLineSpacing();
-            if (headingFontSize > 0 && run.getFontSize() <= 11.5) {
+            if (headingFontSize > 0 && (run.getFontSize() <= 12.0 || !run.isBold())) {
                 font = FONTS.getFont(run.getFontFamily(), headingFontSize,
-                        run.isBold() || p.getHeadingStyle() != Paragraph.HeadingStyle.NORMAL, run.isItalic());
+                        true, run.isItalic());
                 double measuredH2 = FONTS.measureHeight(font);
                 runLineH = Math.max(measuredH2, headingFontSize) * p.getLineSpacing();
             }
@@ -265,7 +285,7 @@ public class LayoutEngine {
                 text = prefix + text;
             }
 
-            // Preserve tabs as distinct tokens; split on whitespace boundaries
+            // Preserve tabs and newlines as distinct tokens; split on whitespace boundaries
             String[] words = text.split("(?<=\\s)|(?=\\s)");
             for (String word : words) {
                 boolean isTab = "\t".equals(word);
@@ -276,14 +296,25 @@ public class LayoutEngine {
 
         LayoutLine currentLine = null;
         double currentLineWidth = 0;
-        double maxLineHeight = 14.0;
         boolean isFirstLine = true;
         double firstLineExtra = Math.max(0, p.getFirstLineIndent());
 
         for (int tIdx = 0; tIdx < tokens.size(); tIdx++) {
             Token t = tokens.get(tIdx);
-            maxLineHeight = Math.max(maxLineHeight, t.runLineH);
 
+            // Handle forced newline
+            if ("\n".equals(t.word) || "\r\n".equals(t.word) || "\r".equals(t.word)) {
+                if (currentLine == null) {
+                    currentLine = new LayoutLine(p, 0, 0, t.runLineH, t.runLineH * 0.78);
+                    lines.add(currentLine);
+                }
+                currentLine = null;
+                currentLineWidth = 0;
+                isFirstLine = false;
+                continue;
+            }
+
+            // Effective available width for this line (first line may be narrower by first-line indent)
             double lineAvail = contentWidth - (isFirstLine ? firstLineExtra : 0.0);
             if (lineAvail < 20) lineAvail = 20;
 
@@ -295,19 +326,26 @@ public class LayoutEngine {
             }
 
             if (currentLine == null) {
-                currentLine = new LayoutLine(p, 0, 0, maxLineHeight, maxLineHeight * 0.78);
+                currentLine = new LayoutLine(p, 0, 0, t.runLineH, t.runLineH * 0.78);
                 lines.add(currentLine);
             }
 
             if (currentLineWidth + wordW > lineAvail + 0.5 && !currentLine.getSegments().isEmpty()) {
-                currentLine = new LayoutLine(p, 0, 0, maxLineHeight, maxLineHeight * 0.78);
+                // Wrap to next line
+                currentLine = new LayoutLine(p, 0, 0, t.runLineH, t.runLineH * 0.78);
                 lines.add(currentLine);
                 currentLineWidth = 0;
                 isFirstLine = false;
                 if (t.word.isBlank() && !t.isTab) continue;
+                // Recompute tab for new line if needed
                 if (t.isTab) {
                     wordW = resolveTabAdvance(p, 0, leftIndent, contentWidth, tIdx, tokens);
                 }
+            }
+
+            if (t.runLineH > currentLine.getHeight()) {
+                currentLine.setHeight(t.runLineH);
+                currentLine.setBaseline(t.runLineH * 0.78);
             }
 
             LayoutLine.LineSegment segment = new LayoutLine.LineSegment(t.word, t.run, t.font, wordW, currentLineWidth);
@@ -324,28 +362,11 @@ public class LayoutEngine {
         return lines;
     }
 
-    private static final class Token {
-        final String word;
-        final TextRun run;
-        final Font font;
-        final double measuredWidth;
-        final double runLineH;
-        final boolean isTab;
-
-        Token(String word, TextRun run, Font font, double measuredWidth, double runLineH, boolean isTab) {
-            this.word = word;
-            this.run = run;
-            this.font = font;
-            this.measuredWidth = measuredWidth;
-            this.runLineH = runLineH;
-            this.isTab = isTab;
-        }
-    }
-
     /**
      * Resolve the advance width produced by a tab character.
      * TabStop.position is always from the page left margin.
-     * currentLineWidth is measured from the start of the content area.
+     * currentLineWidth is measured from the start of the content area
+     * (i.e. after leftIndent + any first-line indent already applied to the line).
      */
     private static double resolveTabAdvance(Paragraph p, double currentLineWidth, double leftIndent,
                                             double lineAvail, int tIdx, List<Token> tokens) {
@@ -433,24 +454,58 @@ public class LayoutEngine {
                                       LayoutPage activePage, double cursorY, double printableW) {
         int colCount = Math.max(1, table.getColumnCount());
         double[] widths = table.getColumnWidths();
-        if (widths == null || widths.length != colCount) {
+        if (widths == null || widths.length == 0) {
             widths = new double[colCount];
             double w = printableW / colCount;
             for (int i = 0; i < colCount; i++) widths[i] = w;
+        } else if (widths.length != colCount) {
+            colCount = widths.length;
+        }
+
+        // Scale column widths to fit printable area (prevent table overflowing the page)
+        double sum = 0;
+        for (double w : widths) sum += w;
+        if (sum <= 0) {
+            widths = new double[colCount];
+            for (int i = 0; i < colCount; i++) widths[i] = printableW / colCount;
+            sum = printableW;
+        } else if (sum > printableW + 0.5) {
+            double scale = printableW / sum;
+            for (int i = 0; i < widths.length; i++) widths[i] *= scale;
+            sum = printableW;
+        }
+        final double tableWidth = Math.min(sum, printableW);
+
+        double tableX = setup.getMarginLeft();
+        if (table.getAlignment() == DocumentTable.Alignment.CENTER) {
+            tableX = setup.getMarginLeft() + Math.max(0, (printableW - tableWidth) / 2.0);
+        } else if (table.getAlignment() == DocumentTable.Alignment.RIGHT) {
+            tableX = setup.getMarginLeft() + Math.max(0, printableW - tableWidth);
         }
 
         LayoutPage currentPage = activePage;
         double currentY = cursorY;
 
         for (DocumentTableRow row : table.getRows()) {
-            double rowH = row.getHeight() > 0 ? row.getHeight() : 24.0;
+            double rowH = row.getHeight() > 0 ? row.getHeight() : 20.0;
             List<List<LayoutLine>> cellLinesList = new ArrayList<>();
+            List<Double> cellWidthsList = new ArrayList<>();
 
+            int colIdx = 0;
             for (int c = 0; c < row.getCells().size(); c++) {
                 DocumentTableCell cell = row.getCells().get(c);
-                double cellW = (c < widths.length) ? widths[c] : 80.0;
-                double availCellW = Math.max(10, cellW - cell.getPaddingLeft() - cell.getPaddingRight());
+                int span = Math.max(1, cell.getColSpan());
+                double cellW = 0;
+                for (int s = 0; s < span && (colIdx + s) < widths.length; s++) {
+                    cellW += widths[colIdx + s];
+                }
+                if (cellW <= 0) {
+                    cellW = (colIdx < widths.length) ? widths[colIdx] : 80.0;
+                }
+                colIdx += span;
+                cellWidthsList.add(cellW);
 
+                double availCellW = Math.max(10, cellW - cell.getPaddingLeft() - cell.getPaddingRight());
                 List<LayoutLine> allCellLines = new ArrayList<>();
                 double cellContentH = 0;
                 for (Paragraph p : cell.getParagraphs()) {
@@ -471,24 +526,36 @@ public class LayoutEngine {
             }
 
             LayoutPage.TableBox tBox = new LayoutPage.TableBox(
-                    setup.getMarginLeft(), currentY, printableW, rowH,
+                    tableX, currentY, tableWidth, rowH,
                     table.getBorderColor(), table.getBorderWidth());
 
-            double cellX = setup.getMarginLeft();
+            double cellX = tableX;
             for (int c = 0; c < row.getCells().size(); c++) {
                 DocumentTableCell cell = row.getCells().get(c);
-                double cellW = (c < widths.length) ? widths[c] : 80.0;
+                double cellW = (c < cellWidthsList.size()) ? cellWidthsList.get(c) : 80.0;
+                double availCellW = Math.max(10, cellW - cell.getPaddingLeft() - cell.getPaddingRight());
 
                 LayoutPage.TableCellBox cBox = new LayoutPage.TableCellBox(cellX, currentY, cellW, rowH, cell);
 
-                double lineY = currentY + cell.getPaddingTop();
-                if (c < cellLinesList.size()) {
-                    for (LayoutLine l : cellLinesList.get(c)) {
-                        l.setX(cellX + cell.getPaddingLeft());
-                        l.setY(lineY);
-                        cBox.lines.add(l);
-                        lineY += l.getHeight();
-                    }
+                List<LayoutLine> cellLines = (c < cellLinesList.size()) ? cellLinesList.get(c) : List.of();
+                double cellContentH = 0;
+                for (LayoutLine l : cellLines) cellContentH += l.getHeight();
+                double totalH = cellContentH + cell.getPaddingTop() + cell.getPaddingBottom();
+
+                double vOffset = 0;
+                if (cell.getVerticalAlignment() == DocumentTableCell.VAlign.CENTER) {
+                    vOffset = Math.max(0, (rowH - totalH) / 2.0);
+                } else if (cell.getVerticalAlignment() == DocumentTableCell.VAlign.BOTTOM) {
+                    vOffset = Math.max(0, rowH - totalH);
+                }
+
+                double lineY = currentY + cell.getPaddingTop() + vOffset;
+                for (LayoutLine l : cellLines) {
+                    l.setX(cellX + cell.getPaddingLeft());
+                    l.setY(lineY);
+                    applyAlignment(l, l.getParagraph() != null ? l.getParagraph().getAlignment() : Paragraph.Alignment.LEFT, availCellW);
+                    cBox.lines.add(l);
+                    lineY += l.getHeight();
                 }
 
                 tBox.cells.add(cBox);
@@ -536,6 +603,25 @@ public class LayoutEngine {
                 applyAlignment(fl, fp.getAlignment(), setup.getPrintableWidth());
                 page.setFooterLine(fl);
             }
+        }
+    }
+
+    /** Simple token used during paragraph layout. */
+    private static final class Token {
+        final String word;
+        final TextRun run;
+        final Font font;
+        final double measuredWidth;
+        final double runLineH;
+        final boolean isTab;
+
+        Token(String word, TextRun run, Font font, double measuredWidth, double runLineH, boolean isTab) {
+            this.word = word;
+            this.run = run;
+            this.font = font;
+            this.measuredWidth = measuredWidth;
+            this.runLineH = runLineH;
+            this.isTab = isTab;
         }
     }
 }

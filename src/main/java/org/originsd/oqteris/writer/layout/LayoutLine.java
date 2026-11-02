@@ -105,8 +105,16 @@ public class LayoutLine {
         return height;
     }
 
+    public void setHeight(double height) {
+        this.height = height;
+    }
+
     public double getBaseline() {
         return baseline;
+    }
+
+    public void setBaseline(double baseline) {
+        this.baseline = baseline;
     }
 
     public boolean isLastLineOfParagraph() {
