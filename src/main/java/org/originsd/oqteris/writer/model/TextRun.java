@@ -24,6 +24,10 @@ public class TextRun {
         this.text = text != null ? text : "";
     }
 
+    public TextRun(String text, String fontFamily, double fontSize) {
+        this(text, fontFamily, fontSize, false, false, false, false, Color.BLACK, null);
+    }
+
     public TextRun(String text, String fontFamily, double fontSize, boolean bold, boolean italic,
                    boolean underline, boolean strikethrough, Color textColor, Color highlightColor) {
         this.text = text != null ? text : "";

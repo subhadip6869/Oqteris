@@ -141,6 +141,12 @@ public class DocxExporter implements DocumentExporter<WriterDocument> {
                 int b = (int) Math.round(run.getTextColor().getBlue() * 255);
                 poiRun.setColor(String.format("%02X%02X%02X", r, g, b));
             }
+
+            if (run.getHighlightColor() != null) {
+                try {
+                    poiRun.setTextHighlightColor("yellow");
+                } catch (Exception ignored) {}
+            }
         }
     }
 
@@ -150,6 +156,11 @@ public class DocxExporter implements DocumentExporter<WriterDocument> {
         int numCols = table.getColumnCount();
 
         XWPFTable poiTable = docx.createTable(numRows, numCols);
+        switch (table.getAlignment()) {
+            case CENTER -> poiTable.setTableAlignment(TableRowAlign.CENTER);
+            case RIGHT -> poiTable.setTableAlignment(TableRowAlign.RIGHT);
+            default -> poiTable.setTableAlignment(TableRowAlign.LEFT);
+        }
 
         for (int r = 0; r < numRows; r++) {
             DocumentTableRow row = table.getRows().get(r);
@@ -158,6 +169,19 @@ public class DocxExporter implements DocumentExporter<WriterDocument> {
             for (int c = 0; c < Math.min(numCols, row.getCells().size()); c++) {
                 DocumentTableCell cell = row.getCells().get(c);
                 XWPFTableCell poiCell = poiRow.getCell(c);
+
+                if (cell.getBackgroundColor() != null) {
+                    int red = (int) Math.round(cell.getBackgroundColor().getRed() * 255);
+                    int grn = (int) Math.round(cell.getBackgroundColor().getGreen() * 255);
+                    int blu = (int) Math.round(cell.getBackgroundColor().getBlue() * 255);
+                    poiCell.setColor(String.format("%02X%02X%02X", red, grn, blu));
+                }
+
+                switch (cell.getVerticalAlignment()) {
+                    case CENTER -> poiCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+                    case BOTTOM -> poiCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.BOTTOM);
+                    default -> poiCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.TOP);
+                }
 
                 // Clear default paragraph in POI cell
                 if (!cell.getParagraphs().isEmpty()) {

@@ -36,6 +36,15 @@ public class DocumentTableCell {
         return paragraphs;
     }
 
+    public String getPlainText() {
+        StringBuilder sb = new StringBuilder();
+        for (Paragraph p : paragraphs) {
+            if (sb.length() > 0) sb.append(" ");
+            sb.append(p.getPlainText());
+        }
+        return sb.toString();
+    }
+
     public void addParagraph(Paragraph p) {
         if (p != null) {
             paragraphs.add(p);
