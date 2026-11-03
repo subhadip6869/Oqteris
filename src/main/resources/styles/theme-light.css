@@ -57,10 +57,18 @@
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab {
     -fx-background-color: transparent, transparent, #ffffff !important;
+    -fx-border-color: transparent transparent #cbd5e1 transparent !important;
+    -fx-border-width: 0 0 1 0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: #f1f5f9 !important;
 }
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected {
-    -fx-background-color: transparent, #cbd5e1, #f8fafc !important;
+    -fx-background-color: #ffffff, #ffffff, #f8fafc !important;
+    -fx-border-color: #0284c7 #cbd5e1 transparent #cbd5e1 !important;
+    -fx-border-width: 3 1 0 1 !important;
 }
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab > .tab-container > .tab-label {
@@ -69,8 +77,29 @@
 }
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected > .tab-container > .tab-label {
-    -fx-text-fill: #4f46e5 !important;
+    -fx-text-fill: #0284c7 !important;
     -fx-font-weight: bold !important;
+}
+
+/* Contextual Tab: Digital Signatures */
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.blue,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.contextual-signatures-tab {
+    -fx-background-color: #e0f2fe !important;
+    -fx-border-color: #7dd3fc !important;
+    -fx-border-width: 1 1 0 1 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.blue > .tab-container > .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.contextual-signatures-tab > .tab-container > .tab-label {
+    -fx-text-fill: #0369a1 !important;
+    -fx-font-weight: bold !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.blue:selected,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.contextual-signatures-tab:selected {
+    -fx-background-color: #ffffff !important;
+    -fx-border-color: #0284c7 #38bdf8 transparent #38bdf8 !important;
+    -fx-border-width: 3 1 0 1 !important;
 }
 
 .ribbon-group {
@@ -79,11 +108,22 @@
 }
 
 .ribbon-group .title {
-    -fx-text-fill: #94a3b8 !important;
+    -fx-text-fill: #64748b !important;
 }
 
 .ribbon-group > .ribbon-group-content > .button,
-.ribbon-group > .ribbon-group-content > .toggle-button {
+.ribbon-group > .ribbon-group-content > .toggle-button,
+.ribbon-group > .ribbon-group-content > .menu-button,
+.ribbon-group > .ribbon-group-content > .split-menu-button,
+.ribbon-group > .ribbon-group-content > .column > .button,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button,
+.ribbon-large-btn,
+.ribbon-large-menu-btn,
+.ribbon-large-split-btn,
+.ribbon-btn,
+.ribbon-icon-btn,
+.ribbon-menu-btn,
+.ribbon-split-btn {
     -fx-background-color: #ffffff !important;
     -fx-text-fill: #1e293b !important;
     -fx-border-color: #cbd5e1 !important;
@@ -92,17 +132,45 @@
 }
 
 .ribbon-group > .ribbon-group-content > .button:hover,
-.ribbon-group > .ribbon-group-content > .toggle-button:hover {
-    -fx-background-color: #eef2ff !important;
-    -fx-text-fill: #4f46e5 !important;
-    -fx-border-color: #818cf8 !important;
+.ribbon-group > .ribbon-group-content > .toggle-button:hover,
+.ribbon-group > .ribbon-group-content > .menu-button:hover,
+.ribbon-group > .ribbon-group-content > .split-menu-button:hover,
+.ribbon-group > .ribbon-group-content > .column > .button:hover,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button:hover,
+.ribbon-large-btn:hover,
+.ribbon-large-menu-btn:hover,
+.ribbon-large-split-btn:hover,
+.ribbon-btn:hover,
+.ribbon-icon-btn:hover,
+.ribbon-menu-btn:hover,
+.ribbon-split-btn:hover {
+    -fx-background-color: #f0f9ff !important;
+    -fx-text-fill: #0369a1 !important;
+    -fx-border-color: #38bdf8 !important;
 }
 
-.ribbon-group > .ribbon-group-content > .toggle-button:selected {
-    -fx-background-color: #e0e7ff !important;
-    -fx-text-fill: #4338ca !important;
-    -fx-border-color: #6366f1 !important;
+.ribbon-group > .ribbon-group-content > .toggle-button:selected,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button:selected,
+.ribbon-large-btn:selected,
+.ribbon-btn:selected,
+.ribbon-icon-btn:selected {
+    -fx-background-color: #e0f2fe !important;
+    -fx-text-fill: #0369a1 !important;
+    -fx-border-color: #0284c7 !important;
     -fx-font-weight: bold !important;
+}
+
+.ribbon-group > .ribbon-group-content > .button:disabled,
+.ribbon-group > .ribbon-group-content > .toggle-button:disabled,
+.ribbon-large-btn:disabled,
+.ribbon-large-menu-btn:disabled,
+.ribbon-large-split-btn:disabled,
+.ribbon-btn:disabled,
+.ribbon-icon-btn:disabled {
+    -fx-opacity: 0.5 !important;
+    -fx-background-color: #f8fafc !important;
+    -fx-border-color: #e2e8f0 !important;
+    -fx-text-fill: #94a3b8 !important;
 }
 
 /* --- Document Tabs (Compact) --- */

@@ -82,26 +82,26 @@
     -fx-font-size: 12px;
 }
 
-/* --- Ribbon / Toolbar --- */
+/* --- Desktop Ribbon / Toolbar (3-Level Professional Hierarchy) --- */
 .ribbon {
-    -fx-min-height: 68px !important;
-    -fx-pref-height: 70px !important;
-    -fx-max-height: 72px !important;
+    -fx-min-height: 108px !important;
+    -fx-pref-height: 112px !important;
+    -fx-max-height: 116px !important;
     -fx-background-color: transparent;
 }
 
 .ribbon > .outer-container {
-    -fx-min-height: 68px !important;
-    -fx-pref-height: 70px !important;
-    -fx-max-height: 72px !important;
+    -fx-min-height: 108px !important;
+    -fx-pref-height: 112px !important;
+    -fx-max-height: 116px !important;
 }
 
 .ribbon > .outer-container > .tab-pane {
-    -fx-tab-min-height: 25px !important;
-    -fx-tab-max-height: 25px !important;
-    -fx-min-height: 68px !important;
-    -fx-pref-height: 70px !important;
-    -fx-max-height: 72px !important;
+    -fx-tab-min-height: 26px !important;
+    -fx-tab-max-height: 26px !important;
+    -fx-min-height: 108px !important;
+    -fx-pref-height: 112px !important;
+    -fx-max-height: 116px !important;
 }
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area {
@@ -109,54 +109,193 @@
 }
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab {
-    -fx-padding: 2px 14px !important;
+    -fx-padding: 3px 10px !important;
+    -fx-font-size: 11px !important;
+    -fx-font-weight: 500 !important;
+    -fx-cursor: hand;
+}
+
+.ribbon-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-padding: 0;
+    -fx-border-width: 0;
+}
+
+.ribbon-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.ribbon-scroll-pane .scroll-bar:horizontal {
+    -fx-pref-height: 5px;
+    -fx-min-height: 5px;
+    -fx-opacity: 0.5;
 }
 
 .ribbon-group {
-    -fx-padding: 2px 6px 1px 6px !important;
+    -fx-padding: 2px 4px 1px 4px !important;
     -fx-alignment: center !important;
 }
 
 .ribbon-group-content {
-    -fx-min-height: 32px !important;
-    -fx-pref-height: 34px !important;
-    -fx-max-height: 36px !important;
+    -fx-min-height: 60px !important;
+    -fx-pref-height: 62px !important;
+    -fx-max-height: 64px !important;
     -fx-padding: 0 2px !important;
-    -fx-spacing: 4px !important;
-    -fx-alignment: center-left !important;
+    -fx-spacing: 2px !important;
+    -fx-alignment: center !important;
 }
 
+.ribbon-column,
+.ribbon-group-content > .column,
+.ribbon-group > .ribbon-group-content > .column {
+    -fx-spacing: 3px !important;
+    -fx-alignment: center-left !important;
+    -fx-padding: 0 1px 0 1px !important;
+}
+
+/* Override fxribbon hardcoded menu-button & button dimensions */
+.ribbon-group .button,
+.ribbon-group .toggle-button,
 .ribbon-group > .ribbon-group-content > .button,
 .ribbon-group > .ribbon-group-content > .toggle-button,
 .ribbon-group > .ribbon-group-content > .menu-button,
-.ribbon-group > .ribbon-group-content > .combo-box,
-.ribbon-group > .ribbon-group-content > .color-picker {
-    -fx-min-height: 28px !important;
-    -fx-pref-height: 28px !important;
-    -fx-padding: 3px 8px !important;
+.ribbon-group > .ribbon-group-content > .split-menu-button {
+    -fx-pref-width: -1;
+    -fx-max-width: 10000px;
 }
 
-.ribbon-btn {
-    -fx-min-height: 28px !important;
-    -fx-pref-height: 28px !important;
-    -fx-padding: 3px 8px !important;
-    -fx-font-size: 11px !important;
-    -fx-graphic-text-gap: 5px;
+/* Large vertical button: icon on top, label on bottom */
+.ribbon-large-btn {
+    -fx-min-height: 58px !important;
+    -fx-pref-height: 60px !important;
+    -fx-max-height: 62px !important;
+    -fx-pref-width: -1;
+    -fx-max-width: 10000px;
+    -fx-padding: 3px 6px 3px 6px !important;
+    -fx-font-size: 10.5px !important;
+    -fx-alignment: center !important;
+    -fx-content-display: top !important;
+    -fx-text-alignment: center !important;
+    -fx-graphic-text-gap: 2px !important;
+    -fx-background-radius: 4px !important;
+}
+
+.ribbon-large-menu-btn,
+.ribbon-large-split-btn,
+.ribbon-group > .ribbon-group-content > .menu-button,
+.ribbon-group > .ribbon-group-content > .split-menu-button {
+    -fx-min-height: 58px !important;
+    -fx-pref-height: 60px !important;
+    -fx-max-height: 62px !important;
+    -fx-pref-width: -1;
+    -fx-max-width: 10000px;
+    -fx-padding: 3px 5px 3px 5px !important;
+    -fx-font-size: 10.5px !important;
+    -fx-content-display: top !important;
+    -fx-text-alignment: center !important;
+    -fx-alignment: center !important;
+    -fx-graphic-text-gap: 2px !important;
+    -fx-background-radius: 4px !important;
+}
+    -fx-graphic-text-gap: 2px !important;
+    -fx-background-radius: 4px !important;
+}
+
+/* Reduced padding for arrow button and arrow inside menu buttons */
+.ribbon-large-menu-btn > .arrow-button,
+.ribbon-large-split-btn > .arrow-button,
+.ribbon-group > .ribbon-group-content > .menu-button > .arrow-button,
+.ribbon-group > .ribbon-group-content > .split-menu-button > .arrow-button {
+    -fx-padding: 0 1px 0 1px !important;
+}
+
+.ribbon-large-menu-btn > .arrow-button > .arrow,
+.ribbon-large-split-btn > .arrow-button > .arrow,
+.ribbon-group > .ribbon-group-content > .menu-button > .arrow-button > .arrow,
+.ribbon-group > .ribbon-group-content > .split-menu-button > .arrow-button > .arrow {
+    -fx-padding: 1.5px 2px 1.5px 2px !important;
+}
+
+.ribbon-large-menu-btn > .label,
+.ribbon-large-split-btn > .label,
+.ribbon-group > .ribbon-group-content > .menu-button > .label,
+.ribbon-group > .ribbon-group-content > .split-menu-button > .label {
+    -fx-padding: 0 !important;
+    -fx-alignment: center !important;
+    -fx-text-alignment: center !important;
+}
+
+/* Small button: icon on left, label on right */
+.ribbon-btn,
+.ribbon-group > .ribbon-group-content > .column > .button,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button {
+    -fx-min-height: 26px !important;
+    -fx-pref-height: 27px !important;
+    -fx-max-height: 28px !important;
+    -fx-padding: 2px 6px !important;
+    -fx-font-size: 10.5px !important;
+    -fx-graphic-text-gap: 5px !important;
+    -fx-alignment: center-left !important;
+    -fx-background-radius: 4px !important;
+}
+
+.ribbon-menu-btn,
+.ribbon-split-btn,
+.ribbon-group > .ribbon-group-content > .column > .menu-button,
+.ribbon-group > .ribbon-group-content > .column > .split-menu-button {
+    -fx-min-height: 26px !important;
+    -fx-pref-height: 27px !important;
+    -fx-max-height: 28px !important;
+    -fx-padding: 2px 5px !important;
+    -fx-font-size: 10.5px !important;
+    -fx-background-radius: 4px !important;
+}
+
+.ribbon-menu-btn > .arrow-button,
+.ribbon-split-btn > .arrow-button {
+    -fx-padding: 0 2px 0 1px !important;
+}
+
+.ribbon-menu-btn > .arrow-button > .arrow,
+.ribbon-split-btn > .arrow-button > .arrow {
+    -fx-padding: 1.5px 2px 1.5px 2px !important;
+}
+
+/* Compact icon-only button */
+.ribbon-icon-btn {
+    -fx-min-height: 25px !important;
+    -fx-pref-height: 25px !important;
+    -fx-max-height: 26px !important;
+    -fx-min-width: 25px !important;
+    -fx-pref-width: 25px !important;
+    -fx-max-width: 26px !important;
+    -fx-padding: 1px !important;
+    -fx-alignment: center !important;
+    -fx-background-radius: 4px !important;
 }
 
 .ribbon-vertical-btn {
-    -fx-min-height: 48px !important;
-    -fx-pref-height: 50px !important;
-    -fx-min-width: 44px !important;
-    -fx-padding: 2px 6px !important;
+    -fx-min-height: 56px !important;
+    -fx-pref-height: 58px !important;
+    -fx-min-width: 42px !important;
+    -fx-padding: 2px 4px 2px 4px !important;
     -fx-font-size: 10px !important;
-    -fx-graphic-text-gap: 2px;
+    -fx-graphic-text-gap: 1px;
+}
+
+/* Group caption title at the bottom */
+.ribbon-group .title-container {
+    -fx-alignment: center !important;
+    -fx-padding: 1px 0 0 0 !important;
 }
 
 .ribbon-group .title {
-    -fx-font-size: 9.5px !important;
-    -fx-font-weight: 500 !important;
-    -fx-padding: 1px 0 0 0 !important;
+    -fx-font-size: 9px !important;
+    -fx-font-weight: 600 !important;
+    -fx-text-transform: uppercase !important;
+    -fx-alignment: center !important;
+    -fx-text-alignment: center !important;
 }
 
 /* --- Document Tabs (Compact & Comfortable) --- */
@@ -305,12 +444,36 @@
 /* --- FXRibbon Modern Controls --- */
 .ribbon {
     -fx-background-color: transparent;
+    -fx-min-height: 110px !important;
+    -fx-pref-height: 112px !important;
+    -fx-max-height: 114px !important;
+}
+
+.ribbon > .outer-container {
+    -fx-min-height: 110px !important;
+    -fx-pref-height: 112px !important;
+    -fx-max-height: 114px !important;
+}
+
+.ribbon > .outer-container > .tab-pane {
+    -fx-min-height: 110px !important;
+    -fx-pref-height: 112px !important;
+    -fx-max-height: 114px !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-content-area {
+    -fx-min-height: 80px !important;
+    -fx-pref-height: 82px !important;
+    -fx-max-height: 84px !important;
 }
 
 .ribbon-group {
-    -fx-padding: 4px 6px;
-    -fx-spacing: 4px;
-    -fx-alignment: center-left;
+    -fx-padding: 3px 6px !important;
+    -fx-spacing: 4px !important;
+    -fx-alignment: center-left !important;
+    -fx-min-height: 76px !important;
+    -fx-pref-height: 78px !important;
+    -fx-max-height: 80px !important;
 }
 
 .ribbon-group > .title-label {

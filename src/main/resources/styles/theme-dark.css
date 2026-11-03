@@ -68,10 +68,18 @@
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab {
     -fx-background-color: transparent, transparent, #0b0f19 !important;
+    -fx-border-color: transparent transparent #1e293b transparent !important;
+    -fx-border-width: 0 0 1 0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: #172033 !important;
 }
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected {
-    -fx-background-color: transparent, #334155, #0f172a !important;
+    -fx-background-color: #0f172a, #0f172a, #1e293b !important;
+    -fx-border-color: #38bdf8 #334155 transparent #334155 !important;
+    -fx-border-width: 3 1 0 1 !important;
 }
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab > .tab-container > .tab-label {
@@ -80,21 +88,53 @@
 }
 
 .ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected > .tab-container > .tab-label {
-    -fx-text-fill: #818cf8 !important;
+    -fx-text-fill: #38bdf8 !important;
     -fx-font-weight: bold !important;
 }
 
+/* Contextual Tab: Digital Signatures Dark */
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.blue,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.contextual-signatures-tab {
+    -fx-background-color: #0c4a6e !important;
+    -fx-border-color: #0284c7 !important;
+    -fx-border-width: 1 1 0 1 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.blue > .tab-container > .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.contextual-signatures-tab > .tab-container > .tab-label {
+    -fx-text-fill: #38bdf8 !important;
+    -fx-font-weight: bold !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.blue:selected,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab.contextual-signatures-tab:selected {
+    -fx-background-color: #1e293b !important;
+    -fx-border-color: #38bdf8 #0284c7 transparent #0284c7 !important;
+    -fx-border-width: 3 1 0 1 !important;
+}
+
 .ribbon-group {
-    -fx-border-color: #1e293b !important;
+    -fx-border-color: #334155 !important;
     -fx-border-width: 0 1 0 0 !important;
 }
 
 .ribbon-group .title {
-    -fx-text-fill: #64748b !important;
+    -fx-text-fill: #94a3b8 !important;
 }
 
 .ribbon-group > .ribbon-group-content > .button,
-.ribbon-group > .ribbon-group-content > .toggle-button {
+.ribbon-group > .ribbon-group-content > .toggle-button,
+.ribbon-group > .ribbon-group-content > .menu-button,
+.ribbon-group > .ribbon-group-content > .split-menu-button,
+.ribbon-group > .ribbon-group-content > .column > .button,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button,
+.ribbon-large-btn,
+.ribbon-large-menu-btn,
+.ribbon-large-split-btn,
+.ribbon-btn,
+.ribbon-icon-btn,
+.ribbon-menu-btn,
+.ribbon-split-btn {
     -fx-background-color: #1e293b !important;
     -fx-text-fill: #f1f5f9 !important;
     -fx-border-color: #334155 !important;
@@ -103,17 +143,45 @@
 }
 
 .ribbon-group > .ribbon-group-content > .button:hover,
-.ribbon-group > .ribbon-group-content > .toggle-button:hover {
-    -fx-background-color: #273549 !important;
-    -fx-text-fill: #818cf8 !important;
-    -fx-border-color: #4f46e5 !important;
+.ribbon-group > .ribbon-group-content > .toggle-button:hover,
+.ribbon-group > .ribbon-group-content > .menu-button:hover,
+.ribbon-group > .ribbon-group-content > .split-menu-button:hover,
+.ribbon-group > .ribbon-group-content > .column > .button:hover,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button:hover,
+.ribbon-large-btn:hover,
+.ribbon-large-menu-btn:hover,
+.ribbon-large-split-btn:hover,
+.ribbon-btn:hover,
+.ribbon-icon-btn:hover,
+.ribbon-menu-btn:hover,
+.ribbon-split-btn:hover {
+    -fx-background-color: #0c4a6e !important;
+    -fx-text-fill: #38bdf8 !important;
+    -fx-border-color: #0284c7 !important;
 }
 
-.ribbon-group > .ribbon-group-content > .toggle-button:selected {
-    -fx-background-color: #312e81 !important;
-    -fx-text-fill: #c7d2fe !important;
-    -fx-border-color: #6366f1 !important;
+.ribbon-group > .ribbon-group-content > .toggle-button:selected,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button:selected,
+.ribbon-large-btn:selected,
+.ribbon-btn:selected,
+.ribbon-icon-btn:selected {
+    -fx-background-color: #075985 !important;
+    -fx-text-fill: #e0f2fe !important;
+    -fx-border-color: #38bdf8 !important;
     -fx-font-weight: bold !important;
+}
+
+.ribbon-group > .ribbon-group-content > .button:disabled,
+.ribbon-group > .ribbon-group-content > .toggle-button:disabled,
+.ribbon-large-btn:disabled,
+.ribbon-large-menu-btn:disabled,
+.ribbon-large-split-btn:disabled,
+.ribbon-btn:disabled,
+.ribbon-icon-btn:disabled {
+    -fx-opacity: 0.45 !important;
+    -fx-background-color: #131b2e !important;
+    -fx-border-color: #1e293b !important;
+    -fx-text-fill: #64748b !important;
 }
 
 /* --- Document Tabs (Compact Dark) --- */
