@@ -41,7 +41,7 @@ public class CertificateTrustManagerTest {
         Date notAfter = new Date(now + 365L * 86400000L);
         BigInteger serial = BigInteger.valueOf(System.currentTimeMillis());
 
-        X500Name subject = new X500Name("CN=Oqteris Test Authority, O=Oqteris Security, C=US");
+        X500Name subject = new X500Name("CN=Oqteris Test Authority, O=Oqteris Security, L=Bankura, ST=West Bengal, C=IN");
         JcaX509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
                 subject, serial, notBefore, notAfter, subject, testKeyPair.getPublic()
         );

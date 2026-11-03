@@ -62,7 +62,7 @@ public class PdfSignatureVerifierTest {
         Date notBefore = new Date(now - 10000);
         Date notAfter = new Date(now + 365L * 86400000L);
         BigInteger serial = BigInteger.valueOf(now);
-        X500Name subject = new X500Name("CN=Oqteris Test Signer, O=Oqteris Corporation, C=US");
+        X500Name subject = new X500Name("CN=Oqteris Test Signer, O=Oqteris Corporation, L=Bankura, ST=West Bengal, C=IN");
 
         JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(
                 subject, serial, notBefore, notAfter, subject, testKeyPair.getPublic()
@@ -89,7 +89,7 @@ public class PdfSignatureVerifierTest {
                 cs.beginText();
                 cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
                 cs.newLineAtOffset(100, 700);
-                cs.showText("Oqteris Office Suite - Digitally Signed Test Document");
+                cs.showText("Oqteris PDF Editor - Digitally Signed Test Document");
                 cs.endText();
             }
 
@@ -102,7 +102,7 @@ public class PdfSignatureVerifierTest {
             signature.setFilter(PDSignature.FILTER_ADOBE_PPKLITE);
             signature.setSubFilter(PDSignature.SUBFILTER_ADBE_PKCS7_DETACHED);
             signature.setName("Oqteris Test Signer");
-            signature.setLocation("New York, USA");
+            signature.setLocation("Bankura, West Bengal, India");
             signature.setReason("Security and Verification Test");
             signature.setSignDate(Calendar.getInstance());
 

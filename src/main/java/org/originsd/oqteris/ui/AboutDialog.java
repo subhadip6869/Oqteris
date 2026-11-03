@@ -4,6 +4,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.image.Image;
@@ -12,6 +13,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.originsd.oqteris.ui.icon.AppResources;
+import org.originsd.oqteris.update.AppVersion;
 
 /**
  * About dialog featuring Oqteris PDF branding, version information, and capability overview.
@@ -57,14 +59,31 @@ public class AboutDialog extends Stage {
         desc.setWrapText(true);
         desc.setStyle("-fx-font-size: 12px; -fx-line-spacing: 4px;");
 
-        Label notice = new Label("100% Standalone: Operates with zero cloud dependencies.");
-        notice.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #10b981;");
+        Label notice = new Label("100% Standalone: Operates with zero cloud dependencies.\nCrafted in Bankura, West Bengal, India");
+        notice.setWrapText(true);
+        notice.setAlignment(Pos.CENTER);
+        notice.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #10b981; -fx-text-alignment: center;");
+
+        Hyperlink repoLink = new Hyperlink(AppVersion.GITHUB_REPO_URL);
+        repoLink.setWrapText(true);
+        repoLink.setMaxWidth(Double.MAX_VALUE);
+        repoLink.setAlignment(Pos.CENTER);
+        repoLink.setStyle("-fx-font-size: 11.5px; -fx-text-fill: #0284c7;");
+        repoLink.setOnAction(e -> {
+            try {
+                java.awt.Desktop.getDesktop().browse(java.net.URI.create(AppVersion.GITHUB_REPO_URL));
+            } catch (Exception ignored) {}
+        });
 
         Button closeBtn = new Button("Close");
         closeBtn.setDefaultButton(true);
         closeBtn.setOnAction(e -> close());
 
-        root.getChildren().addAll(logoView, title, subtitle, version, new Separator(), desc, notice, new Separator(), closeBtn);
+        Button updateBtn = new Button("Check for Updates");
+        updateBtn.setOnAction(e -> org.originsd.oqteris.update.UpdateCheckerService.getInstance().checkForUpdatesAsync(this, true));
+        HBox buttonBar = new HBox(10, updateBtn, closeBtn);
+        buttonBar.setAlignment(Pos.CENTER);
+        root.getChildren().addAll(logoView, title, subtitle, version, new Separator(), desc, notice, repoLink, new Separator(), buttonBar);
 
         Scene scene = new Scene(root);
         ThemeManager.getInstance().applyTheme(scene);
