@@ -1,4 +1,4 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    Oqteris Aurora Design System - Common Global Styles
    ========================================================================== */
 
@@ -154,24 +154,13 @@
     -fx-padding: 0 1px 0 1px !important;
 }
 
-/* Override fxribbon hardcoded menu-button & button dimensions */
-.ribbon-group .button,
-.ribbon-group .toggle-button,
-.ribbon-group > .ribbon-group-content > .button,
-.ribbon-group > .ribbon-group-content > .toggle-button,
-.ribbon-group > .ribbon-group-content > .menu-button,
-.ribbon-group > .ribbon-group-content > .split-menu-button {
-    -fx-pref-width: -1;
-    -fx-max-width: 10000px;
-}
-
 /* Large vertical button: icon on top, label on bottom */
-.ribbon-large-btn {
+.ribbon-large-btn,
+.ribbon-group .ribbon-group-content .ribbon-large-btn,
+.ribbon-group > .ribbon-group-content > .ribbon-large-btn {
     -fx-min-height: 58px !important;
     -fx-pref-height: 60px !important;
     -fx-max-height: 62px !important;
-    -fx-pref-width: -1;
-    -fx-max-width: 10000px;
     -fx-padding: 3px 6px 3px 6px !important;
     -fx-font-size: 10.5px !important;
     -fx-alignment: center !important;
@@ -183,14 +172,14 @@
 
 .ribbon-large-menu-btn,
 .ribbon-large-split-btn,
-.ribbon-group > .ribbon-group-content > .menu-button,
-.ribbon-group > .ribbon-group-content > .split-menu-button {
+.ribbon-group .ribbon-group-content .ribbon-large-menu-btn,
+.ribbon-group .ribbon-group-content .ribbon-large-split-btn,
+.ribbon-group > .ribbon-group-content > .ribbon-large-menu-btn,
+.ribbon-group > .ribbon-group-content > .ribbon-large-split-btn {
     -fx-min-height: 58px !important;
     -fx-pref-height: 60px !important;
     -fx-max-height: 62px !important;
-    -fx-pref-width: -1;
-    -fx-max-width: 10000px;
-    -fx-padding: 3px 5px 3px 5px !important;
+    -fx-padding: 3px 4px 3px 4px !important;
     -fx-font-size: 10.5px !important;
     -fx-content-display: top !important;
     -fx-text-alignment: center !important;
@@ -198,10 +187,6 @@
     -fx-graphic-text-gap: 2px !important;
     -fx-background-radius: 4px !important;
 }
-    -fx-graphic-text-gap: 2px !important;
-    -fx-background-radius: 4px !important;
-}
-
 /* Reduced padding for arrow button and arrow inside menu buttons */
 .ribbon-large-menu-btn > .arrow-button,
 .ribbon-large-split-btn > .arrow-button,

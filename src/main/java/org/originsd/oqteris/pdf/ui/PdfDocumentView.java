@@ -27,6 +27,7 @@ import org.originsd.oqteris.ui.AsyncExecutor;
 import org.originsd.oqteris.ui.DocumentView;
 import org.originsd.oqteris.ui.icon.AppIcons;
 import org.originsd.oqteris.ui.ribbon.MainWindowHost;
+import org.originsd.oqteris.update.UpdateCheckerService;
 
 import java.io.File;
 import java.io.IOException;
@@ -756,12 +757,8 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     public void showUpdateNotice() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Check for Updates - Oqteris");
-        alert.setHeaderText("Software is Up to Date");
-        alert.setContentText("Oqteris version 1.0.0 is the latest available release.");
-        if (getScene() != null && getScene().getWindow() != null) alert.initOwner(getScene().getWindow());
-        alert.showAndWait();
+        Stage stage = (getScene() != null && getScene().getWindow() instanceof Stage s) ? s : null;
+        UpdateCheckerService.getInstance().checkForUpdatesAsync(stage, true);
     }
 
     public void showDisabledFeatureNotice(String title, String message) {
