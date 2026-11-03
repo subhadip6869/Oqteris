@@ -8,6 +8,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.Region;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.util.Duration;
 import org.kordamp.ikonli.Ikon;
@@ -22,6 +24,37 @@ public final class RibbonControlFactory {
     private RibbonControlFactory() {}
 
     /**
+     * Computes a robust minimum/preferred width for a large vertical ribbon button,
+     * ensuring adequate breathing room so that labels are never clipped or truncated with ellipsis.
+     */
+    public static double computeRequiredLargeButtonWidth(String text, boolean hasArrow) {
+        if (text == null || text.isBlank()) {
+            return hasArrow ? 56.0 : 50.0;
+        }
+        Font font = Font.font("Segoe UI", 11.0);
+        double maxLineWidth = 0.0;
+        String[] lines = text.split("\n");
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+                Text t = new Text(trimmed);
+                t.setFont(font);
+                double w = t.getLayoutBounds().getWidth();
+                if (w > maxLineWidth) {
+                    maxLineWidth = w;
+                }
+            }
+        }
+        // Insets: padding left(6) + right(6) = 12px; border: 2px
+        // Arrow button (if menu/split): 18px
+        // Generous buffer for font kerning, subpixel rendering and Windows display scaling: 18px
+        double extra = hasArrow ? 46.0 : 28.0;
+        double calculated = Math.ceil(maxLineWidth) + extra;
+        double minFloor = hasArrow ? 58.0 : 50.0;
+        return Math.max(minFloor, calculated);
+    }
+
+    /**
      * Creates a large vertical button with an icon on top and descriptive text below.
      */
     public static Button createLargeButton(String text, Ikon ikon, String tooltipText, EventHandler<ActionEvent> onAction) {
@@ -33,7 +66,9 @@ public final class RibbonControlFactory {
         btn.setTextAlignment(TextAlignment.CENTER);
         btn.setAlignment(Pos.CENTER);
         btn.setWrapText(false);
-        btn.setMinWidth(Region.USE_PREF_SIZE);
+        double reqW = computeRequiredLargeButtonWidth(text, false);
+        btn.setMinWidth(reqW);
+        btn.setPrefWidth(reqW);
         btn.getStyleClass().add("ribbon-large-btn");
         attachTooltip(btn, tooltipText);
         if (onAction != null) {
@@ -56,7 +91,9 @@ public final class RibbonControlFactory {
         btn.setTextAlignment(TextAlignment.CENTER);
         btn.setAlignment(Pos.CENTER);
         btn.setWrapText(false);
-        btn.setMinWidth(Region.USE_PREF_SIZE);
+        double reqW = computeRequiredLargeButtonWidth(text, false);
+        btn.setMinWidth(reqW);
+        btn.setPrefWidth(reqW);
         btn.getStyleClass().add("ribbon-large-btn");
         if (group != null) {
             btn.setToggleGroup(group);
@@ -164,15 +201,18 @@ public final class RibbonControlFactory {
             btn.setGraphic(AppIcons.of(ikon, large ? 20 : 16));
         }
         btn.setWrapText(false);
-        btn.setMinWidth(Region.USE_PREF_SIZE);
         if (large) {
             btn.setContentDisplay(ContentDisplay.TOP);
             btn.setTextAlignment(TextAlignment.CENTER);
             btn.setAlignment(Pos.CENTER);
+            double reqW = computeRequiredLargeButtonWidth(text, true);
+            btn.setMinWidth(reqW);
+            btn.setPrefWidth(reqW);
             btn.getStyleClass().add("ribbon-large-menu-btn");
         } else {
             btn.setContentDisplay(ContentDisplay.LEFT);
             btn.setAlignment(Pos.CENTER_LEFT);
+            btn.setMinWidth(Region.USE_PREF_SIZE);
             btn.getStyleClass().add("ribbon-menu-btn");
         }
         if (items != null) {
@@ -194,15 +234,18 @@ public final class RibbonControlFactory {
             btn.setGraphic(AppIcons.of(ikon, large ? 20 : 16));
         }
         btn.setWrapText(false);
-        btn.setMinWidth(Region.USE_PREF_SIZE);
         if (large) {
             btn.setContentDisplay(ContentDisplay.TOP);
             btn.setTextAlignment(TextAlignment.CENTER);
             btn.setAlignment(Pos.CENTER);
+            double reqW = computeRequiredLargeButtonWidth(text, true);
+            btn.setMinWidth(reqW);
+            btn.setPrefWidth(reqW);
             btn.getStyleClass().add("ribbon-large-split-btn");
         } else {
             btn.setContentDisplay(ContentDisplay.LEFT);
             btn.setAlignment(Pos.CENTER_LEFT);
+            btn.setMinWidth(Region.USE_PREF_SIZE);
             btn.getStyleClass().add("ribbon-split-btn");
         }
         if (defaultAction != null) {
@@ -224,11 +267,21 @@ public final class RibbonControlFactory {
             btn.setGraphic(AppIcons.of(ikon, large ? 20 : 16));
         }
         btn.setWrapText(false);
-        btn.setMinWidth(Region.USE_PREF_SIZE);
-        btn.setContentDisplay(large ? ContentDisplay.TOP : ContentDisplay.LEFT);
-        btn.setTextAlignment(large ? TextAlignment.CENTER : TextAlignment.LEFT);
-        btn.setAlignment(large ? Pos.CENTER : Pos.CENTER_LEFT);
-        btn.getStyleClass().add(large ? "ribbon-large-btn" : "ribbon-btn");
+        if (large) {
+            double reqW = computeRequiredLargeButtonWidth(text, false);
+            btn.setMinWidth(reqW);
+            btn.setPrefWidth(reqW);
+            btn.setContentDisplay(ContentDisplay.TOP);
+            btn.setTextAlignment(TextAlignment.CENTER);
+            btn.setAlignment(Pos.CENTER);
+            btn.getStyleClass().add("ribbon-large-btn");
+        } else {
+            btn.setMinWidth(Region.USE_PREF_SIZE);
+            btn.setContentDisplay(ContentDisplay.LEFT);
+            btn.setTextAlignment(TextAlignment.LEFT);
+            btn.setAlignment(Pos.CENTER_LEFT);
+            btn.getStyleClass().add("ribbon-btn");
+        }
         btn.setDisable(true);
         attachTooltip(btn, tooltipReason);
         return btn;
