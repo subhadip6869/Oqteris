@@ -26,6 +26,7 @@ import org.originsd.oqteris.platform.DefaultViewerServiceFactory;
 import org.originsd.oqteris.platform.PdfFileOpenHelper;
 import org.originsd.oqteris.platform.RegistrationResult;
 import org.originsd.oqteris.ui.icon.AppResources;
+import org.originsd.oqteris.ui.ribbon.MainWindowHost;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -36,7 +37,7 @@ import java.util.function.Function;
 /**
  * Primary application window for Oqteris PDF Reader and Editor.
  */
-public class MainWindow extends BorderPane {
+public class MainWindow extends BorderPane implements MainWindowHost {
     private final Stage primaryStage;
     private final TabPane documentTabPane = new TabPane();
     private final VBox topContainer = new VBox();
@@ -82,14 +83,14 @@ public class MainWindow extends BorderPane {
             primaryStage.getIcons().add(appIcon);
         }
 
-        // Top Area: Menu Bar + Quick Access / Ribbon
-        MenuBar menuBar = createMenuBar();
+        // Top Area: Dedicated Ribbon Container (MenuBar eliminated in favour of professional desktop ribbon)
         ribbonContainer.getStyleClass().add("ribbon-bar");
         ribbonContainer.setAlignment(Pos.CENTER_LEFT);
         ribbonContainer.setPadding(Insets.EMPTY);
 
-        topContainer.getChildren().addAll(menuBar, ribbonContainer);
+        topContainer.getChildren().setAll(ribbonContainer);
         setTop(topContainer);
+        setupSceneAccelerators();
 
         // Center Area: Welcome Screen or TabPane
         documentTabPane.getStyleClass().add("document-tab-pane");
@@ -114,146 +115,123 @@ public class MainWindow extends BorderPane {
         setBottom(statusBar);
     }
 
-    private MenuBar createMenuBar() {
-        MenuBar menuBar = new MenuBar();
-
-        // --- File Menu ---
-        Menu fileMenu = new Menu("File");
-
-        MenuItem openItem = new MenuItem("Open PDF...");
-        openItem.setAccelerator(new KeyCodeCombination(KeyCode.O, KeyCombination.CONTROL_DOWN));
-        openItem.setOnAction(e -> showOpenDialog());
-
-        MenuItem saveItem = new MenuItem("Save");
-        saveItem.setAccelerator(new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN));
-        saveItem.setOnAction(e -> saveActiveDocument(false));
-
-        MenuItem saveAsItem = new MenuItem("Save As...");
-        saveAsItem.setAccelerator(new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN));
-        saveAsItem.setOnAction(e -> saveActiveDocument(true));
-
-        MenuItem printItem = new MenuItem("Print...");
-        printItem.setAccelerator(new KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN));
-        printItem.setOnAction(e -> {
-            DocumentView view = getActiveView();
-            if (view != null) view.print();
-        });
-
-        MenuItem closeItem = new MenuItem("Close Document");
-        closeItem.setAccelerator(new KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN));
-        closeItem.setOnAction(e -> closeActiveTab());
-
-        MenuItem settingsItem = new MenuItem("Settings...");
-        settingsItem.setOnAction(e -> new SettingsDialog(primaryStage).showAndWait());
-
-        MenuItem exitItem = new MenuItem("Exit");
-        exitItem.setOnAction(e -> primaryStage.close());
-
-        fileMenu.getItems().addAll(openItem, new SeparatorMenuItem(),
-                saveItem, saveAsItem, new SeparatorMenuItem(),
-                printItem, closeItem, new SeparatorMenuItem(),
-                settingsItem, exitItem);
-
-        // --- Edit Menu ---
-        Menu editMenu = new Menu("Edit");
-        MenuItem undoItem = new MenuItem("Undo");
-        undoItem.setAccelerator(new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN));
-        undoItem.setOnAction(e -> {
-            DocumentView v = getActiveView();
-            if (v != null && v.getDocument().getUndoRedoManager().canUndo()) {
-                v.getDocument().getUndoRedoManager().undo();
+    private void setupSceneAccelerators() {
+        sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                // Ctrl+O: Open PDF
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.O, KeyCombination.CONTROL_DOWN),
+                        this::showOpenDialog
+                );
+                // Ctrl+S: Save
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN),
+                        () -> saveActiveDocument(false)
+                );
+                // Ctrl+Shift+S: Save As
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN),
+                        () -> saveActiveDocument(true)
+                );
+                // Ctrl+P: Print
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            DocumentView view = getActiveView();
+                            if (view != null) view.print();
+                        }
+                );
+                // Ctrl+W: Close Tab
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN),
+                        this::closeActiveTab
+                );
+                // Ctrl+Z: Undo
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            DocumentView v = getActiveView();
+                            if (v != null && v.getDocument().getUndoRedoManager().canUndo()) {
+                                v.getDocument().getUndoRedoManager().undo();
+                            }
+                        }
+                );
+                // Ctrl+Y: Redo
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.Y, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            DocumentView v = getActiveView();
+                            if (v != null && v.getDocument().getUndoRedoManager().canRedo()) {
+                                v.getDocument().getUndoRedoManager().redo();
+                            }
+                        }
+                );
+                // Ctrl+X: Cut
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            DocumentView v = getActiveView();
+                            if (v != null) v.cut();
+                        }
+                );
+                // Ctrl+C: Copy
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            DocumentView v = getActiveView();
+                            if (v != null) v.copy();
+                        }
+                );
+                // Ctrl+V: Paste
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.V, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            DocumentView v = getActiveView();
+                            if (v != null) v.paste();
+                        }
+                );
+                // Ctrl+A: Select All
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.A, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            DocumentView v = getActiveView();
+                            if (v != null) v.selectAll();
+                        }
+                );
+                // Ctrl+F: Find
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            DocumentView v = getActiveView();
+                            if (v != null) v.showSearch();
+                        }
+                );
+                // Ctrl+Plus / Ctrl+=: Zoom In
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.EQUALS, KeyCombination.CONTROL_DOWN),
+                        () -> setZoom(zoomSlider.getValue() + 15)
+                );
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.PLUS, KeyCombination.CONTROL_DOWN),
+                        () -> setZoom(zoomSlider.getValue() + 15)
+                );
+                // Ctrl+Minus: Zoom Out
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.MINUS, KeyCombination.CONTROL_DOWN),
+                        () -> setZoom(zoomSlider.getValue() - 15)
+                );
+                // Ctrl+0: Actual Size
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.DIGIT0, KeyCombination.CONTROL_DOWN),
+                        () -> setZoom(100)
+                );
+                // F11: Full Screen
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.F11),
+                        this::toggleFullScreen
+                );
             }
         });
-
-        MenuItem redoItem = new MenuItem("Redo");
-        redoItem.setAccelerator(new KeyCodeCombination(KeyCode.Y, KeyCombination.CONTROL_DOWN));
-        redoItem.setOnAction(e -> {
-            DocumentView v = getActiveView();
-            if (v != null && v.getDocument().getUndoRedoManager().canRedo()) {
-                v.getDocument().getUndoRedoManager().redo();
-            }
-        });
-
-        MenuItem cutItem = new MenuItem("Cut");
-        cutItem.setAccelerator(new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN));
-        cutItem.setOnAction(e -> {
-            DocumentView v = getActiveView();
-            if (v != null) v.cut();
-        });
-
-        MenuItem copyItem = new MenuItem("Copy");
-        copyItem.setAccelerator(new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN));
-        copyItem.setOnAction(e -> {
-            DocumentView v = getActiveView();
-            if (v != null) v.copy();
-        });
-
-        MenuItem pasteItem = new MenuItem("Paste");
-        pasteItem.setAccelerator(new KeyCodeCombination(KeyCode.V, KeyCombination.CONTROL_DOWN));
-        pasteItem.setOnAction(e -> {
-            DocumentView v = getActiveView();
-            if (v != null) v.paste();
-        });
-
-        MenuItem selectAllItem = new MenuItem("Select All");
-        selectAllItem.setAccelerator(new KeyCodeCombination(KeyCode.A, KeyCombination.CONTROL_DOWN));
-        selectAllItem.setOnAction(e -> {
-            DocumentView v = getActiveView();
-            if (v != null) v.selectAll();
-        });
-
-        MenuItem findItem = new MenuItem("Find...");
-        findItem.setAccelerator(new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN));
-        findItem.setOnAction(e -> {
-            DocumentView v = getActiveView();
-            if (v != null) v.showSearch();
-        });
-
-        editMenu.getItems().addAll(undoItem, redoItem, new SeparatorMenuItem(),
-                cutItem, copyItem, pasteItem, new SeparatorMenuItem(),
-                selectAllItem, findItem);
-
-        // --- View Menu ---
-        Menu viewMenu = new Menu("View");
-        MenuItem zoomIn = new MenuItem("Zoom In");
-        zoomIn.setAccelerator(new KeyCodeCombination(KeyCode.PLUS, KeyCombination.CONTROL_DOWN));
-        zoomIn.setOnAction(e -> setZoom(zoomSlider.getValue() + 15));
-
-        MenuItem zoomOut = new MenuItem("Zoom Out");
-        zoomOut.setAccelerator(new KeyCodeCombination(KeyCode.MINUS, KeyCombination.CONTROL_DOWN));
-        zoomOut.setOnAction(e -> setZoom(zoomSlider.getValue() - 15));
-
-        MenuItem zoomReset = new MenuItem("Actual Size (100%)");
-        zoomReset.setAccelerator(new KeyCodeCombination(KeyCode.DIGIT0, KeyCombination.CONTROL_DOWN));
-        zoomReset.setOnAction(e -> setZoom(100));
-
-        CheckMenuItem toggleDark = new CheckMenuItem("Dark Theme");
-        toggleDark.selectedProperty().bindBidirectional(ThemeManager.getInstance().darkThemeProperty());
-        toggleDark.setOnAction(e -> {
-            Scene s = primaryStage.getScene();
-            if (s != null) ThemeManager.getInstance().applyTheme(s);
-        });
-
-        viewMenu.getItems().addAll(zoomIn, zoomOut, zoomReset, new SeparatorMenuItem(), toggleDark);
-
-        // --- Security & Tools Menu ---
-        Menu toolsMenu = new Menu("Tools");
-        MenuItem certManager = new MenuItem("Certificate Trust Manager...");
-        certManager.setOnAction(e -> new CertificateManagerDialog(primaryStage).showAndWait());
-
-        MenuItem defaultViewerItem = new MenuItem("Set Oqteris as Default PDF Viewer...");
-        defaultViewerItem.setOnAction(e -> handleSetDefaultViewer());
-
-        toolsMenu.getItems().addAll(certManager, defaultViewerItem);
-
-        // --- Help Menu ---
-        Menu helpMenu = new Menu("Help");
-        MenuItem aboutItem = new MenuItem("About Oqteris...");
-        aboutItem.setOnAction(e -> new AboutDialog(primaryStage).showAndWait());
-        helpMenu.getItems().addAll(aboutItem);
-
-        menuBar.getMenus().addAll(fileMenu, editMenu, viewMenu, toolsMenu, helpMenu);
-        return menuBar;
     }
 
     private void handleSetDefaultViewer() {
@@ -458,6 +436,10 @@ public class MainWindow extends BorderPane {
         if (view == null) return;
         activeViews.add(view);
 
+        if (view instanceof org.originsd.oqteris.pdf.ui.PdfDocumentView pdfView) {
+            pdfView.setWindowHost(this);
+        }
+
         Tab tab = new Tab();
         tab.setUserData(view);
         updateTabTitle(tab, view.getDocument());
@@ -628,5 +610,43 @@ public class MainWindow extends BorderPane {
             list.add(v.getDocument());
         }
         return list;
+    }
+
+    @Override
+    public void printActiveDocument() {
+        DocumentView view = getActiveView();
+        if (view != null) {
+            view.print();
+        }
+    }
+
+    @Override
+    public void closeActiveDocument() {
+        closeActiveTab();
+    }
+
+    @Override
+    public void showSettings() {
+        new SettingsDialog(primaryStage).showAndWait();
+    }
+
+    @Override
+    public void showAbout() {
+        new AboutDialog(primaryStage).showAndWait();
+    }
+
+    @Override
+    public void showCertificateManager() {
+        new CertificateManagerDialog(primaryStage).showAndWait();
+    }
+
+    @Override
+    public void setDefaultViewer() {
+        handleSetDefaultViewer();
+    }
+
+    @Override
+    public void toggleFullScreen() {
+        primaryStage.setFullScreen(!primaryStage.isFullScreen());
     }
 }

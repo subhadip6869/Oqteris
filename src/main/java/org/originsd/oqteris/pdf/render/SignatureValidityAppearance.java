@@ -27,11 +27,11 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Reproduces what Adobe Acrobat / Reader and Foxit do for "layered" signature appearances.
+ * Reproduces dynamic appearance generation for "layered" signature appearances.
  *
- * <p>Many signed PDFs (iText / OpenPDF "Acro6 layers", Acrobat 5 style) store the signature
+ * <p>Many signed PDFs store the signature
  * appearance as five form XObjects n0..n4. The file only contains ONE stored state (usually a yellow
- * question mark in n1 and the text "Signature Not Verified" in n4). Adobe ignores that stored state
+ * question mark in n1 and the text "Signature Not Verified" in n4). Compliant viewers ignore that stored state
  * at display time: after validating the signature it redraws
  * <ul>
  *   <li>n1 - validity icon for the valid / unknown state (green tick, or question mark)</li>
@@ -213,7 +213,7 @@ public final class SignatureValidityAppearance {
         return new double[]{b.getLowerLeftX(), b.getLowerLeftY(), b.getWidth(), b.getHeight()};
     }
 
-    /** Green tick with a dark drop shadow, like Acrobat's "Signature valid" mark. */
+    /** Green tick with a dark drop shadow for the "Signature valid" mark. */
     private static String tick(double[] b) {
         double s = Math.min(b[2], b[3]);
         double ox = b[0] + (b[2] - s) / 2.0;
@@ -227,7 +227,7 @@ public final class SignatureValidityAppearance {
         return sb.append("Q\n").toString();
     }
 
-    /** Red cross with a dark drop shadow, like Acrobat's "Signature invalid" mark. */
+    /** Red cross with a dark drop shadow for the "Signature invalid" mark. */
     private static String cross(double[] b) {
         double s = Math.min(b[2], b[3]);
         double ox = b[0] + (b[2] - s) / 2.0;

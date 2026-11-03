@@ -86,7 +86,7 @@ Oqteris verifies **all** embedded signatures in a PDF document, not just the fir
 
 ### Visual Signature Appearance Rewriting
 
-Many signed PDFs (produced by iText, OpenPDF, or Acrobat 5/6-layer style) embed a layered appearance with XObjects named `n0`–`n4`. By default, PDF viewers such as PDFBox display the stored (pre-verification) state — typically a yellow question mark, even for trusted signatures.
+Many signed PDFs (produced by iText, OpenPDF, or standard 5/6-layer appearance style) embed a layered appearance with XObjects named `n0`–`n4`. By default, PDF viewers such as PDFBox display the stored (pre-verification) state — typically a yellow question mark, even for trusted signatures.
 
 Oqteris implements `SignatureValidityAppearance`, which rewrites these layers **in memory** (never touching the file on disk) to show the correct verification result:
 - **`n1` layer**: Green tick (trusted), yellow "?" (untrusted), or blank (invalid).

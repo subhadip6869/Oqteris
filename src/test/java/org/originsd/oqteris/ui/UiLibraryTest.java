@@ -67,10 +67,98 @@ public class UiLibraryTest {
                 assertNotNull(pdfView.getRibbonToolbar());
                 assertInstanceOf(Ribbon.class, pdfView.getRibbonToolbar());
                 Ribbon pdfRibbon = (Ribbon) pdfView.getRibbonToolbar();
-                assertEquals(1, pdfRibbon.getTabs().size());
-                assertEquals("Document", pdfRibbon.getTabs().get(0).getText());
+
+                // Professional desktop ribbon structure: 9 core tabs + contextual signature tab
+                assertTrue(pdfRibbon.getTabs().size() >= 9, "Should have at least 9 core ribbon tabs");
+
+                assertEquals("Home", pdfRibbon.getTabs().get(0).getText());
+                assertEquals("View", pdfRibbon.getTabs().get(1).getText());
+                assertEquals("Edit", pdfRibbon.getTabs().get(2).getText());
+                assertEquals("Comment", pdfRibbon.getTabs().get(3).getText());
+                assertEquals("Organize", pdfRibbon.getTabs().get(4).getText());
+                assertEquals("Fill & Sign", pdfRibbon.getTabs().get(5).getText());
+                assertEquals("Protect", pdfRibbon.getTabs().get(6).getText());
+                assertEquals("Share", pdfRibbon.getTabs().get(7).getText());
+                assertEquals("Help", pdfRibbon.getTabs().get(8).getText());
+
+                // Home tab contains groups for File, Clipboard, Tools, Navigation, Zoom, Page Tools, Find, Security
+                RibbonTab homeTab = pdfRibbon.getTabs().get(0);
+                assertFalse(homeTab.getRibbonGroups().isEmpty());
+                assertTrue(homeTab.getRibbonGroups().stream().anyMatch(g -> "Navigation".equals(g.getTitle())));
+                assertTrue(homeTab.getRibbonGroups().stream().anyMatch(g -> "Zoom".equals(g.getTitle())));
+                assertTrue(homeTab.getRibbonGroups().stream().anyMatch(g -> "File".equals(g.getTitle())));
+
+                // For signed PDF, contextual signatures tab must be present
+                boolean hasContextualSigTab = pdfRibbon.getTabs().stream().anyMatch(t -> t.getText().startsWith("Signatures"));
+                assertTrue(hasContextualSigTab, "Signed PDF should display contextual signatures tab");
+
+                // Verify View tab has Theme group with Dark Theme toggle
+                RibbonTab viewTab = pdfRibbon.getTabs().get(1);
+                assertEquals("View", viewTab.getText());
+                assertTrue(viewTab.getRibbonGroups().stream().anyMatch(g -> "Theme".equals(g.getTitle())),
+                        "View tab should contain Theme ribbon group");
             } catch (Exception e) {
                 fail("Failed to open PdfDocumentView: " + e.getMessage());
+            }
+        }
+
+        // Test unsigned document (sample.pdf)
+        File unsignedPdf = new File("samples", "sample.pdf");
+        if (unsignedPdf.exists()) {
+            try {
+                org.originsd.oqteris.pdf.ui.PdfDocumentView pdfView = new org.originsd.oqteris.pdf.ui.PdfDocumentView(unsignedPdf);
+                Ribbon pdfRibbon = (Ribbon) pdfView.getRibbonToolbar();
+                assertEquals(9, pdfRibbon.getTabs().size(), "Unsigned PDF should have exactly 9 core tabs (no contextual signature tab)");
+            } catch (Exception e) {
+                fail("Failed to open unsigned PdfDocumentView: " + e.getMessage());
+            }
+        }
+    }
+
+    @Test
+    public void testRibbonControlFactory() throws Exception {
+        javafx.scene.control.Button largeBtn = org.originsd.oqteris.ui.ribbon.RibbonControlFactory.createLargeButton(
+                "Test", MaterialDesignM.MAGNIFY, "Tooltip", null
+        );
+        assertNotNull(largeBtn);
+        assertTrue(largeBtn.getStyleClass().contains("ribbon-large-btn"));
+        assertEquals("Test", largeBtn.getText());
+        assertNotNull(largeBtn.getTooltip());
+
+        javafx.scene.control.Button smallBtn = org.originsd.oqteris.ui.ribbon.RibbonControlFactory.createSmallButton(
+                "Save", MaterialDesignC.CONTENT_SAVE_OUTLINE, "Save Tooltip", null
+        );
+        assertNotNull(smallBtn);
+        assertTrue(smallBtn.getStyleClass().contains("ribbon-btn"));
+
+        com.pixelduke.control.ribbon.Column col = org.originsd.oqteris.ui.ribbon.RibbonControlFactory.createColumn(largeBtn, smallBtn);
+        assertNotNull(col);
+        assertEquals(2, col.getChildren().size());
+        File pdfFile = new File("samples", "sample_signed.pdf");
+        org.originsd.oqteris.pdf.ui.PdfDocumentView pdfView = new org.originsd.oqteris.pdf.ui.PdfDocumentView(pdfFile);
+        Ribbon r = (Ribbon) pdfView.getRibbonToolbar();
+        javafx.scene.Scene scene = new javafx.scene.Scene(r, 1200, 200);
+        scene.getStylesheets().addAll(
+                getClass().getResource("/styles/common.css").toExternalForm(),
+                getClass().getResource("/styles/theme-light.css").toExternalForm()
+        );
+        r.applyCss();
+        r.layout();
+        for (RibbonTab tabObj : r.getTabs()) {
+            for (RibbonGroup g : tabObj.getRibbonGroups()) {
+                for (javafx.scene.Node n : g.getNodes()) {
+                    if (n instanceof javafx.scene.control.ButtonBase b) {
+                        assertTrue(b.getWidth() >= Math.floor(b.prefWidth(-1)),
+                                "Button '" + b.getText() + "' width (" + b.getWidth() + ") should be >= prefWidth (" + b.prefWidth(-1) + ")");
+                    } else if (n instanceof com.pixelduke.control.ribbon.Column c) {
+                        for (javafx.scene.Node cn : c.getChildren()) {
+                            if (cn instanceof javafx.scene.control.ButtonBase b) {
+                                assertTrue(b.getWidth() >= Math.floor(b.prefWidth(-1)),
+                                        "Col Button '" + b.getText() + "' width (" + b.getWidth() + ") should be >= prefWidth (" + b.prefWidth(-1) + ")");
+                            }
+                        }
+                    }
+                }
             }
         }
     }

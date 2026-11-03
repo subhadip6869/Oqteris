@@ -91,7 +91,7 @@ This ensures visual fidelity while never modifying the PDF bytes on disk.
 ## 4. Security & Cryptography Subsystem (`org.originsd.oqteris.crypto`)
 
 ### 4.1 Digital Signature Verification (`PdfSignatureVerifier`)
-Implements an uncompromising four-stage verification pipeline for Adobe PPKLite / CMS / PKCS#7 signatures:
+Implements an uncompromising four-stage verification pipeline for PPKLite / CMS / PKCS#7 detached signatures:
 
 1. **Byte-Range Tamper Detection**:
    - Parses the `/ByteRange [offset0 length0 offset1 length1]` array.
@@ -195,3 +195,46 @@ classDiagram
 | **Cryptographic Signature Verification** | Background Worker Thread | `PdfSignatureVerifier.verifySignatures()` |
 | **Single-Instance IPC Monitoring** | Background Daemon Worker | `SingleInstanceManager` executor |
 | **Autosave Snapshots** | Background Daemon Timer | `AutosaveService` |
+
+---
+
+## 7. Desktop Ribbon Interface Subsystem (`org.originsd.oqteris.ui.ribbon` & `org.originsd.oqteris.pdf.ui.ribbon`)
+
+### 7.1 Architecture & Component Hierarchy
+
+The ribbon follows a 3-level desktop visual hierarchy designed for professional desktop PDF workflows:
+1. **Level 1 (Top)**: Tab strip for task-oriented document workflow switching (`Home`, `View`, `Edit`, `Comment`, `Organize`, `Fill & Sign`, `Protect`, `Share`, `Help`, plus contextual tabs).
+2. **Level 2 (Middle)**: Command group body housing large vertical buttons (`.ribbon-large-btn`), compact action buttons (`.ribbon-btn`), square icon buttons (`.ribbon-icon-btn`), stacked two-row vertical columns (`Column`), split buttons (`SplitMenuButton`), and toggle groups.
+3. **Level 3 (Bottom)**: Crisp group captions (`.title`) identifying each functional cluster separated by subtle vertical dividing borders.
+
+```mermaid
+graph TD
+    PdfDocumentView --> PdfRibbonBuilder
+    PdfRibbonBuilder --> RibbonControlFactory
+    PdfRibbonBuilder --> HomeTab[Home Tab: File, Clipboard, Tools, Navigate, Zoom, Page Tools, Find, Security]
+    PdfRibbonBuilder --> ViewTab[View Tab: Page Display, Window, Panels, Zoom, Search]
+    PdfRibbonBuilder --> EditTab[Edit Tab: Selection, Content Editing, Properties]
+    PdfRibbonBuilder --> CommentTab[Comment Tab: Text Markup, Notes, Drawing, Stamps, Review]
+    PdfRibbonBuilder --> OrganizeTab[Organize Tab: Rotate Pages, Page Operations, Structure]
+    PdfRibbonBuilder --> FillSignTab[Fill & Sign Tab: Forms, Visual Signature, Digital Signatures]
+    PdfRibbonBuilder --> ProtectTab[Protect Tab: Document Security, Certificates & Trust]
+    PdfRibbonBuilder --> ShareTab[Share Tab: Share & Send, Output]
+    PdfRibbonBuilder --> HelpTab[Help Tab: Help & Support]
+    PdfRibbonBuilder --> ContextualSigTab[Contextual Tab: Digital Signatures - Conditional on signed PDF]
+```
+
+### 7.2 Tab Structure & Capabilities
+- **Home**: Document essentials (Open, Save, Save As, Print, Undo, Redo, Text Selection tool, Hand/Pan tool, First/Prev/Next/Last page jump, 100%/Fit Width/Fit Page/Presets, Rotate CW/CCW, Sidebar toggle, Find text).
+- **View**: Continuous vs Single page toggle, Full Screen mode (F11), direct sidebar drawer switches (Thumbnails, Bookmarks, Signatures).
+- **Edit**: Text selection, page text copying, select all, document properties inspector, clear tooltips on advanced stream editing.
+- **Comment**: Markup and review tools (Highlight, Underline, Sticky Note, Text Box annotation, Freehand Pencil, Shape insertion, Standard Stamp presets: APPROVED, CONFIDENTIAL, DRAFT, FINAL, VOID).
+- **Organize**: Page rotation (90° CW, 90° CCW, 180°), page deletion (`PDDocument.removePage`), page dimension and media box inspection.
+- **Fill & Sign**: Form filling controls, clear form fields, visual signatures & initials vs cryptographic digital signature validation and certificate trust store inspection.
+- **Protect**: Password encryption status, document permissions (printing, copying, annotations), Certificate Trust Manager, cryptographic digest inspection.
+- **Share**: Email PDF, Copy document path to clipboard, Open containing folder in OS explorer, system print dialog, Default PDF Viewer configuration.
+- **Help**: Documentation guide, Keyboard shortcuts cheatsheet, Settings dialog, Check for updates, About Oqteris dialog.
+- **Contextual Signatures Tab**: Dynamically displayed when signed documents are opened, featuring live certificate trust status badges, signer details, and one-click trust store management.
+
+### 7.3 Responsiveness & Theming
+- **Responsive Layout**: Every ribbon tab content container is wrapped in a transparent horizontal `ScrollPane` with auto-adjusting horizontal scrollbars, preventing clipping and control crowding on compact displays.
+- **Distinctive Aurora Blue/Cyan Palette**: Active tabs feature a vibrant top accent bar (`#0284c7` in light mode, `#38bdf8` in dark mode) paired with clean slate neutrals (`#f8fafc` / `#0f172a`), refined hover feedback (`#f0f9ff` / `#0c4a6e`), and bold toggle button active states (`#e0f2fe` / `#075985`).

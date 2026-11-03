@@ -15,7 +15,7 @@
 ### Core Value Proposition
 
 - **Dedicated PDF Experience**: Exclusively focused on PDF workflows with continuous scrolling, page thumbnails, bookmarks outline, full-text search, and page rotation.
-- **Enterprise-Grade Digital Signature Verification**: Built-in verification for Adobe PPKLite / CMS / PKCS#7 detached digital signatures with full byte-range tamper detection.
+- **Enterprise-Grade Digital Signature Verification**: Built-in verification for PPKLite / CMS / PKCS#7 detached digital signatures with full byte-range tamper detection.
 - **Built-in Trust Store & Certificate Manager**: Application-managed X.509 PKCS#12 certificate trust store with granular trust levels (Trusted Root, Trusted Signer, Blacklisted).
 - **Deep Operating System Integration**:
   - Can register as the system default PDF viewer on Windows, Linux, and macOS.
@@ -55,26 +55,46 @@ Oqteris provides two distinct, purpose-built icons:
 ## 4. Key Features
 
 ```
-+------------------------------------------------------------------------------------+
-|                                    OQTERIS                                         |
-|   [File] [Edit] [View] [Tools] [Help]                           [Light/Dark Theme] |
-+------------------------------------------------------------------------------------+
-|  [Tab 1: Contract_Signed.pdf]  |  [Tab 2: Technical_Manual.pdf]                    |
-+------------------------------------------------------------------------------------+
-| [Thumbnails] |                                                                     |
-| [Bookmarks ] |        Page 1                                                       |
-| [Signatures] |   +-------------------------------------------------------------+   |
-|              |   |                                                             |   |
-|   ✓ Trusted  |   |             OQTERIS SPECIFICATION DOCUMENT                  |   |
-|   John Doe   |   |                                                             |   |
-|   Valid CMS  |   |   Continuous high-fidelity page rendering with PDFBox 3.x   |   |
-|              |   |                                                             |   |
-|              |   |   [✓ Valid Signature: CN=Certified Signer]                  |   |
-|              |   +-------------------------------------------------------------+   |
-+------------------------------------------------------------------------------------+
-| Ready | Page 1 of 12 | Zoom: 100% | Trust Store Active                             |
-+------------------------------------------------------------------------------------+
++---------------------------------------------------------------------------------------------------------+
+| [File] [Edit] [View] [Tools] [Help]                                                  [Light/Dark Theme] |
++---------------------------------------------------------------------------------------------------------+
+| [Tab: Contract_Signed.pdf]  |  [Tab: Technical_Manual.pdf]                                              |
++---------------------------------------------------------------------------------------------------------+
+| HOME | VIEW | EDIT | COMMENT | ORGANIZE | FILL & SIGN | PROTECT | SHARE | HELP | [SIGNATURES (1)]         |
++---------------------------------------------------------------------------------------------------------+
+| [Open] [Save]  [Undo] [Redo] | [Select] [Hand] | [|<] [<] [ 1 / 12 ] [>] [>|] | [100%] [Fit] | [Rotate] |
+|  FILE    |     CLIPBOARD     |      TOOLS      |          NAVIGATION          |     ZOOM     |  PAGES   |
++---------------------------------------------------------------------------------------------------------+
+| [Thumbnails] |                                                                                          |
+| [Bookmarks ] |        Page 1                                                                            |
+| [Signatures] |   +----------------------------------------------------------------------------------+   |
+|              |   |                                                                                  |   |
+|   ✓ Trusted  |   |                   OQTERIS SPECIFICATION DOCUMENT                                 |   |
+|   John Doe   |   |                                                                                  |   |
+|   Valid CMS  |   |   Continuous high-fidelity page rendering with PDFBox 3.x                        |   |
+|              |   |                                                                                  |   |
+|              |   |   [✓ Valid Signature: CN=Certified Signer]                                       |   |
+|              |   +----------------------------------------------------------------------------------+   |
++---------------------------------------------------------------------------------------------------------+
+| Ready | Page 1 of 12 | Zoom: 100% | Trust Store Active                                                  |
++---------------------------------------------------------------------------------------------------------+
 ```
+
+### Professional Desktop Ribbon Interface
+- **3-Level Desktop Hierarchy**: Top tab strip, middle command group body, and crisp bottom group captions.
+- **Logically Grouped Ribbon Tabs**:
+  - **Home**: Quick document operations, clipboard, text selection, hand/pan tool, page jumps, zoom, rotation, search.
+  - **View**: Continuous vs single-page reading, full-screen mode (F11), thumbnails, bookmarks, signatures drawer switches.
+  - **Edit**: Text selection, page text copying, select all, document properties inspector.
+  - **Comment**: Annotation markup tools including Highlights, Underlines, Sticky Notes, Text Boxes, Pencil, and Standard Stamp presets (APPROVED, CONFIDENTIAL, DRAFT, FINAL, VOID).
+  - **Organize**: Page rotation (90&deg; CW, 90&deg; CCW, 180&deg;), page deletion, and page dimension inspection.
+  - **Fill & Sign**: Form field filling, clear form fields, visual signatures & initials, and digital certificate validation.
+  - **Protect**: Password encryption detection, document permissions, and Certificate Trust Store manager.
+  - **Share**: Email PDF, copy document path, open containing folder in system explorer, print, and default viewer configuration.
+  - **Help**: Documentation guide, keyboard shortcuts cheatsheet, settings dialog, and about dialog.
+- **Contextual Tabs**: Conditionally presents the **Digital Signatures** contextual tab with direct certificate trust verification when signed documents are opened.
+- **Responsive Layout**: Horizontal scroll handling ensures seamless operation across different window widths and screen resolutions without control clipping.
+- **Oqteris Aurora Design System**: Refined blue/cyan aesthetics with clear active indicators in both light and dark desktop themes.
 
 ### High-Fidelity PDF Viewing
 - Continuous vertical page rendering with smooth scrolling.
@@ -86,7 +106,7 @@ Oqteris provides two distinct, purpose-built icons:
 - Tabbed workspace allowing multiple PDF files to be open simultaneously.
 
 ### Digital Signature Verification & Trust Center
-- Validates embedded Adobe PKCS#7 / CMS detached signatures (`/ByteRange`, `/Contents`).
+- Validates embedded PKCS#7 / CMS detached signatures (`/ByteRange`, `/Contents`).
 - Full byte-range verification detecting any appended or modified bytes after signing.
 - Live visual signature appearance rewriting updating in-document signature stamps to reflect real cryptographic validity.
 - Built-in X.509 certificate manager allowing users to import root and intermediate certificates to establish chain-of-trust.
