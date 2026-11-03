@@ -3,21 +3,11 @@ package org.originsd.oqteris.samples;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.Test;
-import org.originsd.oqteris.calc.io.XlsxImporter;
-import org.originsd.oqteris.calc.model.Cell;
-import org.originsd.oqteris.calc.model.Workbook;
-import org.originsd.oqteris.calc.model.Worksheet;
 import org.originsd.oqteris.crypto.signature.PdfSignatureInfo;
 import org.originsd.oqteris.crypto.signature.PdfSignatureVerifier;
 import org.originsd.oqteris.crypto.signature.SignatureVerificationStatus;
 import org.originsd.oqteris.crypto.trust.TrustLevel;
 import org.originsd.oqteris.crypto.trust.TrustStoreManager;
-import org.originsd.oqteris.presentation.io.PptxImporter;
-import org.originsd.oqteris.presentation.model.Presentation;
-import org.originsd.oqteris.writer.io.DocxImporter;
-import org.originsd.oqteris.writer.layout.LayoutEngine;
-import org.originsd.oqteris.writer.layout.LayoutPage;
-import org.originsd.oqteris.writer.model.WriterDocument;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,66 +18,10 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Automated acceptance test verifying the generated sample documents
- * can be loaded, verified, laid out, and calculated by Oqteris engines.
+ * Automated acceptance test verifying the sample signed PDF document
+ * can be loaded, verified, and validated with the trust store.
  */
 public class SampleFilesVerificationTest {
-
-    @Test
-    public void testVerifySampleDocx() throws Exception {
-        File docxFile = new File("samples", "sample_document.docx");
-        assertTrue(docxFile.exists(), "sample_document.docx must exist");
-
-        DocxImporter importer = new DocxImporter();
-        WriterDocument doc = importer.importDocument(docxFile);
-
-        assertNotNull(doc);
-        assertFalse(doc.getElements().isEmpty());
-
-        List<LayoutPage> pages = LayoutEngine.layout(doc);
-        assertFalse(pages.isEmpty(), "Document must paginate into at least 1 page");
-        assertTrue(pages.get(0).getLines().size() > 5, "First page must contain laid out text lines");
-    }
-
-    @Test
-    public void testVerifySampleXlsx() throws Exception {
-        File xlsxFile = new File("samples", "sample_sheet.xlsx");
-        assertTrue(xlsxFile.exists(), "sample_sheet.xlsx must exist");
-
-        XlsxImporter importer = new XlsxImporter();
-        Workbook wb = importer.importDocument(xlsxFile);
-
-        assertNotNull(wb);
-        assertTrue(wb.getSheetCount() >= 1);
-
-        Worksheet sheet = wb.getSheet(0);
-        assertNotNull(sheet);
-
-        // Header check
-        Cell deptHeader = sheet.getCell(2, 0);
-        assertNotNull(deptHeader);
-        assertEquals("Department", deptHeader.getRawValue());
-        assertNotNull(deptHeader.getStyle().getFillColor(), "Header cell must retain imported background fill color");
-        assertTrue(deptHeader.getStyle().isBold(), "Header cell must retain bold font style");
-
-        // Formula check
-        Cell engineeringVariance = sheet.getCell(3, 3);
-        assertNotNull(engineeringVariance);
-        assertTrue(engineeringVariance.getFormula() != null && engineeringVariance.getFormula().contains("-"));
-    }
-
-    @Test
-    public void testVerifySamplePptx() throws Exception {
-        File pptxFile = new File("samples", "sample_presentation.pptx");
-        assertTrue(pptxFile.exists(), "sample_presentation.pptx must exist");
-
-        PptxImporter importer = new PptxImporter();
-        Presentation pres = importer.importDocument(pptxFile);
-
-        assertNotNull(pres);
-        assertEquals(3, pres.getSlideCount(), "Sample presentation must have 3 slides");
-        assertFalse(pres.getSlide(0).getShapes().isEmpty(), "Title slide must have shapes");
-    }
 
     @Test
     public void testVerifySampleSignedPdfAndTrustVerification() throws Exception {

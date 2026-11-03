@@ -1,12 +1,9 @@
 package org.originsd.oqteris.core.model;
 
 /**
- * Enumeration of document types supported by the Oqteris office suite.
+ * Document type supported by Oqteris PDF Reader and Editor.
  */
 public enum DocumentType {
-    WRITER("Word Processor Document", "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
-    CALC("Spreadsheet Workbook", "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-    IMPRESS("Presentation Slides", "pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
     PDF("PDF Document", "pdf", "application/pdf");
 
     private final String displayName;

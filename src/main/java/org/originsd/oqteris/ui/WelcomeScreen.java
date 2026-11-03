@@ -8,32 +8,42 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import org.originsd.oqteris.core.model.DocumentType;
 import org.originsd.oqteris.core.recovery.RecoveryManager;
+import org.originsd.oqteris.platform.DefaultViewerService;
+import org.originsd.oqteris.platform.DefaultViewerServiceFactory;
+import org.originsd.oqteris.platform.DefaultViewerStatus;
+import org.originsd.oqteris.platform.RegistrationResult;
+import org.originsd.oqteris.ui.icon.AppResources;
 
 import java.io.File;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Modern Start Center / Welcome Screen for Oqteris Office Suite.
+ * Modern Start Center / Welcome Screen for Oqteris PDF Reader and Editor.
+ * Focused exclusively on PDF workflows, recent files, security trust management, and OS integration.
  */
 public class WelcomeScreen extends BorderPane {
-    private final Consumer<DocumentType> onNewDocument;
     private final Runnable onOpenFile;
     private final Consumer<File> onOpenSpecificFile;
+    private final Runnable onOpenSettings;
+    private final Runnable onOpenCertManager;
+
     private final VBox recentFilesBox = new VBox(6);
     private final VBox recoveryAlertBox = new VBox(8);
+    private final VBox defaultViewerAlertBox = new VBox(8);
     private final TextField recentSearchField = new TextField();
 
-    public WelcomeScreen(Consumer<DocumentType> onNewDocument, Runnable onOpenFile, Consumer<File> onOpenSpecificFile) {
-        this.onNewDocument = onNewDocument;
+    public WelcomeScreen(Runnable onOpenFile, Consumer<File> onOpenSpecificFile,
+                         Runnable onOpenSettings, Runnable onOpenCertManager) {
         this.onOpenFile = onOpenFile;
         this.onOpenSpecificFile = onOpenSpecificFile;
+        this.onOpenSettings = onOpenSettings;
+        this.onOpenCertManager = onOpenCertManager;
 
         getStyleClass().add("welcome-screen");
-        setPadding(new Insets(32, 48, 32, 48));
+        setPadding(new Insets(28, 48, 28, 48));
 
         buildUI();
     }
@@ -45,68 +55,86 @@ public class WelcomeScreen extends BorderPane {
         // 1. Top Hero Section
         HBox heroHeader = new HBox(16);
         heroHeader.setAlignment(Pos.CENTER_LEFT);
-        heroHeader.setPadding(new Insets(0, 0, 20, 0));
+        heroHeader.setPadding(new Insets(0, 0, 16, 0));
 
         ImageView logoView = new ImageView();
-        try (InputStream in = getClass().getResourceAsStream("/icons/oqteris-logo.png")) {
-            if (in != null) {
-                logoView.setImage(new Image(in, 60, 60, true, true));
-            }
-        } catch (Exception ignored) {
+        Image logo = AppResources.getAppLogo(60, 60);
+        if (logo != null) {
+            logoView.setImage(logo);
         }
 
-        VBox titleBox = new VBox(4);
+        VBox titleBox = new VBox(3);
         HBox titleRow = new HBox(10);
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label title = new Label("Oqteris Office Suite");
+        Label title = new Label("Oqteris");
         title.getStyleClass().add("welcome-title");
 
         Label versionBadge = new Label("v1.0.0 LTS");
-        versionBadge.setStyle("-fx-background-color: #6366f1; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10px;");
+        versionBadge.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10px;");
 
         titleRow.getChildren().addAll(title, versionBadge);
 
-        Label subtitle = new Label("Independent Office Suite: Word Processor, Spreadsheet, Presentation & PDF Trust Center");
+        Label subtitle = new Label("Dedicated PDF Reader and Editor – Viewing, Annotation & Digital Signatures");
         subtitle.getStyleClass().add("welcome-subtitle");
         subtitle.setStyle("-fx-text-fill: #64748b;");
 
         titleBox.getChildren().addAll(titleRow, subtitle);
         heroHeader.getChildren().addAll(logoView, titleBox);
 
+        // Check default PDF viewer status banner
+        checkDefaultViewerStatus();
+
         // 2. Main Two-Column Content Area
         HBox columnsContainer = new HBox(32);
         columnsContainer.setAlignment(Pos.TOP_LEFT);
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
 
-        // Left Column: Create New & Launch Cards
+        // Left Column: PDF Workflow Entry Points
         VBox leftColumn = new VBox(14);
         leftColumn.setPrefWidth(320);
 
-        Label startLabel = new Label("New Document");
+        Label startLabel = new Label("Actions");
         startLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;");
 
         VBox cardsBox = new VBox(10);
         cardsBox.getChildren().addAll(
-                createActionCard("Text Document", "Word Processor (DOCX, RTF, ODT)", "W", "#2563eb", () -> onNewDocument.accept(DocumentType.WRITER)),
-                createActionCard("Spreadsheet", "Workbook & Formulas (XLSX, XLS)", "S", "#059669", () -> onNewDocument.accept(DocumentType.CALC)),
-                createActionCard("Presentation", "Slide Designer (PPTX, ODP)", "P", "#ea580c", () -> onNewDocument.accept(DocumentType.IMPRESS)),
-                createActionCard("Open File...", "Browse DOCX, XLSX, PPTX, PDF", "📂", "#7c3aed", onOpenFile)
+                createActionCard("Open PDF Document...", "Browse your system to view or edit a PDF", "📄", "#2563eb", onOpenFile),
+                createActionCard("Security & Trust Store", "Manage certificates and digital signature trust levels", "🛡️", "#059669", onOpenCertManager),
+                createActionCard("Application Settings", "Configure default author, theme, and default viewer", "⚙️", "#6366f1", onOpenSettings)
         );
 
-        leftColumn.getChildren().addAll(startLabel, cardsBox);
+        // Drag & drop drop-zone indicator
+        VBox dropZone = new VBox(6);
+        dropZone.setAlignment(Pos.CENTER);
+        dropZone.setPadding(new Insets(20, 16, 20, 16));
+        dropZone.setStyle("-fx-border-color: #cbd5e1; -fx-border-style: dashed; -fx-border-width: 2; -fx-border-radius: 8px; -fx-background-color: #f8fafc; -fx-background-radius: 8px; -fx-cursor: hand;");
+        dropZone.setOnMouseClicked(e -> {
+            if (onOpenFile != null) onOpenFile.run();
+        });
 
-        // Right Column: Recent Documents
+        Label dropIcon = new Label("📂");
+        dropIcon.setStyle("-fx-font-size: 24px;");
+        Label dropText = new Label("Drag & drop a PDF here");
+        dropText.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #475569;");
+        Label dropSub = new Label("or click to browse files");
+        dropSub.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+
+        dropZone.getChildren().addAll(dropIcon, dropText, dropSub);
+
+        leftColumn.getChildren().addAll(startLabel, cardsBox, dropZone);
+
+        // Right Column: Recent PDF Documents
         VBox rightColumn = new VBox(10);
         HBox.setHgrow(rightColumn, Priority.ALWAYS);
 
         HBox recentsHeader = new HBox(12);
         recentsHeader.setAlignment(Pos.CENTER_LEFT);
 
-        Label recentLabel = new Label("Recent Documents");
+        Label recentLabel = new Label("Recent PDF Documents");
         recentLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;");
 
-        recentSearchField.setPromptText("Filter recent files...");
+        recentSearchField.setPromptText("Filter recent PDFs...");
         recentSearchField.setPrefWidth(200);
         recentSearchField.textProperty().addListener((obs, oldV, newV) -> filterRecentFiles(newV));
 
@@ -134,11 +162,53 @@ public class WelcomeScreen extends BorderPane {
 
         columnsContainer.getChildren().addAll(leftColumn, rightColumn);
 
-        VBox centerContainer = new VBox(16, recoveryAlertBox, columnsContainer);
+        VBox centerContainer = new VBox(14, defaultViewerAlertBox, recoveryAlertBox, columnsContainer);
         VBox.setVgrow(centerContainer, Priority.ALWAYS);
 
         setTop(heroHeader);
         setCenter(centerContainer);
+    }
+
+    private void checkDefaultViewerStatus() {
+        defaultViewerAlertBox.getChildren().clear();
+        DefaultViewerService service = DefaultViewerServiceFactory.getInstance();
+        DefaultViewerStatus status = service.checkStatus();
+
+        if (status == DefaultViewerStatus.NOT_DEFAULT) {
+            HBox banner = new HBox(12);
+            banner.setAlignment(Pos.CENTER_LEFT);
+            banner.setPadding(new Insets(8, 14, 8, 14));
+            banner.setStyle("-fx-background-color: #eff6ff; -fx-border-color: #bfdbfe; -fx-border-radius: 8px; -fx-background-radius: 8px;");
+
+            Label msg = new Label("Oqteris is not currently your default PDF viewer.");
+            msg.setStyle("-fx-text-fill: #1e40af; -fx-font-size: 12px; -fx-font-weight: 600;");
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            Button setDefaultBtn = new Button("Set as Default");
+            setDefaultBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold;");
+            setDefaultBtn.setOnAction(e -> {
+                RegistrationResult res = service.registerAsDefault();
+                if (res.isGuidanceRequired()) {
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION, res.getMessage() + "\n\n" + res.getInstructions(), ButtonType.OK);
+                    alert.setHeaderText("Set Default PDF Viewer");
+                    alert.showAndWait();
+                } else if (res.isSuccess()) {
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION, res.getMessage(), ButtonType.OK);
+                    alert.setHeaderText("Default PDF Viewer Configured");
+                    alert.showAndWait();
+                }
+                checkDefaultViewerStatus();
+            });
+
+            Button dismissBtn = new Button("Dismiss");
+            dismissBtn.setStyle("-fx-font-size: 11px;");
+            dismissBtn.setOnAction(e -> defaultViewerAlertBox.getChildren().clear());
+
+            banner.getChildren().addAll(msg, spacer, setDefaultBtn, dismissBtn);
+            defaultViewerAlertBox.getChildren().add(banner);
+        }
     }
 
     private HBox createActionCard(String title, String desc, String badgeChar, String accentColor, Runnable onClick) {
@@ -146,15 +216,15 @@ public class WelcomeScreen extends BorderPane {
         card.getStyleClass().add("action-card");
         card.setAlignment(Pos.CENTER_LEFT);
         card.setPadding(new Insets(12, 16, 12, 16));
+        card.setCursor(javafx.scene.Cursor.HAND);
 
-        // Circular or rounded icon badge
         StackPane iconBadge = new StackPane();
         iconBadge.setPrefSize(40, 40);
         iconBadge.setMinSize(40, 40);
         iconBadge.setStyle("-fx-background-color: " + accentColor + "; -fx-background-radius: 8px;");
 
         Label badgeLabel = new Label(badgeChar);
-        badgeLabel.setStyle("-fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold;");
+        badgeLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
         iconBadge.getChildren().add(badgeLabel);
 
         VBox textCol = new VBox(2);
@@ -211,7 +281,7 @@ public class WelcomeScreen extends BorderPane {
             recoveryAlertBox.getChildren().clear();
         });
 
-        HBox spacer = new HBox();
+        Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         banner.getChildren().addAll(warning, spacer, recoverBtn, discardBtn);
@@ -227,7 +297,7 @@ public class WelcomeScreen extends BorderPane {
         List<RecentFilesManager.RecentFileEntry> recents = RecentFilesManager.getInstance().getRecentFiles();
 
         if (recents.isEmpty()) {
-            Label empty = new Label("No recent documents. Create a new document or open an existing file.");
+            Label empty = new Label("No recent documents. Open an existing PDF to get started.");
             empty.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 16px; -fx-alignment: center;");
             recentFilesBox.getChildren().add(empty);
             return;
@@ -246,12 +316,12 @@ public class WelcomeScreen extends BorderPane {
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
             row.setPadding(new Insets(10, 14, 10, 14));
-            row.setStyle("-fx-background-color: white; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px; -fx-cursor: hand;");
+            row.setStyle("-fx-background-color: white; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;");
             row.getStyleClass().add("recent-file-row");
             row.setCursor(javafx.scene.Cursor.HAND);
 
-            Label badge = new Label(entry.getType().name());
-            badge.setStyle("-fx-padding: 2px 7px; -fx-background-radius: 4px; -fx-font-size: 10px; -fx-font-weight: bold; " + getBadgeStyle(entry.getType()));
+            Label badge = new Label("PDF");
+            badge.setStyle("-fx-padding: 2px 7px; -fx-background-radius: 4px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-background-color: #dc2626; -fx-text-fill: white;");
 
             VBox fileInfo = new VBox(2);
             Label fileName = new Label(entry.getFileName());
@@ -282,14 +352,5 @@ public class WelcomeScreen extends BorderPane {
             noMatch.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 16px;");
             recentFilesBox.getChildren().add(noMatch);
         }
-    }
-
-    private String getBadgeStyle(DocumentType type) {
-        return switch (type) {
-            case WRITER -> "-fx-background-color: #2563eb; -fx-text-fill: white;";
-            case CALC -> "-fx-background-color: #059669; -fx-text-fill: white;";
-            case IMPRESS -> "-fx-background-color: #ea580c; -fx-text-fill: white;";
-            case PDF -> "-fx-background-color: #dc2626; -fx-text-fill: white;";
-        };
     }
 }

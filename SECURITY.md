@@ -20,7 +20,7 @@ In enterprise document workflows, digital signatures protect legal, regulatory, 
 2. **The Green Checkmark is Never Granted Solely for Cryptographic Integrity.**
 3. A signature receives trusted status **only** when its certificate chain resolves to an explicitly trusted root certificate in the configured trust store.
 4. Security warnings are never concealed, bypassed, or silenced.
-5. **Macro Disarming**: Oqteris deliberately does not execute VBA macros or embedded scripts in any Office format, eliminating the primary vector for desktop malware infections via documents.
+5. **Script & Action Disarming**: Oqteris deliberately disables execution of embedded JavaScript and launch actions within PDF documents, eliminating the primary vector for desktop malware infections via documents.
 
 ---
 

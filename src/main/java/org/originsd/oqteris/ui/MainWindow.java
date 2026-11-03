@@ -21,16 +21,20 @@ import org.originsd.oqteris.core.model.DocumentModel;
 import org.originsd.oqteris.core.model.DocumentType;
 import org.originsd.oqteris.core.recovery.AutosaveService;
 import org.originsd.oqteris.crypto.trust.CertificateManagerDialog;
+import org.originsd.oqteris.platform.DefaultViewerService;
+import org.originsd.oqteris.platform.DefaultViewerServiceFactory;
+import org.originsd.oqteris.platform.PdfFileOpenHelper;
+import org.originsd.oqteris.platform.RegistrationResult;
+import org.originsd.oqteris.ui.icon.AppResources;
 
 import java.io.File;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * Primary application window for Oqteris Office Suite.
+ * Primary application window for Oqteris PDF Reader and Editor.
  */
 public class MainWindow extends BorderPane {
     private final Stage primaryStage;
@@ -73,11 +77,9 @@ public class MainWindow extends BorderPane {
 
     private void buildUI() {
         // App icon
-        try (InputStream in = getClass().getResourceAsStream("/icons/oqteris-logo.png")) {
-            if (in != null) {
-                primaryStage.getIcons().add(new Image(in));
-            }
-        } catch (Exception ignored) {
+        Image appIcon = AppResources.getAppLogo();
+        if (appIcon != null) {
+            primaryStage.getIcons().add(appIcon);
         }
 
         // Top Area: Menu Bar + Quick Access / Ribbon
@@ -96,7 +98,12 @@ public class MainWindow extends BorderPane {
             updateActiveView();
         });
 
-        welcomeScreen = new WelcomeScreen(this::createNewDocument, this::showOpenDialog, this::openFile);
+        welcomeScreen = new WelcomeScreen(
+                this::showOpenDialog,
+                this::openFile,
+                () -> new SettingsDialog(primaryStage).showAndWait(),
+                () -> new CertificateManagerDialog(primaryStage).showAndWait()
+        );
         centerContainer.getChildren().addAll(welcomeScreen, documentTabPane);
         documentTabPane.setVisible(false);
 
@@ -112,21 +119,8 @@ public class MainWindow extends BorderPane {
 
         // --- File Menu ---
         Menu fileMenu = new Menu("File");
-        Menu newSubMenu = new Menu("New");
-        MenuItem newDoc = new MenuItem("Text Document (Writer)");
-        newDoc.setAccelerator(new KeyCodeCombination(KeyCode.N, KeyCombination.CONTROL_DOWN));
-        newDoc.setOnAction(e -> createNewDocument(DocumentType.WRITER));
 
-        MenuItem newSheet = new MenuItem("Spreadsheet (Calc)");
-        newSheet.setAccelerator(new KeyCodeCombination(KeyCode.N, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN));
-        newSheet.setOnAction(e -> createNewDocument(DocumentType.CALC));
-
-        MenuItem newPresentation = new MenuItem("Presentation (Impress)");
-        newPresentation.setOnAction(e -> createNewDocument(DocumentType.IMPRESS));
-
-        newSubMenu.getItems().addAll(newDoc, newSheet, newPresentation);
-
-        MenuItem openItem = new MenuItem("Open...");
+        MenuItem openItem = new MenuItem("Open PDF...");
         openItem.setAccelerator(new KeyCodeCombination(KeyCode.O, KeyCombination.CONTROL_DOWN));
         openItem.setOnAction(e -> showOpenDialog());
 
@@ -155,7 +149,7 @@ public class MainWindow extends BorderPane {
         MenuItem exitItem = new MenuItem("Exit");
         exitItem.setOnAction(e -> primaryStage.close());
 
-        fileMenu.getItems().addAll(newSubMenu, openItem, new SeparatorMenuItem(),
+        fileMenu.getItems().addAll(openItem, new SeparatorMenuItem(),
                 saveItem, saveAsItem, new SeparatorMenuItem(),
                 printItem, closeItem, new SeparatorMenuItem(),
                 settingsItem, exitItem);
@@ -247,7 +241,10 @@ public class MainWindow extends BorderPane {
         MenuItem certManager = new MenuItem("Certificate Trust Manager...");
         certManager.setOnAction(e -> new CertificateManagerDialog(primaryStage).showAndWait());
 
-        toolsMenu.getItems().addAll(certManager);
+        MenuItem defaultViewerItem = new MenuItem("Set Oqteris as Default PDF Viewer...");
+        defaultViewerItem.setOnAction(e -> handleSetDefaultViewer());
+
+        toolsMenu.getItems().addAll(certManager, defaultViewerItem);
 
         // --- Help Menu ---
         Menu helpMenu = new Menu("Help");
@@ -257,6 +254,28 @@ public class MainWindow extends BorderPane {
 
         menuBar.getMenus().addAll(fileMenu, editMenu, viewMenu, toolsMenu, helpMenu);
         return menuBar;
+    }
+
+    private void handleSetDefaultViewer() {
+        DefaultViewerService service = DefaultViewerServiceFactory.getInstance();
+        RegistrationResult result = service.registerAsDefault();
+
+        Alert alert;
+        if (result.isSuccess()) {
+            alert = new Alert(Alert.AlertType.INFORMATION, result.getMessage(), ButtonType.OK);
+            alert.setHeaderText("Default PDF Viewer Configured");
+        } else if (result.isGuidanceRequired()) {
+            alert = new Alert(Alert.AlertType.INFORMATION, result.getMessage() + "\n\n" + result.getInstructions(), ButtonType.OK);
+            alert.setHeaderText("Action Required in System Settings");
+        } else if (result.getOutcome() == RegistrationResult.Outcome.UNSUPPORTED) {
+            alert = new Alert(Alert.AlertType.WARNING, result.getMessage(), ButtonType.OK);
+            alert.setHeaderText("Platform Limitation");
+        } else {
+            alert = new Alert(Alert.AlertType.ERROR, result.getMessage(), ButtonType.OK);
+            alert.setHeaderText("Registration Error");
+        }
+        alert.initOwner(primaryStage);
+        alert.showAndWait();
     }
 
     private void setupStatusBar() {
@@ -335,7 +354,10 @@ public class MainWindow extends BorderPane {
             if (db.hasFiles()) {
                 success = true;
                 for (File file : db.getFiles()) {
-                    openFile(file);
+                    File validPdf = PdfFileOpenHelper.validatePdfFile(file.getAbsolutePath());
+                    if (validPdf != null) {
+                        openFile(validPdf);
+                    }
                 }
             }
             event.setDropCompleted(success);
@@ -377,12 +399,8 @@ public class MainWindow extends BorderPane {
 
     public void showOpenDialog() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Open Document - Oqteris");
+        chooser.setTitle("Open PDF Document - Oqteris");
         chooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("All Supported Office & PDF Files", "*.docx", "*.xlsx", "*.pptx", "*.pdf", "*.doc", "*.xls", "*.ppt", "*.odt", "*.ods", "*.odp", "*.rtf", "*.txt", "*.csv"),
-                new FileChooser.ExtensionFilter("Word Documents (*.docx, *.doc, *.rtf, *.txt)", "*.docx", "*.doc", "*.rtf", "*.txt"),
-                new FileChooser.ExtensionFilter("Spreadsheets (*.xlsx, *.xls, *.csv)", "*.xlsx", "*.xls", "*.csv"),
-                new FileChooser.ExtensionFilter("Presentations (*.pptx, *.ppt)", "*.pptx", "*.ppt"),
                 new FileChooser.ExtensionFilter("PDF Documents (*.pdf)", "*.pdf"),
                 new FileChooser.ExtensionFilter("All Files (*.*)", "*.*")
         );
@@ -484,16 +502,11 @@ public class MainWindow extends BorderPane {
         }
         tab.setText(title);
 
-        Label typeBadge = new Label(doc.getType().name());
-        switch (doc.getType()) {
-            case WRITER -> typeBadge.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 1 5; -fx-background-radius: 4; -fx-font-size: 9px; -fx-font-weight: bold;");
-            case CALC -> typeBadge.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-padding: 1 5; -fx-background-radius: 4; -fx-font-size: 9px; -fx-font-weight: bold;");
-            case IMPRESS -> typeBadge.setStyle("-fx-background-color: #ea580c; -fx-text-fill: white; -fx-padding: 1 5; -fx-background-radius: 4; -fx-font-size: 9px; -fx-font-weight: bold;");
-            case PDF -> typeBadge.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-padding: 1 5; -fx-background-radius: 4; -fx-font-size: 9px; -fx-font-weight: bold;");
-        }
+        Label typeBadge = new Label("PDF");
+        typeBadge.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-padding: 1 5; -fx-background-radius: 4; -fx-font-size: 9px; -fx-font-weight: bold;");
         tab.setGraphic(typeBadge);
 
-        primaryStage.setTitle(title + " - Oqteris Office Suite");
+        primaryStage.setTitle(title + " - Oqteris");
     }
 
     private void updateTabVisibility() {
@@ -501,7 +514,7 @@ public class MainWindow extends BorderPane {
         documentTabPane.setVisible(hasTabs);
         welcomeScreen.setVisible(!hasTabs);
         if (!hasTabs) {
-            primaryStage.setTitle("Oqteris Office Suite");
+            primaryStage.setTitle("Oqteris");
             ribbonContainer.getChildren().clear();
             contextualStatusContainer.getChildren().clear();
             welcomeScreen.checkRecovery();
@@ -529,7 +542,7 @@ public class MainWindow extends BorderPane {
                 contextualStatusContainer.getChildren().add(statusNode);
             }
             zoomSlider.setValue(view.getZoom() * 100);
-            primaryStage.setTitle(view.getDocument().getTitle() + (view.getDocument().isModified() ? " *" : "") + " - Oqteris Office Suite");
+            primaryStage.setTitle(view.getDocument().getTitle() + (view.getDocument().isModified() ? " *" : "") + " - Oqteris");
         }
     }
 
@@ -552,30 +565,10 @@ public class MainWindow extends BorderPane {
 
         if (target == null || saveAs) {
             FileChooser chooser = new FileChooser();
-            chooser.setTitle("Save Document - Oqteris");
-            switch (doc.getType()) {
-                case WRITER -> chooser.getExtensionFilters().addAll(
-                        new FileChooser.ExtensionFilter("Word Document (*.docx)", "*.docx"),
-                        new FileChooser.ExtensionFilter("Rich Text Format (*.rtf)", "*.rtf"),
-                        new FileChooser.ExtensionFilter("OpenDocument Text (*.odt)", "*.odt"),
-                        new FileChooser.ExtensionFilter("Plain Text Document (*.txt)", "*.txt"),
-                        new FileChooser.ExtensionFilter("HTML Document (*.html)", "*.html")
-                );
-                case CALC -> chooser.getExtensionFilters().addAll(
-                        new FileChooser.ExtensionFilter("Excel Workbook (*.xlsx)", "*.xlsx"),
-                        new FileChooser.ExtensionFilter("Excel 97-2003 Workbook (*.xls)", "*.xls"),
-                        new FileChooser.ExtensionFilter("Comma-Separated Values (*.csv)", "*.csv")
-                );
-                case IMPRESS -> chooser.getExtensionFilters().addAll(
-                        new FileChooser.ExtensionFilter("PowerPoint Presentation (*.pptx)", "*.pptx")
-                );
-                default -> {
-                    String ext = doc.getType().getDefaultExtension();
-                    chooser.getExtensionFilters().add(
-                            new FileChooser.ExtensionFilter(doc.getType().getDisplayName() + " (*." + ext + ")", "*." + ext)
-                    );
-                }
-            }
+            chooser.setTitle("Save PDF Document - Oqteris");
+            chooser.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("PDF Document (*.pdf)", "*.pdf")
+            );
 
             if (target != null) {
                 chooser.setInitialDirectory(target.getParentFile());
