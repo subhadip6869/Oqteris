@@ -20,7 +20,7 @@ In enterprise document workflows, digital signatures protect legal, regulatory, 
 2. **The Green Checkmark is Never Granted Solely for Cryptographic Integrity.**
 3. A signature receives trusted status **only** when its certificate chain resolves to an explicitly trusted root certificate in the configured trust store.
 4. Security warnings are never concealed, bypassed, or silenced.
-5. **Macro Disarming**: Oqteris deliberately does not execute VBA macros or embedded scripts in any Office format, eliminating the primary vector for desktop malware infections via documents.
+5. **Script & Action Disarming**: Oqteris deliberately disables execution of embedded JavaScript and launch actions within PDF documents, eliminating the primary vector for desktop malware infections via documents.
 
 ---
 
@@ -86,7 +86,7 @@ Oqteris verifies **all** embedded signatures in a PDF document, not just the fir
 
 ### Visual Signature Appearance Rewriting
 
-Many signed PDFs (produced by iText, OpenPDF, or Acrobat 5/6-layer style) embed a layered appearance with XObjects named `n0`–`n4`. By default, PDF viewers such as PDFBox display the stored (pre-verification) state — typically a yellow question mark, even for trusted signatures.
+Many signed PDFs (produced by iText, OpenPDF, or standard 5/6-layer appearance style) embed a layered appearance with XObjects named `n0`–`n4`. By default, PDF viewers such as PDFBox display the stored (pre-verification) state — typically a yellow question mark, even for trusted signatures.
 
 Oqteris implements `SignatureValidityAppearance`, which rewrites these layers **in memory** (never touching the file on disk) to show the correct verification result:
 - **`n1` layer**: Green tick (trusted), yellow "?" (untrusted), or blank (invalid).

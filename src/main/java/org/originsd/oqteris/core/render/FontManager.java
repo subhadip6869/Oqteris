@@ -44,8 +44,30 @@ public class FontManager {
                 installedFamilies.addAll(Font.getFamilies());
             } catch (Exception ignored) {
             }
+            if (installedFamilies.isEmpty()) {
+                try {
+                    String[] awtFonts = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+                    if (awtFonts != null) {
+                        Collections.addAll(installedFamilies, awtFonts);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            if (installedFamilies.isEmpty()) {
+                installedFamilies.addAll(List.of("Calibri", "Arial", "Times New Roman", "Segoe UI", "Georgia", "Verdana", "Courier New", "Consolas"));
+            }
             initSubstitutions();
         }
+    }
+
+    /**
+     * Returns a sorted, unmodifiable list of all installed font families available in the system.
+     */
+    public synchronized List<String> getAvailableFontFamilies() {
+        ensureInstalledFamiliesLoaded();
+        List<String> list = new ArrayList<>(installedFamilies);
+        list.sort(String.CASE_INSENSITIVE_ORDER);
+        return Collections.unmodifiableList(list);
     }
 
     private void initSubstitutions() {

@@ -68,30 +68,10 @@ public class DocumentRegistry {
         }
 
         // Standard fallbacks
-        switch (ext) {
-            case "docx":
-            case "doc":
-            case "odt":
-            case "rtf":
-            case "txt":
-            case "html":
-            case "htm":
-                return Optional.of(DocumentType.WRITER);
-            case "xlsx":
-            case "xls":
-            case "ods":
-            case "csv":
-            case "tsv":
-                return Optional.of(DocumentType.CALC);
-            case "pptx":
-            case "ppt":
-            case "odp":
-                return Optional.of(DocumentType.IMPRESS);
-            case "pdf":
-                return Optional.of(DocumentType.PDF);
-            default:
-                return Optional.empty();
+        if ("pdf".equalsIgnoreCase(ext)) {
+            return Optional.of(DocumentType.PDF);
         }
+        return Optional.empty();
     }
 
     @SuppressWarnings("unchecked")
