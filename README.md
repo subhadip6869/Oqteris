@@ -3,192 +3,169 @@
 <div align="center">
   <img src="src/main/resources/icons/oqteris-logo.png" alt="Oqteris Logo" width="160"/>
   <h3>Dedicated Cross-Platform Desktop PDF Reader and Editor</h3>
-  <p><strong>Java 21 LTS &bull; JavaFX 21 &bull; Apache PDFBox 3.0.5 &bull; Bouncy Castle 1.86</strong></p>
+  <p><strong>Java 21 LTS &bull; JavaFX 21 &bull; Apache PDFBox 3.0.5 &bull; Bouncy Castle 1.86 &bull; OriginSD Architecture</strong></p>
 </div>
 
 ---
 
-## 1. Overview & Vision
+## 1. Project & Publisher Identity
 
-**Oqteris** is a modern, high-performance desktop PDF reader and editor engineered in Java 21 LTS and JavaFX. It provides a reliable, secure environment for viewing, annotating, searching, and cryptographically validating Portable Document Format (PDF) files.
+Oqteris adheres to the **OriginSD Desktop Application Master Architecture Standard**:
 
-### Core Value Proposition
-
-- **Dedicated PDF Experience**: Exclusively focused on PDF workflows with continuous scrolling, page thumbnails, bookmarks outline, full-text search, and page rotation.
-- **Enterprise-Grade Digital Signature Verification**: Built-in verification for PPKLite / CMS / PKCS#7 detached digital signatures with full byte-range tamper detection.
-- **Built-in Trust Store & Certificate Manager**: Application-managed X.509 PKCS#12 certificate trust store with granular trust levels (Trusted Root, Trusted Signer, Blacklisted).
-- **Deep Operating System Integration**:
-  - Can register as the system default PDF viewer on Windows, Linux, and macOS.
-  - Native file-type association with dedicated PDF document icon.
-  - Single-instance IPC mechanism routing newly opened files to the active window without opening duplicate instances.
-  - Opens files via command-line arguments, desktop file managers, or drag-and-drop.
-- **100% Standalone Desktop Application**: Operates completely offline with zero cloud dependencies or external office runtimes.
+- **Publisher / Organization:** OriginSD
+- **Developer:** Subhadip Dutta
+- **Location:** Bankura, West Bengal, India
+- **Official Website:** [https://originsd.org](https://originsd.org)
+- **GitHub Organization / Profile:** [https://github.com/subhadip6869](https://github.com/subhadip6869)
+- **GitHub Repository:** [https://github.com/subhadip6869/Oqteris.git](https://github.com/subhadip6869/Oqteris.git)
+- **Authoritative Maven Group ID:** `org.originsd`
+- **Application Package Namespace:** `org.originsd.oqteris`
 
 ---
 
-## 2. Application Icons & Branding
+## 2. OS-Specific Storage & User Directory Management
 
-Oqteris provides two distinct, purpose-built icons:
+All writable runtime data, user preferences, crash recovery files, and security trust stores are kept strictly out of the installation directory and stored in standard operating-system user directories:
 
-| Icon Asset | Visual Identity | Logical Role & Usage |
-|---|---|---|
-| **Icon A: Application Logo**<br/>`oqteris-logo.png`<br/>`oqteris-logo.ico`<br/>`oqteris-app-icon` | Stylized blue/cyan **Q** surrounding an open document and fountain pen | Application branding, window title bar, desktop launcher, About dialog, installer branding |
-| **Icon B: PDF Document Icon**<br/>`oqteris-document.png`<br/>`oqteris-document.ico`<br/>`oqteris-pdf-file-icon` | Blue document sheet with prominent PDF indicator and preview eye | Operating system `.pdf` file association icon, explorer/file-manager document icon |
+- **Windows:** `%LOCALAPPDATA%\OriginSD\Oqteris\` (e.g. `C:\Users\<user>\AppData\Local\OriginSD\Oqteris\`)
+- **macOS:** `~/Library/Application Support/OriginSD/Oqteris/`
+- **Linux:** `~/.local/share/originsd/oqteris/` (respects `$XDG_DATA_HOME`)
+
+### Persistent Files
+- `settings.json`: User-configurable preferences managed with Jackson (`UserSettingsService`).
+- `recovery/`: Automated periodic document recovery backups (`AutosaveService`).
+- `truststore.p12`: PKCS#12 application certificate trust store (`TrustStoreManager`).
+- `recent_files.dat`: Persisted history of recently opened documents.
 
 ---
 
-## 3. Technology Stack
+## 3. Master Design System & Theme Engine
+
+Oqteris implements the uniform **OriginSD Master Design System & Theme Engine**:
+
+- **Active Palettes (`src/main/resources/styles/`):**
+  - `light-theme.css`: High-contrast light palette tokens.
+  - `dark-theme.css`: Executive dark palette tokens (7.5:1+ contrast).
+  - `oqteris-theme.css`: The master stylesheet referencing color tokens for all components and controls.
+- **Dynamic Switching:** Real-time toggling between **System**, **Light**, and **Dark** modes without restarting.
+- **Typography Adjustment:** Dynamic font size scaling (`-fx-font-size: <baseSize>px`) from `-4px` to `+12px` delta.
+- **Accessible Controls & High-DPI Icons:** Form controls, tables, dialogs, and Ikonli vector icons automatically adapt to the active theme palette.
+
+---
+
+## 4. Technology Stack
 
 | Component | Technology | Version | Purpose |
 |---|---|---|---|
-| **Runtime** | Java LTS | 21+ | Core runtime, Virtual Threads, Records, Sealed types |
+| **Runtime** | Java LTS | 21+ | Core runtime, Virtual Threads, Records, Pattern matching |
 | **UI Framework** | JavaFX | 21.0.6 | Hardware-accelerated desktop UI shell, Canvas rendering |
 | **PDF Engine** | Apache PDFBox | 3.0.5 | PDF document structure, font extraction, page rasterization |
 | **Cryptography** | Bouncy Castle | 1.86 | CMS / PKCS#7 signature verification, X.509 certificate path validation |
+| **JSON Serialization** | Jackson Databind | 2.18.2 | Persistent settings serialization to `settings.json` |
 | **UI Components** | ControlsFX & FXRibbon | 11.2.1 / 1.2.2 | Clearable text fields, ribbon controls |
-| **Vector Icons** | Ikonli (Material Design) | 12.3.1 | High-DPI resolution-independent vector icons |
-| **Build System** | Apache Maven | 3.9+ | Dependency management, multi-platform compilation, testing |
+| **Vector Icons** | Ikonli (Material Design & Fluent) | 12.3.1 | High-DPI resolution-independent vector icons |
+| **Build & Packaging** | Maven Shade & jpackage | 3.6.0 | Standalone shaded executable JAR and native platform installers |
 | **Test Runner** | JUnit Jupiter | 5.11.4 | Automated unit, regression, and acceptance testing |
 
 ---
 
-## 4. Key Features
+## 5. Key Features
 
-```
-+---------------------------------------------------------------------------------------------------------+
-| [File] [Edit] [View] [Tools] [Help]                                                  [Light/Dark Theme] |
-+---------------------------------------------------------------------------------------------------------+
-| [Tab: Contract_Signed.pdf]  |  [Tab: Technical_Manual.pdf]                                              |
-+---------------------------------------------------------------------------------------------------------+
-| HOME | VIEW | EDIT | COMMENT | ORGANIZE | FILL & SIGN | PROTECT | SHARE | HELP | [SIGNATURES (1)]         |
-+---------------------------------------------------------------------------------------------------------+
-| [Open] [Save]  [Undo] [Redo] | [Select] [Hand] | [|<] [<] [ 1 / 12 ] [>] [>|] | [100%] [Fit] | [Rotate] |
-|  FILE    |     CLIPBOARD     |      TOOLS      |          NAVIGATION          |     ZOOM     |  PAGES   |
-+---------------------------------------------------------------------------------------------------------+
-| [Thumbnails] |                                                                                          |
-| [Bookmarks ] |        Page 1                                                                            |
-| [Signatures] |   +----------------------------------------------------------------------------------+   |
-|              |   |                                                                                  |   |
-|   ✓ Trusted  |   |                   OQTERIS SPECIFICATION DOCUMENT                                 |   |
-|   John Doe   |   |                                                                                  |   |
-|   Valid CMS  |   |   Continuous high-fidelity page rendering with PDFBox 3.x                        |   |
-|              |   |                                                                                  |   |
-|              |   |   [✓ Valid Signature: CN=Certified Signer]                                       |   |
-|              |   +----------------------------------------------------------------------------------+   |
-+---------------------------------------------------------------------------------------------------------+
-| Ready | Page 1 of 12 | Zoom: 100% | Trust Store Active                                                  |
-+---------------------------------------------------------------------------------------------------------+
-```
-
-### Professional Desktop Ribbon Interface
-- **3-Level Desktop Hierarchy**: Top tab strip, middle command group body, and crisp bottom group captions.
-- **Logically Grouped Ribbon Tabs**:
-  - **Home**: Quick document operations, clipboard, text selection, hand/pan tool, page jumps, zoom, rotation, search.
-  - **View**: Continuous vs single-page reading, full-screen mode (F11), thumbnails, bookmarks, signatures drawer switches.
-  - **Edit**: Text selection, page text copying, select all, document properties inspector.
-  - **Comment**: Annotation markup tools including Highlights, Underlines, Sticky Notes, Text Boxes, Pencil, and Standard Stamp presets (APPROVED, CONFIDENTIAL, DRAFT, FINAL, VOID).
-  - **Organize**: Page rotation (90&deg; CW, 90&deg; CCW, 180&deg;), page deletion, and page dimension inspection.
-  - **Fill & Sign**: Form field filling, clear form fields, visual signatures & initials, and digital certificate validation.
-  - **Protect**: Password encryption detection, document permissions, and Certificate Trust Store manager.
-  - **Share**: Email PDF, copy document path, open containing folder in system explorer, print, and default viewer configuration.
-  - **Help**: Documentation guide, keyboard shortcuts cheatsheet, settings dialog, and about dialog.
-- **Contextual Tabs**: Conditionally presents the **Digital Signatures** contextual tab with direct certificate trust verification when signed documents are opened.
-- **Responsive Layout**: Horizontal scroll handling ensures seamless operation across different window widths and screen resolutions without control clipping.
-- **Oqteris Aurora Design System**: Refined blue/cyan aesthetics with clear active indicators in both light and dark desktop themes.
-
-### High-Fidelity PDF Viewing
-- Continuous vertical page rendering with smooth scrolling.
-- Zoom range from 25% to 400%, with quick presets and responsive zoom slider.
-- Page rotation (90&deg;, 180&deg;, 270&deg; clockwise).
-- Interactive page thumbnail sidebar for rapid navigation.
-- PDF outline / bookmarks tree navigation.
-- Live full-text search with match highlighting and next/previous navigation.
-- Tabbed workspace allowing multiple PDF files to be open simultaneously.
-
-### Digital Signature Verification & Trust Center
-- Validates embedded PKCS#7 / CMS detached signatures (`/ByteRange`, `/Contents`).
-- Full byte-range verification detecting any appended or modified bytes after signing.
-- Live visual signature appearance rewriting updating in-document signature stamps to reflect real cryptographic validity.
-- Built-in X.509 certificate manager allowing users to import root and intermediate certificates to establish chain-of-trust.
-- Clear visual status badges:
-  - **Green**: Valid mathematical signature, full byte-range coverage, unexpired certificate, chained to an explicitly trusted root.
-  - **Yellow**: Valid cryptographic signature, but certificate is not yet in the trusted certificates store.
-  - **Red**: Cryptographic failure, byte range mismatch, or document modified after signing.
-
-### Operating System Integration & Default Viewer
-- Detects whether Oqteris is the operating system's default PDF viewer.
-- Provides a one-click **Set Oqteris as default PDF viewer** action in Settings and on the Welcome Screen.
-- Windows file association registration under `HKCU\Software\Classes\Oqteris.PDF` with `RegisteredApplications` support.
-- Freedesktop.org Linux desktop entry (`oqteris.desktop`) with `application/pdf` MIME type.
-- macOS LaunchServices document handler support.
-- Single-instance IPC handling ensuring subsequent double-clicked files open in new tabs of the running instance.
+- **Professional Desktop Ribbon**: Modern Office-style ribbon navigation with dynamic content-driven height, grouped tabs (`Home`, `View`, `Edit`, `Comment`, `Organize`, `Fill & Sign`, `Protect`, `Share`, `Help`), and contextual `Signatures` tab.
+- **High-Fidelity PDF Viewing**: Continuous vertical page rendering, smooth scrolling, thumbnails drawer, bookmarks tree, and responsive zoom (25%–400%).
+- **CMS / PKCS#7 Digital Signatures**: Complete byte-range verification, tamper detection, and live visual stamp rewriting based on cryptographic validity.
+- **Trust Store & Certificate Manager**: In-app X.509 certificate management with trust level assignments (Trusted Root, Trusted Signer, Blacklisted).
+- **Single-Instance Lifecycle**: Zero-network file-based IPC queue routing newly opened files to the active window.
+- **Default PDF Viewer Integration**: One-click registration as system default viewer on Windows, Linux, and macOS.
 
 ---
 
-## 5. Quick Start
+## 6. Quick Start & Development
 
 ### Prerequisites
 - **Java Development Kit (JDK)**: OpenJDK 21 LTS or newer on `PATH`.
 - **Apache Maven**: Version 3.9+ on `PATH`.
 
-Verify your installation:
-```bash
-java -version
-mvn -version
-```
-
 ### Build & Run Tests
-To compile the codebase and run the automated test suite:
 ```bash
 mvn clean test
 ```
 
 ### Run in Development Mode
-Launch Oqteris directly via the JavaFX Maven plugin:
 ```bash
 mvn javafx:run
 ```
 
-### Package Standalone Application JAR
-Package the application JAR:
+### Build Standalone Executable Fat JAR
 ```bash
-mvn clean package
+mvn clean package -DskipTests
+```
+The shaded executable JAR will be located at:
+```bash
+target/oqteris-1.0.0-SNAPSHOT-all.jar
 ```
 
-Run the compiled JAR:
+Run directly:
 ```bash
-java -jar target/oqteris-1.0.0-SNAPSHOT.jar
-```
-
-Or pass a PDF file path directly to open on launch:
-```bash
-java -jar target/oqteris-1.0.0-SNAPSHOT.jar samples/sample_signed.pdf
+java -jar target/oqteris-1.0.0-SNAPSHOT-all.jar [optional-pdf-path]
 ```
 
 ---
 
-## 6. Sample Documents
+## 7. Native Distribution Packaging (`scripts/`)
 
-The project includes verified sample PDF assets in `samples/`:
+Production-ready packaging scripts bundle a stripped minimal JRE runtime (~35–45 MB) via `jlink` (`java.base,java.compiler,java.desktop,java.instrument,java.naming,java.net.http,java.rmi,java.scripting,java.sql,java.xml,jdk.crypto.ec,jdk.localedata,jdk.unsupported`) and produce native OS installers with zero host JRE dependency:
 
-| File | Description | Purpose |
-|---|---|---|
-| `samples/sample_signed.pdf` | Digitally signed PDF sealed with an embedded RSA PKCS#7 signature | Verifying signature parsing, byte-range integrity, and visual appearance rewriting |
-| `samples/oqteris_demo_signer.cer` | Exported X.509 certificate of the demo signer | Testing certificate import and trust validation transitions |
+### Windows Native Installer (`.exe`)
+Produces strictly an `.exe` installer using WiX Toolset and `jpackage --type exe`:
+```powershell
+# Using PowerShell
+.\scripts\package-windows.ps1
+
+# Or using CMD
+.\scripts\package-windows.bat
+```
+Output: `dist\Oqteris-1.0.0.exe`
+
+### Linux Native Packages (`.deb` & `.rpm`)
+Produces native Debian and RPM packages with desktop shortcuts and MIME associations:
+```bash
+chmod +x scripts/package-linux.sh
+./scripts/package-linux.sh
+```
+Output: `dist/Oqteris-1.0.0.deb` and `dist/Oqteris-1.0.0.rpm`
+
+### macOS Native Installer (`.dmg`)
+Produces a `.dmg` installer compatible with Apple Silicon and Intel:
+```bash
+chmod +x scripts/package-mac.sh
+./scripts/package-mac.sh
+```
+Output: `dist/Oqteris-1.0.0.dmg`
 
 ---
 
-## 7. Documentation Directory
+## 8. Sample Documents
 
-Detailed architectural specifications, security policies, format compatibility matrices, and build guides are available:
-
-- **[ARCHITECTURE.md](file:///d:/Study/Programming/Projects/Oqteris/ARCHITECTURE.md)**: System design, PDF rendering pipeline, signature verification pipeline, platform abstraction, and threading model.
-- **[BUILD.md](file:///d:/Study/Programming/Projects/Oqteris/BUILD.md)**: Build instructions, native OS packaging (`jpackage`), icon setup, and platform-specific default viewer registration.
-- **[FORMAT_SUPPORT.md](file:///d:/Study/Programming/Projects/Oqteris/FORMAT_SUPPORT.md)**: Technical specifications for PDF standards (ISO 32000-1 / ISO 32000-2) and digital signature formats.
-- **[SECURITY.md](file:///d:/Study/Programming/Projects/Oqteris/SECURITY.md)**: Cryptographic signature verification guidelines, trust store architecture, and trust decision policies.
+Sample documents for verification are located in `samples/`:
+- `samples/sample_signed.pdf`: Digitally signed PDF with embedded RSA PKCS#7 signature.
+- `samples/oqteris_demo_signer.cer`: Exported X.509 certificate for testing trust store import and validity transitions.
 
 ---
 
-## 8. License
+## 9. Documentation
 
-Oqteris is licensed under the Apache License, Version 2.0. All third-party dependencies (Apache PDFBox, Bouncy Castle, OpenJFX, ControlsFX) are permissive open-source libraries permitting desktop and commercial distribution.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)**: System design, rendering pipeline, digital signature verification, and platform abstraction.
+- **[BUILD.md](BUILD.md)**: Build instructions, native OS packaging, and file associations.
+- **[FORMAT_SUPPORT.md](FORMAT_SUPPORT.md)**: ISO 32000-1 / ISO 32000-2 compliance and signature standards.
+- **[SECURITY.md](SECURITY.md)**: Cryptographic signature policies and trust anchor management.
+
+---
+
+## 10. License & Publisher
+
+- **Publisher:** OriginSD
+- **Developer:** Subhadip Dutta &bull; Bankura, West Bengal, India
+- **License:** Apache License, Version 2.0
+- **Official Website:** [https://originsd.org](https://originsd.org)
+- **Copyright:** &copy; 2026 OriginSD. All rights reserved.

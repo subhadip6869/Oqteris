@@ -10,6 +10,7 @@
 
     <name>Oqteris</name>
     <description>Dedicated cross-platform desktop PDF reader and editor built with Java and JavaFX</description>
+    <url>https://originsd.org</url>
 
     <licenses>
         <license>
@@ -19,14 +20,22 @@
         </license>
     </licenses>
 
+    <scm>
+        <connection>scm:git:https://github.com/subhadip6869/Oqteris.git</connection>
+        <developerConnection>scm:git:https://github.com/subhadip6869/Oqteris.git</developerConnection>
+        <url>https://github.com/subhadip6869/Oqteris.git</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.release>21</maven.compiler.release>
         <javafx.version>21.0.6</javafx.version>
-
         <pdfbox.version>3.0.5</pdfbox.version>
         <bouncycastle.prov.version>1.86</bouncycastle.prov.version>
         <bouncycastle.pkix.version>1.86</bouncycastle.pkix.version>
+        <jackson.version>2.18.2</jackson.version>
         <junit.version>5.11.4</junit.version>
     </properties>
 
@@ -53,8 +62,6 @@
             <version>${javafx.version}</version>
         </dependency>
 
-
-
         <!-- Apache PDFBox 3.x for PDF document structure and rendering -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
@@ -74,7 +81,24 @@
             <version>${bouncycastle.pkix.version}</version>
         </dependency>
 
-        <!-- UI Libraries: ControlsFX, Ikonli, JMetro, FXRibbon -->
+        <!-- Jackson for Persistent Settings JSON Serialization -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <!-- UI Libraries: ControlsFX, Ikonli, FXRibbon -->
         <dependency>
             <groupId>org.controlsfx</groupId>
             <artifactId>controlsfx</artifactId>
@@ -94,11 +118,6 @@
             <groupId>org.kordamp.ikonli</groupId>
             <artifactId>ikonli-materialdesign2-pack</artifactId>
             <version>12.3.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jfxtras</groupId>
-            <artifactId>jmetro</artifactId>
-            <version>11.6.15</version>
         </dependency>
         <dependency>
             <groupId>com.pixelduke</groupId>
@@ -124,6 +143,16 @@
                 <version>3.13.0</version>
                 <configuration>
                     <release>21</release>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
+
+            <!-- Resources Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
@@ -161,6 +190,44 @@
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+
+            <!-- Maven Shade Plugin for building standalone runnable fat JAR -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>all</shadedClassifierName>
+                            <transformers>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>org.originsd.oqteris.ui.OqterisLauncher</mainClass>
+                                </transformer>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -34,11 +34,14 @@ public class AutosaveService {
     private boolean enabled = true;
 
     private AutosaveService() {
-        String userHome = System.getProperty("user.home", ".");
-        this.recoveryDir = Paths.get(userHome, ".oqteris", "recovery");
+        this.recoveryDir = org.originsd.oqteris.config.AppConfig.getRecoveryDirectory();
         try {
-            Files.createDirectories(recoveryDir);
-        } catch (IOException ignored) {
+            org.originsd.oqteris.config.UserSettings settings = org.originsd.oqteris.config.UserSettingsService.getInstance().getSettings();
+            if (settings != null) {
+                this.enabled = settings.isAutosaveEnabled();
+                this.intervalSeconds = settings.getAutosaveIntervalMinutes() * 60;
+            }
+        } catch (Exception ignored) {
         }
         startScheduler();
     }

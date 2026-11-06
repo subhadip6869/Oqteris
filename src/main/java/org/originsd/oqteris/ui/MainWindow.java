@@ -84,6 +84,7 @@ public class MainWindow extends BorderPane implements MainWindowHost {
         }
 
         // Top Area: Dedicated Ribbon Container (MenuBar eliminated in favour of professional desktop ribbon)
+        topContainer.getStyleClass().add("top-container");
         ribbonContainer.getStyleClass().add("ribbon-bar");
         ribbonContainer.setAlignment(Pos.CENTER_LEFT);
         ribbonContainer.setPadding(Insets.EMPTY);

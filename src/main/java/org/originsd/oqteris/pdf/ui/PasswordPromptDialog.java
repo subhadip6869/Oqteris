@@ -76,6 +76,11 @@ public class PasswordPromptDialog {
         content.getChildren().addAll(titleLabel, descLabel, passwordField, plainTextField, showPasswordBox, errorLabel);
         pane.setContent(content);
 
+        org.originsd.oqteris.ui.ThemeManager.getInstance().applyTheme(dialog);
+        if (pane.getScene() != null && pane.getScene().getWindow() != null) {
+            pane.getScene().getWindow().sizeToScene();
+        }
+
         // Auto-focus the password field
         Platform.runLater(passwordField::requestFocus);
 

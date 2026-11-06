@@ -29,9 +29,9 @@ public final class RibbonControlFactory {
      */
     public static double computeRequiredLargeButtonWidth(String text, boolean hasArrow) {
         if (text == null || text.isBlank()) {
-            return hasArrow ? 56.0 : 50.0;
+            return hasArrow ? 66.0 : 56.0;
         }
-        Font font = Font.font("Segoe UI", 11.0);
+        Font font = Font.font("Segoe UI", 10.5);
         double maxLineWidth = 0.0;
         String[] lines = text.split("\n");
         for (String line : lines) {
@@ -45,12 +45,12 @@ public final class RibbonControlFactory {
                 }
             }
         }
-        // Insets: padding left(6) + right(6) = 12px; border: 2px
-        // Arrow button (if menu/split): 18px
-        // Generous buffer for font kerning, subpixel rendering and Windows display scaling: 18px
-        double extra = hasArrow ? 46.0 : 28.0;
+        // Insets: padding left(4) + right(4) = 8px; border: 2px
+        // Arrow button (if menu/split): 20px
+        // Generous buffer for font kerning, subpixel rendering and Windows display scaling: 26px
+        double extra = hasArrow ? 52.0 : 36.0;
         double calculated = Math.ceil(maxLineWidth) + extra;
-        double minFloor = hasArrow ? 58.0 : 50.0;
+        double minFloor = hasArrow ? 68.0 : 58.0;
         return Math.max(minFloor, calculated);
     }
 
@@ -66,6 +66,8 @@ public final class RibbonControlFactory {
         btn.setTextAlignment(TextAlignment.CENTER);
         btn.setAlignment(Pos.CENTER);
         btn.setWrapText(false);
+        btn.setGraphicTextGap(2);
+        btn.setPadding(new javafx.geometry.Insets(3, 4, 3, 4));
         double reqW = computeRequiredLargeButtonWidth(text, false);
         btn.setMinWidth(reqW);
         btn.setPrefWidth(reqW);
@@ -91,6 +93,8 @@ public final class RibbonControlFactory {
         btn.setTextAlignment(TextAlignment.CENTER);
         btn.setAlignment(Pos.CENTER);
         btn.setWrapText(false);
+        btn.setGraphicTextGap(2);
+        btn.setPadding(new javafx.geometry.Insets(3, 4, 3, 4));
         double reqW = computeRequiredLargeButtonWidth(text, false);
         btn.setMinWidth(reqW);
         btn.setPrefWidth(reqW);
@@ -205,6 +209,8 @@ public final class RibbonControlFactory {
             btn.setContentDisplay(ContentDisplay.TOP);
             btn.setTextAlignment(TextAlignment.CENTER);
             btn.setAlignment(Pos.CENTER);
+            btn.setGraphicTextGap(2);
+            btn.setPadding(new javafx.geometry.Insets(3, 4, 3, 4));
             double reqW = computeRequiredLargeButtonWidth(text, true);
             btn.setMinWidth(reqW);
             btn.setPrefWidth(reqW);
@@ -238,6 +244,8 @@ public final class RibbonControlFactory {
             btn.setContentDisplay(ContentDisplay.TOP);
             btn.setTextAlignment(TextAlignment.CENTER);
             btn.setAlignment(Pos.CENTER);
+            btn.setGraphicTextGap(2);
+            btn.setPadding(new javafx.geometry.Insets(3, 4, 3, 4));
             double reqW = computeRequiredLargeButtonWidth(text, true);
             btn.setMinWidth(reqW);
             btn.setPrefWidth(reqW);
@@ -264,7 +272,7 @@ public final class RibbonControlFactory {
     public static Button createDisabledButton(String text, Ikon ikon, String tooltipReason, boolean large) {
         Button btn = new Button(text);
         if (ikon != null) {
-            btn.setGraphic(AppIcons.of(ikon, large ? 20 : 16));
+            btn.setGraphic(AppIcons.of(ikon, large ? 22 : 16));
         }
         btn.setWrapText(false);
         if (large) {

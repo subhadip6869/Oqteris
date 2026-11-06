@@ -231,17 +231,21 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     private void setupSidebar() {
+        sideTabPane.getStyleClass().addAll("sidebar-panel", "sidebar-tab-pane");
         sideTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         sideTabPane.setPrefWidth(280);
 
         // 1. Thumbnails Tab
         ScrollPane thumbScroll = new ScrollPane(thumbnailsBox);
+        thumbScroll.getStyleClass().addAll("sidebar-scroll-pane", "thumbnails-scroll-pane");
         thumbScroll.setFitToWidth(true);
+        thumbnailsBox.getStyleClass().add("thumbnails-box");
         thumbnailsBox.setPadding(new Insets(10));
         thumbnailsBox.setAlignment(Pos.TOP_CENTER);
         Tab thumbTab = new Tab("Thumbnails", thumbScroll);
 
         // 2. Bookmarks Tab
+        bookmarksTree.getStyleClass().add("sidebar-tree-view");
         Tab bookmarksTab = new Tab("Bookmarks", bookmarksTree);
         bookmarksTree.setShowRoot(false);
         if (model.getRootBookmark() != null) {
@@ -351,14 +355,14 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         box.setAlignment(Pos.CENTER);
         box.setCursor(javafx.scene.Cursor.HAND);
         box.setPadding(new Insets(4));
-        box.setStyle("-fx-border-color: #e0e0e0; -fx-background-color: white; -fx-border-radius: 4px;");
+        box.getStyleClass().add("thumbnail-item");
 
         ImageView iv = new ImageView();
         iv.setFitWidth(100);
         iv.setPreserveRatio(true);
 
         Label lbl = new Label("Page " + (index + 1));
-        lbl.setStyle("-fx-font-size: 10px;");
+        lbl.getStyleClass().add("thumbnail-label");
 
         box.getChildren().addAll(iv, lbl);
         box.setOnMouseClicked(e -> jumpToPage(index));

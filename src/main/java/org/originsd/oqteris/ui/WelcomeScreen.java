@@ -108,7 +108,8 @@ public class WelcomeScreen extends BorderPane {
         VBox dropZone = new VBox(6);
         dropZone.setAlignment(Pos.CENTER);
         dropZone.setPadding(new Insets(20, 16, 20, 16));
-        dropZone.setStyle("-fx-border-color: #cbd5e1; -fx-border-style: dashed; -fx-border-width: 2; -fx-border-radius: 8px; -fx-background-color: #f8fafc; -fx-background-radius: 8px; -fx-cursor: hand;");
+        dropZone.getStyleClass().add("welcome-drop-zone");
+        dropZone.setCursor(javafx.scene.Cursor.HAND);
         dropZone.setOnMouseClicked(e -> {
             if (onOpenFile != null) onOpenFile.run();
         });
@@ -116,9 +117,9 @@ public class WelcomeScreen extends BorderPane {
         Label dropIcon = new Label("📂");
         dropIcon.setStyle("-fx-font-size: 24px;");
         Label dropText = new Label("Drag & drop a PDF here");
-        dropText.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #475569;");
+        dropText.getStyleClass().add("welcome-drop-title");
         Label dropSub = new Label("or click to browse files");
-        dropSub.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+        dropSub.getStyleClass().add("welcome-drop-sub");
 
         dropZone.getChildren().addAll(dropIcon, dropText, dropSub);
 
@@ -150,10 +151,11 @@ public class WelcomeScreen extends BorderPane {
 
         recentsHeader.getChildren().addAll(recentLabel, recentSpacer, recentSearchField, clearRecentBtn);
 
+        recentFilesBox.getStyleClass().add("recent-files-box");
         ScrollPane recentScroll = new ScrollPane(recentFilesBox);
+        recentScroll.getStyleClass().add("recent-scroll-pane");
         recentScroll.setFitToWidth(true);
         recentScroll.setPrefHeight(380);
-        recentScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
         VBox.setVgrow(recentScroll, Priority.ALWAYS);
 
         refreshRecentFiles();
@@ -178,15 +180,16 @@ public class WelcomeScreen extends BorderPane {
             HBox banner = new HBox(12);
             banner.setAlignment(Pos.CENTER_LEFT);
             banner.setPadding(new Insets(8, 14, 8, 14));
-            banner.setStyle("-fx-background-color: #eff6ff; -fx-border-color: #bfdbfe; -fx-border-radius: 8px; -fx-background-radius: 8px;");
+            banner.getStyleClass().add("default-viewer-banner");
 
             Label msg = new Label("Oqteris is not currently your default PDF viewer.");
-            msg.setStyle("-fx-text-fill: #1e40af; -fx-font-size: 12px; -fx-font-weight: 600;");
+            msg.getStyleClass().add("default-viewer-msg");
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
 
             Button setDefaultBtn = new Button("Set as Default");
+            setDefaultBtn.getStyleClass().add("default-viewer-btn");
             setDefaultBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold;");
             setDefaultBtn.setOnAction(e -> {
                 RegistrationResult res = service.registerAsDefault();
@@ -229,11 +232,12 @@ public class WelcomeScreen extends BorderPane {
 
         VBox textCol = new VBox(2);
         Label cardTitle = new Label(title);
+        cardTitle.getStyleClass().add("action-card-title");
         cardTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: " + accentColor + ";");
 
         Label cardDesc = new Label(desc);
         cardDesc.setWrapText(true);
-        cardDesc.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+        cardDesc.getStyleClass().add("action-card-desc");
 
         textCol.getChildren().addAll(cardTitle, cardDesc);
         card.getChildren().addAll(iconBadge, textCol);
@@ -253,10 +257,10 @@ public class WelcomeScreen extends BorderPane {
         HBox banner = new HBox(12);
         banner.setAlignment(Pos.CENTER_LEFT);
         banner.setPadding(new Insets(10, 16, 10, 16));
-        banner.setStyle("-fx-background-color: #fef3c7; -fx-border-color: #fde68a; -fx-border-radius: 8px; -fx-background-radius: 8px;");
+        banner.getStyleClass().add("recovery-banner");
 
         Label warning = new Label("Document Recovery: Oqteris detected " + records.size() + " unsaved document(s) from a previous session.");
-        warning.setStyle("-fx-text-fill: #92400e; -fx-font-weight: bold; -fx-font-size: 12px;");
+        warning.getStyleClass().add("recovery-msg");
 
         Button recoverBtn = new Button("Recover All");
         recoverBtn.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold;");
@@ -316,11 +320,11 @@ public class WelcomeScreen extends BorderPane {
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
             row.setPadding(new Insets(10, 14, 10, 14));
-            row.setStyle("-fx-background-color: white; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;");
             row.getStyleClass().add("recent-file-row");
             row.setCursor(javafx.scene.Cursor.HAND);
 
             Label badge = new Label("PDF");
+            badge.getStyleClass().add("recent-file-badge");
             badge.setStyle("-fx-padding: 2px 7px; -fx-background-radius: 4px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-background-color: #dc2626; -fx-text-fill: white;");
 
             VBox fileInfo = new VBox(2);
@@ -335,7 +339,7 @@ public class WelcomeScreen extends BorderPane {
             HBox.setHgrow(spacer, Priority.ALWAYS);
 
             Label timeLbl = new Label(sdf.format(new Date(entry.getLastAccessed())));
-            timeLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+            timeLbl.getStyleClass().add("recent-file-time");
 
             row.getChildren().addAll(badge, fileInfo, spacer, timeLbl);
             row.setOnMouseClicked(e -> {
