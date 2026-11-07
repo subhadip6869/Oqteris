@@ -88,12 +88,12 @@ mvn clean package -DskipTests
 
 Run using the Java launcher:
 ```bash
-java -jar target/oqteris-1.0.0-SNAPSHOT.jar
+java -jar target/oqteris-1.1.0-all.jar
 ```
 
 Or pass a PDF file path directly:
 ```bash
-java -jar target/oqteris-1.0.0-SNAPSHOT.jar "samples/sample_signed.pdf"
+java -jar target/oqteris-1.1.0-all.jar "samples/sample_signed.pdf"
 ```
 
 ---
@@ -107,14 +107,14 @@ java -jar target/oqteris-1.0.0-SNAPSHOT.jar "samples/sample_signed.pdf"
 ```powershell
 mvn clean package -DskipTests
 mvn dependency:copy-dependencies -DoutputDirectory=target/app-input
-Copy-Item target\oqteris-1.0.0-SNAPSHOT.jar target\app-input\
+Copy-Item target\oqteris-1.1.0-all.jar target\app-input\
 ```
 
 #### Bash (Linux / macOS):
 ```bash
 mvn clean package -DskipTests
 mvn dependency:copy-dependencies -DoutputDirectory=target/app-input
-cp target/oqteris-1.0.0-SNAPSHOT.jar target/app-input/
+cp target/oqteris-1.1.0-all.jar target/app-input/
 ```
 
 ---
@@ -130,12 +130,12 @@ cp target/oqteris-1.0.0-SNAPSHOT.jar target/app-input/
 jpackage `
   --type app-image `
   --name "Oqteris" `
-  --app-version "1.0.0" `
-  --vendor "Oqteris Project" `
+  --app-version "1.1.0" `
+  --vendor "OriginSD" `
   --description "Dedicated PDF Reader and Editor" `
   --icon "src/main/resources/icons/oqteris-logo.ico" `
   --input target/app-input `
-  --main-jar oqteris-1.0.0-SNAPSHOT.jar `
+  --main-jar oqteris-1.1.0-all.jar `
   --main-class org.originsd.oqteris.ui.OqterisLauncher `
   --dest target/dist
 ```
@@ -146,12 +146,12 @@ jpackage `
 jpackage `
   --type exe `
   --name "Oqteris" `
-  --app-version "1.0.0" `
-  --vendor "Oqteris Project" `
+  --app-version "1.1.0" `
+  --vendor "OriginSD" `
   --description "Dedicated PDF Reader and Editor" `
   --icon "src/main/resources/icons/oqteris-logo.ico" `
   --input target/app-input `
-  --main-jar oqteris-1.0.0-SNAPSHOT.jar `
+  --main-jar oqteris-1.1.0-all.jar `
   --main-class org.originsd.oqteris.ui.OqterisLauncher `
   --file-associations packaging/windows/pdf-association.properties `
   --win-menu `
@@ -186,12 +186,12 @@ Oqteris provides automated file association registration via `WindowsDefaultView
 jpackage \
   --type deb \
   --name "oqteris" \
-  --app-version "1.0.0" \
-  --vendor "Oqteris Project" \
+  --app-version "1.1.0" \
+  --vendor "OriginSD" \
   --description "Dedicated PDF Reader and Editor" \
   --icon "src/main/resources/icons/oqteris-logo.png" \
   --input target/app-input \
-  --main-jar oqteris-1.0.0-SNAPSHOT.jar \
+  --main-jar oqteris-1.1.0-all.jar \
   --main-class org.originsd.oqteris.ui.OqterisLauncher \
   --linux-shortcut \
   --linux-menu-group "Office;Viewer;Graphics;" \
@@ -200,7 +200,7 @@ jpackage \
 
 Install the package:
 ```bash
-sudo dpkg -i target/installer/oqteris_1.0.0-1_amd64.deb
+sudo dpkg -i target/installer/oqteris_1.1.0-1_amd64.deb
 ```
 
 #### Fedora / RHEL Package (.rpm)
@@ -208,12 +208,12 @@ sudo dpkg -i target/installer/oqteris_1.0.0-1_amd64.deb
 jpackage \
   --type rpm \
   --name "oqteris" \
-  --app-version "1.0.0" \
-  --vendor "Oqteris Project" \
+  --app-version "1.1.0" \
+  --vendor "OriginSD" \
   --description "Dedicated PDF Reader and Editor" \
   --icon "src/main/resources/icons/oqteris-logo.png" \
   --input target/app-input \
-  --main-jar oqteris-1.0.0-SNAPSHOT.jar \
+  --main-jar oqteris-1.1.0-all.jar \
   --main-class org.originsd.oqteris.ui.OqterisLauncher \
   --linux-shortcut \
   --dest target/installer
@@ -254,12 +254,12 @@ xdg-mime query default application/pdf
 jpackage \
   --type dmg \
   --name "Oqteris" \
-  --app-version "1.0.0" \
-  --vendor "Oqteris Project" \
+  --app-version "1.1.0" \
+  --vendor "OriginSD" \
   --description "Dedicated PDF Reader and Editor" \
   --icon "src/main/resources/icons/oqteris-logo.icns" \
   --input target/app-input \
-  --main-jar oqteris-1.0.0-SNAPSHOT.jar \
+  --main-jar oqteris-1.1.0-all.jar \
   --main-class org.originsd.oqteris.ui.OqterisLauncher \
   --dest target/installer
 ```
@@ -295,7 +295,7 @@ In the macOS application bundle, the PDF document association is declared in `Co
 ## 5. Manual Verification Test Procedures
 
 ### Test Case 1: Welcome Screen & Branding
-1. Launch Oqteris: `mvn javafx:run` (or `java -jar target/oqteris-1.0.0-SNAPSHOT.jar`).
+1. Launch Oqteris: `mvn javafx:run` (or `java -jar target/oqteris-1.1.0-all.jar`).
 2. Verify that the window displays the **Oqteris** title and application logo (`oqteris-logo.png`).
 3. Verify that the Welcome Screen presents PDF-focused actions:
    - "Open PDF Document..."
@@ -330,12 +330,12 @@ In the macOS application bundle, the PDF document association is declared in `Co
 1. Ensure Oqteris is closed.
 2. Launch Oqteris from terminal with a PDF argument:
    ```bash
-   java -jar target/oqteris-1.0.0-SNAPSHOT.jar samples/sample_signed.pdf
+   java -jar target/oqteris-1.1.0-all.jar samples/sample_signed.pdf
    ```
 3. Verify that the file opens immediately without stopping at the welcome screen.
 4. While the application is running, open a second terminal and run:
    ```bash
-   java -jar target/oqteris-1.0.0-SNAPSHOT.jar samples/sample_signed.pdf
+   java -jar target/oqteris-1.1.0-all.jar samples/sample_signed.pdf
    ```
 5. Verify that the second command exits cleanly and routes the request to the existing application window.
 6. **Pass Criteria**: Command-line arguments open PDF files reliably, and secondary invocations pass files to the running instance via IPC.

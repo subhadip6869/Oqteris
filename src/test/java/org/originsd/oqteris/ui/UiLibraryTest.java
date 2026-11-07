@@ -5,8 +5,6 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign2.*;
 import org.controlsfx.control.SegmentedButton;
 import org.controlsfx.control.textfield.TextFields;
-import jfxtras.styles.jmetro.JMetro;
-import jfxtras.styles.jmetro.Style;
 import com.pixelduke.control.Ribbon;
 import com.pixelduke.control.ribbon.RibbonTab;
 import com.pixelduke.control.ribbon.RibbonGroup;
@@ -29,9 +27,7 @@ public class UiLibraryTest {
     public void testLibrariesPresent() {
         assertNotNull(SegmentedButton.class);
         assertNotNull(TextFields.class);
-        assertNotNull(JMetro.class);
-        assertNotNull(Style.LIGHT);
-        assertNotNull(Style.DARK);
+        assertNotNull(org.originsd.oqteris.ui.ThemeManager.class);
         assertNotNull(Ribbon.class);
         assertNotNull(RibbonTab.class);
         assertNotNull(RibbonGroup.class);
@@ -138,10 +134,7 @@ public class UiLibraryTest {
         org.originsd.oqteris.pdf.ui.PdfDocumentView pdfView = new org.originsd.oqteris.pdf.ui.PdfDocumentView(pdfFile);
         Ribbon r = (Ribbon) pdfView.getRibbonToolbar();
         javafx.scene.Scene scene = new javafx.scene.Scene(r, 1200, 200);
-        scene.getStylesheets().addAll(
-                getClass().getResource("/styles/common.css").toExternalForm(),
-                getClass().getResource("/styles/theme-light.css").toExternalForm()
-        );
+        org.originsd.oqteris.ui.ThemeManager.getInstance().applyTheme(scene);
         r.applyCss();
         r.layout();
         for (RibbonTab tabObj : r.getTabs()) {

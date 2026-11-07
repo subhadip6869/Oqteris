@@ -109,7 +109,7 @@ public class UpdateCheckerTest {
     public void testAppMetadataRepository() {
         assertEquals("subhadip6869/Oqteris", AppVersion.GITHUB_REPO);
         assertTrue(AppVersion.GITHUB_REPO_URL.contains("github.com/subhadip6869/Oqteris"));
-        assertEquals("1.0.0", AppVersion.CURRENT_VERSION);
+        assertEquals("1.1.0", AppVersion.CURRENT_VERSION);
     }
 
     @Test
@@ -144,7 +144,7 @@ public class UpdateCheckerTest {
         assertEquals(UpdateCheckResult.Status.UPDATE_AVAILABLE, resAvailable.status());
 
         // 200 Up To Date
-        ReleaseInfo relSame = new ReleaseInfo("v1.0.0", "Release 1.0.0", "notes", "https://github.com", "2026-11-03", java.util.List.of());
+        ReleaseInfo relSame = new ReleaseInfo("v1.1.0", "Release 1.1.0", "notes", "https://github.com", "2026-11-03", java.util.List.of());
         UpdateCheckResult resUpToDate = new UpdateCheckResult(
                 UpdateCheckResult.Status.UP_TO_DATE, relSame, 200, null
         );

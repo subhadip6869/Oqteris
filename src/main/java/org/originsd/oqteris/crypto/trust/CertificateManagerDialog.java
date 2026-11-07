@@ -99,6 +99,7 @@ public class CertificateManagerDialog extends Stage {
         Scene scene = new Scene(root);
         ThemeManager.getInstance().applyTheme(scene);
         setScene(scene);
+        sizeToScene();
 
         refreshTable();
     }

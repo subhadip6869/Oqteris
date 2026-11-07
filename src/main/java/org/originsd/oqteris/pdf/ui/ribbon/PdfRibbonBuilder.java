@@ -72,6 +72,13 @@ public class PdfRibbonBuilder {
     public void buildRibbon() {
         ribbon.getTabs().clear();
         ribbon.setMaxWidth(Double.MAX_VALUE);
+        ribbon.setMinHeight(javafx.scene.layout.Region.USE_COMPUTED_SIZE);
+        ribbon.setPrefHeight(javafx.scene.layout.Region.USE_COMPUTED_SIZE);
+        ribbon.setMaxHeight(javafx.scene.layout.Region.USE_COMPUTED_SIZE);
+        if (ribbon.getQuickAccessBar() != null) {
+            ribbon.getQuickAccessBar().setVisible(false);
+            ribbon.getQuickAccessBar().setManaged(false);
+        }
 
         homeTab = buildHomeTab();
         viewTab = buildViewTab();
@@ -91,6 +98,8 @@ public class PdfRibbonBuilder {
         // Setup contextual tabs based on document features
         updateContextualTabs();
         updateSignatureBadges();
+
+        ThemeManager.getInstance().applyTheme(ribbon);
     }
 
     public TextField getPageField() {

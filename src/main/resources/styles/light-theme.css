@@ -1,0 +1,437 @@
+/* ==========================================================================
+   Oqteris Desktop - Light Theme Palette & Clean Executive Stylesheet
+   Adheres to OriginSD Desktop Application Master Architecture Standard
+   ========================================================================== */
+
+.root {
+    -color-primary: #3659C9;
+    -color-primary-hover: #2947A8;
+    -color-primary-pressed: #203A8B;
+    -color-secondary-teal: #0F9D91;
+    -color-accent: #19B5A5;
+    -color-focus-ring: #6C8DF0;
+
+    -color-bg: #F5F7FB;
+    -color-surface: #FFFFFF;
+    -color-surface-secondary: #EDF1F8;
+    -color-text-primary: #172033;
+    -color-text-secondary: #65718A;
+    -color-text-muted: #8A94A8;
+    -color-border: #DCE2EC;
+    -color-divider: #E7EBF2;
+    -color-selected: #E8EEFF;
+
+    -color-success: #21845A;
+    -color-warning: #B7791F;
+    -color-error: #C64747;
+
+    -color-badge-offline-bg: #E6F7ED;
+    -color-badge-offline-text: #166534;
+}
+
+/* --- Ribbon Toolbar (Light Theme) --- */
+.top-container,
+.ribbon-bar {
+    -fx-background-color: #EDF1F8 !important;
+    -fx-background: #EDF1F8 !important;
+}
+
+.ribbon {
+    -fx-background: #EDF1F8 !important;
+    -fx-background-color: #EDF1F8 !important;
+    -fx-border-color: #DCE2EC !important;
+    -fx-border-width: 0 0 1px 0 !important;
+
+    TITLES_COLOR: #475569 !important;
+    RIBBON_GROUP_TITLE: #64748B !important;
+    CONTROLS_LABEL_COLOR: #1E293B !important;
+    ACCENT_COLOR: #3659C9 !important;
+}
+
+.ribbon > .outer-container {
+    -fx-background-color: #EDF1F8 !important;
+    -fx-background: #EDF1F8 !important;
+}
+
+.ribbon > .outer-container > .tab-pane {
+    -fx-background-color: #EDF1F8 !important;
+    -fx-background: #EDF1F8 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area {
+    -fx-background-color: #EDF1F8 !important;
+    -fx-background: #EDF1F8 !important;
+    -fx-border-color: #DCE2EC !important;
+    -fx-border-width: 0 0 1px 0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .tab-header-background,
+.ribbon .tab-header-background,
+.ribbon .tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: #EDF1F8 !important;
+    -fx-background: #EDF1F8 !important;
+    -fx-background-insets: 0 !important;
+    -fx-border-color: #DCE2EC !important;
+    -fx-border-width: 0 0 1px 0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-content-area {
+    -fx-background-color: #FFFFFF !important;
+    -fx-background-insets: 0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent !important;
+    -fx-border-color: transparent !important;
+    -fx-border-width: 0 !important;
+}
+
+.ribbon .tab-header-area .tab .tab-label,
+.ribbon .tab-header-area .tab .label,
+.ribbon .tab-header-area .tab > .tab-container > .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab > .tab-container > .tab-label {
+    -fx-text-fill: #475569 !important;
+    -fx-font-size: 11.5px !important;
+    -fx-font-weight: 600 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: #EDF2F7 !important;
+}
+
+.ribbon .tab-header-area .tab:hover .tab-label,
+.ribbon .tab-header-area .tab:hover .label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:hover .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:hover > .tab-container > .tab-label {
+    -fx-text-fill: #0F172A !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: #3659C9 #CBD5E1 transparent #CBD5E1 !important;
+    -fx-border-width: 3px 1px 0 1px !important;
+}
+
+.ribbon .tab-header-area .tab:selected .tab-label,
+.ribbon .tab-header-area .tab:selected .label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected > .tab-container > .tab-label {
+    -fx-text-fill: #3659C9 !important;
+    -fx-font-weight: bold !important;
+}
+
+.ribbon-group {
+    -fx-border-color: #E2E8F0 !important;
+    -fx-border-width: 0 1px 0 0 !important;
+    -fx-background-color: transparent !important;
+}
+
+.ribbon-group .title {
+    -fx-text-fill: #64748B !important;
+}
+
+/* Ribbon Buttons in Light Mode */
+.ribbon-large-btn,
+.ribbon-large-menu-btn,
+.ribbon-large-split-btn,
+.ribbon-btn,
+.ribbon-icon-btn,
+.ribbon-menu-btn,
+.ribbon-split-btn,
+.ribbon-group > .ribbon-group-content > .button,
+.ribbon-group > .ribbon-group-content > .toggle-button,
+.ribbon-group > .ribbon-group-content > .menu-button,
+.ribbon-group > .ribbon-group-content > .split-menu-button,
+.ribbon-group > .ribbon-group-content > .column > .button,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button {
+    -fx-background-color: #F8FAFC !important;
+    -fx-text-fill: #1E293B !important;
+    -fx-border-color: #CBD5E1 !important;
+    -fx-border-radius: 4px !important;
+    -fx-background-radius: 4px !important;
+}
+
+.ribbon-large-btn .ikonli-font-icon,
+.ribbon-large-menu-btn .ikonli-font-icon,
+.ribbon-large-split-btn .ikonli-font-icon,
+.ribbon-btn .ikonli-font-icon,
+.ribbon-icon-btn .ikonli-font-icon,
+.ribbon-menu-btn .ikonli-font-icon,
+.ribbon-split-btn .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .button .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .toggle-button .ikonli-font-icon {
+    -fx-icon-color: #3659C9 !important;
+}
+
+.ribbon-large-btn:hover,
+.ribbon-large-menu-btn:hover,
+.ribbon-large-split-btn:hover,
+.ribbon-btn:hover,
+.ribbon-icon-btn:hover,
+.ribbon-menu-btn:hover,
+.ribbon-split-btn:hover,
+.ribbon-group > .ribbon-group-content > .button:hover,
+.ribbon-group > .ribbon-group-content > .toggle-button:hover {
+    -fx-background-color: #E0E7FF !important;
+    -fx-border-color: #6366F1 !important;
+    -fx-text-fill: #1E1B4B !important;
+}
+
+.ribbon-large-btn:hover .ikonli-font-icon,
+.ribbon-large-menu-btn:hover .ikonli-font-icon,
+.ribbon-large-split-btn:hover .ikonli-font-icon,
+.ribbon-btn:hover .ikonli-font-icon,
+.ribbon-icon-btn:hover .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .button:hover .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .toggle-button:hover .ikonli-font-icon {
+    -fx-icon-color: #4338CA !important;
+}
+
+/* Selected ToggleButton in Light Mode Ribbon */
+.ribbon-large-btn:selected,
+.ribbon-btn:selected,
+.ribbon-icon-btn:selected,
+.ribbon-group > .ribbon-group-content > .toggle-button:selected,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button:selected {
+    -fx-background-color: #EEF2FF !important;
+    -fx-border-color: #4F46E5 !important;
+    -fx-text-fill: #312E81 !important;
+    -fx-font-weight: 600 !important;
+}
+
+.ribbon-large-btn:selected .ikonli-font-icon,
+.ribbon-btn:selected .ikonli-font-icon,
+.ribbon-icon-btn:selected .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .toggle-button:selected .ikonli-font-icon {
+    -fx-icon-color: #4338CA !important;
+}
+
+/* Document Tab Pane Light Styling ("File Names Panel") */
+.document-tab-pane,
+.tab-pane {
+    -fx-background-color: #EDF1F8;
+}
+
+.document-tab-pane > .tab-header-area,
+.tab-pane > .tab-header-area {
+    -fx-background-color: #E2E8F0 !important;
+    -fx-border-color: #CBD5E1 !important;
+    -fx-border-width: 0 0 1px 0 !important;
+}
+
+.document-tab-pane > .tab-header-area .tab,
+.tab-pane > .tab-header-area .tab {
+    -fx-background-color: #F1F5F9 !important;
+    -fx-border-color: #CBD5E1 !important;
+    -fx-border-width: 1px 1px 0 1px !important;
+    -fx-border-radius: 6px 6px 0 0 !important;
+}
+
+.document-tab-pane > .tab-header-area .tab .tab-label,
+.tab-pane > .tab-header-area .tab .tab-label {
+    -fx-text-fill: #64748B !important;
+}
+
+.document-tab-pane > .tab-header-area .tab:selected,
+.tab-pane > .tab-header-area .tab:selected {
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: #3659C9 #CBD5E1 transparent #CBD5E1 !important;
+    -fx-border-width: 2px 1px 0 1px !important;
+}
+
+.document-tab-pane > .tab-header-area .tab:selected .tab-label,
+.tab-pane > .tab-header-area .tab:selected .tab-label {
+    -fx-text-fill: #1E293B !important;
+    -fx-font-weight: bold !important;
+}
+
+/* Left Panel / Sidebar (Thumbnails, Bookmarks, Signatures) */
+.sidebar-panel,
+.sidebar-tab-pane {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #DCE2EC;
+    -fx-border-width: 0 1px 0 0;
+}
+
+.sidebar-tab-pane > .tab-header-area {
+    -fx-background-color: #EDF1F8 !important;
+    -fx-border-color: #DCE2EC !important;
+    -fx-border-width: 0 0 1px 0 !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab {
+    -fx-background-color: transparent !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab .tab-label,
+.sidebar-tab-pane > .tab-header-area .tab .label {
+    -fx-text-fill: #65718A !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab:selected {
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: #3659C9 transparent transparent transparent !important;
+    -fx-border-width: 2px 0 0 0 !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab:selected .tab-label,
+.sidebar-tab-pane > .tab-header-area .tab:selected .label {
+    -fx-text-fill: #3659C9 !important;
+    -fx-font-weight: bold !important;
+}
+
+.sidebar-tab-pane > .tab-content-area {
+    -fx-background-color: #FFFFFF !important;
+}
+
+.sidebar-scroll-pane,
+.sidebar-scroll-pane > .viewport,
+.thumbnails-scroll-pane,
+.thumbnails-scroll-pane > .viewport,
+.thumbnails-box {
+    -fx-background-color: #FFFFFF !important;
+    -fx-background: #FFFFFF !important;
+}
+
+.thumbnail-item {
+    -fx-background-color: #F8FAFC !important;
+    -fx-border-color: #DCE2EC !important;
+}
+
+.thumbnail-item:hover {
+    -fx-background-color: #E8EEFF !important;
+    -fx-border-color: #3659C9 !important;
+}
+
+.thumbnail-label {
+    -fx-text-fill: #65718A !important;
+}
+
+.sidebar-tree-view {
+    -fx-background-color: #FFFFFF !important;
+}
+
+.sidebar-tree-view .tree-cell {
+    -fx-background-color: #FFFFFF !important;
+    -fx-text-fill: #172033 !important;
+}
+
+.sidebar-tree-view .tree-cell:hover {
+    -fx-background-color: #F8FAFC !important;
+}
+
+.sidebar-tree-view .tree-cell:selected {
+    -fx-background-color: #E8EEFF !important;
+    -fx-text-fill: #3659C9 !important;
+}
+
+.signature-panel,
+.signature-scroll-pane,
+.signature-scroll-pane > .viewport {
+    -fx-background-color: #FFFFFF !important;
+    -fx-background: #FFFFFF !important;
+}
+
+.signature-card {
+    -fx-background-color: #F8FAFC !important;
+    -fx-border-color: #DCE2EC !important;
+}
+
+.signature-desc-label,
+.signature-date-label,
+.signature-count-label,
+.signature-empty-label {
+    -fx-text-fill: #65718A !important;
+}
+
+.signature-signer-label {
+    -fx-text-fill: #172033 !important;
+}
+
+/* Welcome Screen & Recent Files (Light Mode) */
+.welcome-screen {
+    -fx-background-color: #F5F7FB !important;
+}
+
+.default-viewer-banner {
+    -fx-background-color: #eff6ff !important;
+    -fx-border-color: #bfdbfe !important;
+}
+
+.default-viewer-msg {
+    -fx-text-fill: #1e40af !important;
+}
+
+.welcome-drop-zone {
+    -fx-background-color: #f8fafc !important;
+    -fx-border-color: #cbd5e1 !important;
+}
+
+.welcome-drop-zone:hover {
+    -fx-background-color: #E8EEFF !important;
+    -fx-border-color: #3659C9 !important;
+}
+
+.welcome-drop-title {
+    -fx-text-fill: #172033 !important;
+}
+
+.welcome-drop-sub {
+    -fx-text-fill: #8A94A8 !important;
+}
+
+.action-card {
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: #DCE2EC !important;
+}
+
+.action-card:hover {
+    -fx-background-color: #E8EEFF !important;
+    -fx-border-color: #3659C9 !important;
+}
+
+.action-card-desc {
+    -fx-text-fill: #65718A !important;
+}
+
+.recent-scroll-pane,
+.recent-scroll-pane > .viewport,
+.recent-files-box {
+    -fx-background-color: transparent !important;
+    -fx-background: transparent !important;
+}
+
+.recent-file-row {
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: #e2e8f0 !important;
+}
+
+.recent-file-row:hover {
+    -fx-background-color: #E8EEFF !important;
+    -fx-border-color: #3659C9 !important;
+}
+
+.recent-file-name {
+    -fx-text-fill: #172033 !important;
+}
+
+.recent-file-path {
+    -fx-text-fill: #65718A !important;
+}
+
+.recent-file-time {
+    -fx-text-fill: #8A94A8 !important;
+}
+
+/* Canvas Container & Scrollbars (Light) */
+.editor-canvas-container {
+    -fx-background-color: #E2E8F0;
+}
+
+.status-bar {
+    -fx-background-color: #F1F5F9;
+    -fx-border-color: #DCE2EC;
+    -fx-border-width: 1px 0 0 0;
+    -fx-text-fill: #64748B;
+}

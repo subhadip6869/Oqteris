@@ -25,6 +25,7 @@ public class PdfSignaturePanel extends VBox {
 
     public PdfSignaturePanel(PdfDocumentModel model) {
         this.model = model;
+        getStyleClass().add("signature-panel");
         setPadding(new Insets(12));
         setSpacing(10);
         setPrefWidth(320);
@@ -38,9 +39,11 @@ public class PdfSignaturePanel extends VBox {
 
         List<PdfSignatureInfo> signatures = model.getSignatures();
         Label countLabel = new Label(signatures.size() + " signature(s) detected");
-        countLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666666;");
+        countLabel.getStyleClass().add("signature-count-label");
+        countLabel.setStyle("-fx-font-size: 12px;");
 
         ScrollPane scroll = new ScrollPane(signatureCardsBox);
+        scroll.getStyleClass().add("signature-scroll-pane");
         scroll.setFitToWidth(true);
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
@@ -56,7 +59,8 @@ public class PdfSignaturePanel extends VBox {
         if (signatures.isEmpty()) {
             Label noSig = new Label("This PDF does not contain any digital signatures.");
             noSig.setWrapText(true);
-            noSig.setStyle("-fx-text-fill: #777777; -fx-padding: 8px;");
+            noSig.getStyleClass().add("signature-empty-label");
+            noSig.setStyle("-fx-padding: 8px;");
             signatureCardsBox.getChildren().add(noSig);
             return;
         }
@@ -66,7 +70,7 @@ public class PdfSignaturePanel extends VBox {
         for (PdfSignatureInfo sig : signatures) {
             VBox card = new VBox(8);
             card.setPadding(new Insets(12));
-            card.setStyle("-fx-background-color: #fafafa; -fx-border-color: #e0e0e0; -fx-border-radius: 6px; -fx-background-radius: 6px;");
+            card.getStyleClass().add("signature-card");
 
             // Status Badge
             Label badge = new Label();
@@ -86,16 +90,19 @@ public class PdfSignaturePanel extends VBox {
 
             // Signer Name
             Label signer = new Label("Signer: " + sig.getSignerName());
+            signer.getStyleClass().add("signature-signer-label");
             signer.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
             // Status Explanation
             Label statusDesc = new Label(sig.getStatusDetails());
             statusDesc.setWrapText(true);
-            statusDesc.setStyle("-fx-font-size: 11px; -fx-text-fill: #444444;");
+            statusDesc.getStyleClass().add("signature-desc-label");
+            statusDesc.setStyle("-fx-font-size: 11px;");
 
             // Signing Date
             Label date = new Label("Signed: " + sdf.format(sig.getSigningTime()) + (sig.hasTimestampToken() ? " (Timestamped)" : ""));
-            date.setStyle("-fx-font-size: 11px; -fx-text-fill: #666666;");
+            date.getStyleClass().add("signature-date-label");
+            date.setStyle("-fx-font-size: 11px;");
 
             // Document modification check
             Label coverage = new Label(sig.coversWholeDocument() ? "✓ Covers entire document" : "⚠ Document altered after signing");

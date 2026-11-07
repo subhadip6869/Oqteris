@@ -26,22 +26,10 @@ public class SingleInstanceManager {
             return activeBaseDir;
         }
 
-        String customDir = System.getProperty("oqteris.config.dir");
-        if (customDir != null && !customDir.isBlank()) {
-            File dir = new File(customDir, ".oqteris");
-            dir.mkdirs();
-            activeBaseDir = dir;
-            return activeBaseDir;
-        }
-
-        // Try user.home/.oqteris first
-        File dir = new File(System.getProperty("user.home", "."), ".oqteris");
+        File dir = org.originsd.oqteris.config.AppConfig.getAppDataDirectory().toFile();
         if (!isWritableDir(dir)) {
-            dir = new File(System.getProperty("java.io.tmpdir", "."), ".oqteris");
-            if (!isWritableDir(dir)) {
-                dir = new File(".oqteris");
-                dir.mkdirs();
-            }
+            dir = new File(System.getProperty("java.io.tmpdir", "."), "OriginSD-Oqteris");
+            dir.mkdirs();
         }
 
         activeBaseDir = dir;

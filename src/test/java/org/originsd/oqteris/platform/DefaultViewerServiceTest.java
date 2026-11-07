@@ -38,9 +38,25 @@ public class DefaultViewerServiceTest {
         assertTrue(cmd.contains("java") || cmd.contains("javaw"));
         assertTrue(cmd.contains("%1"));
 
+        String effectiveCmd = winService.getEffectiveLaunchCommand("C:\\Program Files\\Oqteris\\Oqteris.exe");
+        assertNotNull(effectiveCmd);
+        assertTrue(effectiveCmd.contains("Oqteris.exe"));
+        assertTrue(effectiveCmd.contains("%1"));
+
         // Status check shouldn't throw exceptions
         DefaultViewerStatus status = winService.checkStatus();
         assertNotNull(status);
+    }
+
+    @Test
+    public void testWindowsRegisterAsDefault() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (os.contains("win")) {
+            WindowsDefaultViewerService winService = new WindowsDefaultViewerService();
+            RegistrationResult res = winService.registerAsDefault();
+            assertNotNull(res);
+            assertNotEquals(RegistrationResult.Outcome.ERROR, res.getOutcome());
+        }
     }
 
     @Test
