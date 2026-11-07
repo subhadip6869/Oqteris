@@ -29,6 +29,7 @@ desktop.ini
 
 # Build & Runtime
 target/
+dist/
 *.log
 hs_err_pid*
 replay_pid*

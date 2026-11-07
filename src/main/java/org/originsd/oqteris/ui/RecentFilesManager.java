@@ -49,9 +49,10 @@ public class RecentFilesManager {
     }
 
     private final List<RecentFileEntry> entries = new ArrayList<>();
-    private final Preferences prefs = Preferences.userNodeForPackage(RecentFilesManager.class);
+    private final java.nio.file.Path storagePath;
 
     private RecentFilesManager() {
+        this.storagePath = org.originsd.oqteris.config.AppConfig.getAppDataDirectory().resolve("recent_files.dat");
         load();
     }
 
@@ -79,38 +80,48 @@ public class RecentFilesManager {
     }
 
     private void load() {
-        String data = prefs.get(PREF_KEY_RECENT, "");
-        if (data.isBlank()) return;
+        if (!java.nio.file.Files.exists(storagePath)) return;
+        try {
+            String data = java.nio.file.Files.readString(storagePath);
+            if (data == null || data.isBlank()) return;
 
-        String[] parts = data.split("\\|\\|");
-        for (String p : parts) {
-            if (p.isBlank()) continue;
-            String[] fields = p.split("::");
-            if (fields.length >= 2) {
-                File file = new File(fields[0]);
-                if (file.exists()) {
-                    try {
-                        DocumentType type = DocumentType.valueOf(fields[1]);
-                        long time = fields.length >= 3 ? Long.parseLong(fields[2]) : System.currentTimeMillis();
-                        entries.add(new RecentFileEntry(file, type, time));
-                    } catch (Exception ignored) {
+            String[] parts = data.split("\\|\\|");
+            for (String p : parts) {
+                if (p.isBlank()) continue;
+                String[] fields = p.split("::");
+                if (fields.length >= 2) {
+                    File file = new File(fields[0]);
+                    if (file.exists()) {
+                        try {
+                            DocumentType type = DocumentType.valueOf(fields[1]);
+                            long time = fields.length >= 3 ? Long.parseLong(fields[2]) : System.currentTimeMillis();
+                            entries.add(new RecentFileEntry(file, type, time));
+                        } catch (Exception ignored) {
+                        }
                     }
                 }
             }
+        } catch (Exception ignored) {
         }
     }
 
     private void save() {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < entries.size(); i++) {
-            RecentFileEntry e = entries.get(i);
-            sb.append(e.getAbsolutePath()).append("::")
-              .append(e.getType().name()).append("::")
-              .append(e.getLastAccessed());
-            if (i < entries.size() - 1) {
-                sb.append("||");
+        try {
+            if (storagePath.getParent() != null) {
+                java.nio.file.Files.createDirectories(storagePath.getParent());
             }
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < entries.size(); i++) {
+                RecentFileEntry e = entries.get(i);
+                sb.append(e.getAbsolutePath()).append("::")
+                  .append(e.getType().name()).append("::")
+                  .append(e.getLastAccessed());
+                if (i < entries.size() - 1) {
+                    sb.append("||");
+                }
+            }
+            java.nio.file.Files.writeString(storagePath, sb.toString());
+        } catch (Exception ignored) {
         }
-        prefs.put(PREF_KEY_RECENT, sb.toString());
     }
 }

@@ -1,0 +1,514 @@
+/* ==========================================================================
+   Oqteris Desktop - Dark Theme Palette & Deep Obsidian Stylesheet
+   Adheres to OriginSD Desktop Application Master Architecture Standard
+   ========================================================================== */
+
+.root {
+    -color-primary: #5B82F6;            /* Vibrant periwinkle blue for high contrast (7.5:1+) */
+    -color-primary-hover: #7B9CF8;
+    -color-primary-pressed: #456BD8;
+    -color-secondary-teal: #2DD4BF;      /* Accessible teal */
+    -color-accent: #20C997;
+    -color-focus-ring: #7B9CF8;
+
+    -color-bg: #090d16;                  /* Deep dark workspace canvas */
+    -color-surface: #0f172a;             /* Dark panel / card background */
+    -color-surface-secondary: #1e293b;   /* Ribbon, headers, input background */
+    -color-text-primary: #EDF2FA;        /* Primary crisp text */
+    -color-text-secondary: #cbd5e1;      /* Secondary text & unselected tabs */
+    -color-text-muted: #8190A8;          /* Timestamps, hints, inactive badges */
+    -color-border: #334157;
+    -color-divider: #29364A;
+    -color-selected: #24355E;
+
+    -color-success: #4DBB85;
+    -color-warning: #F59E0B;
+    -color-error: #F87171;
+
+    -color-badge-offline-bg: #133D29;
+    -color-badge-offline-text: #4ADE80;
+}
+
+/* --- Menu Bar & Menus (Dark) --- */
+.menu-bar {
+    -fx-background-color: #0b0f19;
+    -fx-border-color: #1e293b;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.menu-bar .label {
+    -fx-text-fill: #f1f5f9;
+}
+
+.menu-bar .menu-button:hover, .menu-bar .menu-button:showing {
+    -fx-background-color: #1e293b;
+}
+
+.context-menu {
+    -fx-background-color: #0f172a;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-border-width: 1px;
+    -fx-padding: 4px;
+    -fx-min-width: 200px;
+}
+
+.menu-item .label {
+    -fx-text-fill: #e2e8f0;
+}
+
+.menu-item:hover, .menu-item:focused {
+    -fx-background-color: #1e293b;
+}
+
+.menu-item:hover .label, .menu-item:focused .label {
+    -fx-text-fill: #7B9CF8;
+}
+
+/* --- Ribbon Toolbar (Dark Obsidian Theme) --- */
+.quick-access-bar,
+.quick-access-bar > .outer-container,
+.quick-access-bar > .outer-container > .button-container {
+    -fx-background-color: transparent !important;
+    -fx-background: transparent !important;
+    -fx-pref-height: 0 !important;
+    -fx-max-height: 0 !important;
+    -fx-min-height: 0 !important;
+    -fx-padding: 0 !important;
+    -fx-border-color: transparent !important;
+    -fx-border-width: 0 !important;
+}
+
+.top-container,
+.ribbon-bar {
+    -fx-background-color: #0b0f19 !important;
+    -fx-background: #0b0f19 !important;
+}
+
+.ribbon {
+    -fx-background: #0b0f19 !important;
+    -fx-background-color: #0b0f19 !important;
+    -fx-border-color: #1e293b !important;
+    -fx-border-width: 0 0 1px 0 !important;
+
+    TITLES_COLOR: #f1f5f9 !important;
+    RIBBON_GROUP_TITLE: #94a3b8 !important;
+    CONTROLS_LABEL_COLOR: #f8fafc !important;
+    ACCENT_COLOR: #5B82F6 !important;
+}
+
+.ribbon > .outer-container {
+    -fx-background-color: #0b0f19 !important;
+    -fx-background: #0b0f19 !important;
+}
+
+.ribbon > .outer-container > .tab-pane {
+    -fx-background-color: #0b0f19 !important;
+    -fx-background: #0b0f19 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area {
+    -fx-background-color: #0b0f19 !important;
+    -fx-background: #0b0f19 !important;
+    -fx-border-color: #1e293b !important;
+    -fx-border-width: 0 0 1px 0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .tab-header-background,
+.ribbon .tab-header-background,
+.ribbon .tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: #0b0f19 !important;
+    -fx-background: #0b0f19 !important;
+    -fx-border-color: #1e293b !important;
+    -fx-border-width: 0 0 1px 0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-content-area {
+    -fx-background-color: #111827 !important;
+    -fx-background-insets: 0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent, transparent, #0b0f19 !important;
+    -fx-background: #0b0f19 !important;
+    -fx-border-color: transparent transparent #1e293b transparent !important;
+    -fx-border-width: 0 0 1px 0 !important;
+}
+
+/* Unselected Ribbon Tab Labels - Crisp & High Contrast */
+.ribbon .tab-header-area .tab .tab-label,
+.ribbon .tab-header-area .tab .label,
+.ribbon .tab-header-area .tab > .tab-container > .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab > .tab-container > .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab .label {
+    -fx-text-fill: #f1f5f9 !important;
+    -fx-font-size: 11.5px !important;
+    -fx-font-weight: 600 !important;
+    -fx-opacity: 1.0 !important;
+}
+
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: #1e293b !important;
+}
+
+.ribbon .tab-header-area .tab:hover .tab-label,
+.ribbon .tab-header-area .tab:hover .label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:hover .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:hover > .tab-container > .tab-label {
+    -fx-text-fill: #ffffff !important;
+}
+
+/* Selected Ribbon Tab */
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: #111827 !important;
+    -fx-border-color: #5B82F6 #334155 transparent #334155 !important;
+    -fx-border-width: 3px 1px 0 1px !important;
+}
+
+.ribbon .tab-header-area .tab:selected .tab-label,
+.ribbon .tab-header-area .tab:selected .label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label,
+.ribbon > .outer-container > .tab-pane > .tab-header-area > .headers-region > .tab:selected > .tab-container > .tab-label {
+    -fx-text-fill: #5B82F6 !important;
+    -fx-font-weight: bold !important;
+}
+
+.ribbon-group {
+    -fx-border-color: #334157 !important;
+    -fx-border-width: 0 1px 0 0 !important;
+    -fx-background-color: transparent !important;
+}
+
+.ribbon-group .title {
+    -fx-text-fill: #94a3b8 !important;
+}
+
+/* Ribbon Buttons in Dark Mode */
+.ribbon-large-btn,
+.ribbon-large-menu-btn,
+.ribbon-large-split-btn,
+.ribbon-btn,
+.ribbon-icon-btn,
+.ribbon-menu-btn,
+.ribbon-split-btn,
+.ribbon-group > .ribbon-group-content > .button,
+.ribbon-group > .ribbon-group-content > .toggle-button,
+.ribbon-group > .ribbon-group-content > .menu-button,
+.ribbon-group > .ribbon-group-content > .split-menu-button,
+.ribbon-group > .ribbon-group-content > .column > .button,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button {
+    -fx-background-color: #1e293b !important;
+    -fx-text-fill: #EDF2FA !important;
+    -fx-border-color: #334157 !important;
+    -fx-border-radius: 4px !important;
+    -fx-background-radius: 4px !important;
+}
+
+.ribbon-large-btn .ikonli-font-icon,
+.ribbon-large-menu-btn .ikonli-font-icon,
+.ribbon-large-split-btn .ikonli-font-icon,
+.ribbon-btn .ikonli-font-icon,
+.ribbon-icon-btn .ikonli-font-icon,
+.ribbon-menu-btn .ikonli-font-icon,
+.ribbon-split-btn .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .button .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .toggle-button .ikonli-font-icon {
+    -fx-icon-color: #7B9CF8 !important;
+}
+
+.ribbon-large-btn:hover,
+.ribbon-large-menu-btn:hover,
+.ribbon-large-split-btn:hover,
+.ribbon-btn:hover,
+.ribbon-icon-btn:hover,
+.ribbon-menu-btn:hover,
+.ribbon-split-btn:hover,
+.ribbon-group > .ribbon-group-content > .button:hover,
+.ribbon-group > .ribbon-group-content > .toggle-button:hover {
+    -fx-background-color: #24355E !important;
+    -fx-border-color: #5B82F6 !important;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+.ribbon-large-btn:hover .ikonli-font-icon,
+.ribbon-large-menu-btn:hover .ikonli-font-icon,
+.ribbon-large-split-btn:hover .ikonli-font-icon,
+.ribbon-btn:hover .ikonli-font-icon,
+.ribbon-icon-btn:hover .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .button:hover .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .toggle-button:hover .ikonli-font-icon {
+    -fx-icon-color: #FFFFFF !important;
+}
+
+/* Selected ToggleButton in Dark Mode Ribbon */
+.ribbon-large-btn:selected,
+.ribbon-btn:selected,
+.ribbon-icon-btn:selected,
+.ribbon-group > .ribbon-group-content > .toggle-button:selected,
+.ribbon-group > .ribbon-group-content > .column > .toggle-button:selected {
+    -fx-background-color: #1e3a5f !important;
+    -fx-border-color: #5B82F6 !important;
+    -fx-text-fill: #93c5fd !important;
+    -fx-font-weight: 600 !important;
+}
+
+.ribbon-large-btn:selected .ikonli-font-icon,
+.ribbon-btn:selected .ikonli-font-icon,
+.ribbon-icon-btn:selected .ikonli-font-icon,
+.ribbon-group > .ribbon-group-content > .toggle-button:selected .ikonli-font-icon {
+    -fx-icon-color: #60a5fa !important;
+}
+
+/* Document Tab Pane Dark Styling ("File Names Panel") */
+.document-tab-pane,
+.tab-pane {
+    -fx-background-color: #0b0f19;
+}
+
+.document-tab-pane > .tab-header-area,
+.tab-pane > .tab-header-area {
+    -fx-background-color: #0b0f19 !important;
+    -fx-border-color: #1e293b !important;
+    -fx-border-width: 0 0 1px 0 !important;
+}
+
+.document-tab-pane > .tab-header-area .tab,
+.tab-pane > .tab-header-area .tab {
+    -fx-background-color: #172033 !important;
+    -fx-border-color: #1e293b !important;
+    -fx-border-width: 1px 1px 0 1px !important;
+    -fx-border-radius: 6px 6px 0 0 !important;
+}
+
+.document-tab-pane > .tab-header-area .tab .tab-label,
+.tab-pane > .tab-header-area .tab .tab-label {
+    -fx-text-fill: #cbd5e1 !important;
+}
+
+.document-tab-pane > .tab-header-area .tab:selected,
+.tab-pane > .tab-header-area .tab:selected {
+    -fx-background-color: #0f172a !important;
+    -fx-border-color: #5B82F6 #334157 transparent #334157 !important;
+    -fx-border-width: 2px 1px 0 1px !important;
+}
+
+.document-tab-pane > .tab-header-area .tab:selected .tab-label,
+.tab-pane > .tab-header-area .tab:selected .tab-label {
+    -fx-text-fill: #f8fafc !important;
+    -fx-font-weight: bold !important;
+}
+
+/* Left Panel / Sidebar (Thumbnails, Bookmarks, Signatures) */
+.sidebar-panel,
+.sidebar-tab-pane {
+    -fx-background-color: #0f172a !important;
+    -fx-border-color: #1e293b !important;
+    -fx-border-width: 0 1px 0 0 !important;
+}
+
+.sidebar-tab-pane > .tab-header-area {
+    -fx-background-color: #0b0f19 !important;
+    -fx-border-color: #1e293b !important;
+    -fx-border-width: 0 0 1px 0 !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab {
+    -fx-background-color: transparent !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab .tab-label,
+.sidebar-tab-pane > .tab-header-area .tab .label {
+    -fx-text-fill: #94a3b8 !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab:selected {
+    -fx-background-color: #0f172a !important;
+    -fx-border-color: #5B82F6 transparent transparent transparent !important;
+    -fx-border-width: 2px 0 0 0 !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab:selected .tab-label,
+.sidebar-tab-pane > .tab-header-area .tab:selected .label {
+    -fx-text-fill: #5B82F6 !important;
+    -fx-font-weight: bold !important;
+}
+
+.sidebar-tab-pane > .tab-content-area {
+    -fx-background-color: #0f172a !important;
+}
+
+.sidebar-scroll-pane,
+.sidebar-scroll-pane > .viewport,
+.thumbnails-scroll-pane,
+.thumbnails-scroll-pane > .viewport,
+.thumbnails-box {
+    -fx-background-color: #0f172a !important;
+    -fx-background: #0f172a !important;
+}
+
+.thumbnail-item {
+    -fx-background-color: #1e293b !important;
+    -fx-border-color: #334157 !important;
+}
+
+.thumbnail-item:hover {
+    -fx-background-color: #24355E !important;
+    -fx-border-color: #5B82F6 !important;
+}
+
+.thumbnail-label {
+    -fx-text-fill: #cbd5e1 !important;
+}
+
+.sidebar-tree-view {
+    -fx-background-color: #0f172a !important;
+}
+
+.sidebar-tree-view .tree-cell {
+    -fx-background-color: #0f172a !important;
+    -fx-text-fill: #EDF2FA !important;
+}
+
+.sidebar-tree-view .tree-cell:hover {
+    -fx-background-color: #1e293b !important;
+}
+
+.sidebar-tree-view .tree-cell:selected {
+    -fx-background-color: #24355E !important;
+    -fx-text-fill: #5B82F6 !important;
+}
+
+.signature-panel,
+.signature-scroll-pane,
+.signature-scroll-pane > .viewport {
+    -fx-background-color: #0f172a !important;
+    -fx-background: #0f172a !important;
+}
+
+.signature-card {
+    -fx-background-color: #1e293b !important;
+    -fx-border-color: #334157 !important;
+}
+
+.signature-desc-label,
+.signature-date-label,
+.signature-count-label,
+.signature-empty-label {
+    -fx-text-fill: #94a3b8 !important;
+}
+
+.signature-signer-label {
+    -fx-text-fill: #f8fafc !important;
+}
+
+/* Welcome Screen & Recent Files (Dark Mode) */
+.welcome-screen {
+    -fx-background-color: #090d16 !important;
+}
+
+.default-viewer-banner {
+    -fx-background-color: #1e293b !important;
+    -fx-border-color: #334157 !important;
+}
+
+.default-viewer-msg {
+    -fx-text-fill: #93c5fd !important;
+}
+
+.welcome-drop-zone {
+    -fx-background-color: #1e293b !important;
+    -fx-border-color: #334157 !important;
+}
+
+.welcome-drop-zone:hover {
+    -fx-background-color: #24355E !important;
+    -fx-border-color: #5B82F6 !important;
+}
+
+.welcome-drop-title {
+    -fx-text-fill: #EDF2FA !important;
+}
+
+.welcome-drop-sub {
+    -fx-text-fill: #8190A8 !important;
+}
+
+.action-card {
+    -fx-background-color: #1e293b !important;
+    -fx-border-color: #334157 !important;
+}
+
+.action-card:hover {
+    -fx-background-color: #24355E !important;
+    -fx-border-color: #5B82F6 !important;
+}
+
+.action-card-desc {
+    -fx-text-fill: #94a3b8 !important;
+}
+
+.recent-scroll-pane,
+.recent-scroll-pane > .viewport,
+.recent-files-box {
+    -fx-background-color: transparent !important;
+    -fx-background: transparent !important;
+}
+
+.recent-file-row {
+    -fx-background-color: #1e293b !important;
+    -fx-border-color: #334157 !important;
+}
+
+.recent-file-row:hover {
+    -fx-background-color: #24355E !important;
+    -fx-border-color: #5B82F6 !important;
+}
+
+.recent-file-name {
+    -fx-text-fill: #f8fafc !important;
+}
+
+.recent-file-path {
+    -fx-text-fill: #94a3b8 !important;
+}
+
+.recent-file-time {
+    -fx-text-fill: #8190A8 !important;
+}
+
+/* Canvas Container & Scrollbars (Dark) */
+.editor-canvas-container {
+    -fx-background-color: #050811;
+}
+
+.canvas-page {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 16, 0, 0, 4);
+}
+
+.scroll-bar {
+    -fx-background-color: #0b0f19;
+    -fx-border-color: #1e293b;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #0f172a;
+    -fx-border-color: #1e293b;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #334157;
+    -fx-background-radius: 4px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #475569;
+}
+
+.status-bar {
+    -fx-background-color: #0b0f19;
+    -fx-border-color: #1e293b;
+    -fx-border-width: 1px 0 0 0;
+    -fx-text-fill: #94a3b8;
+}

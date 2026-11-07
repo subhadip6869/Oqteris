@@ -34,17 +34,11 @@ public class TrustStoreManager {
     }
 
     private static Path resolveTrustStorePath() {
-        String userHome = System.getProperty("user.home", ".");
-        Path primary = Paths.get(userHome, ".oqteris", "truststore.p12");
         try {
-            if (primary.getParent() != null) {
-                Files.createDirectories(primary.getParent());
-            }
-            return primary;
+            return org.originsd.oqteris.config.AppConfig.getTrustStorePath();
         } catch (Exception ex) {
-            // Fallback to temporary directory if user.home is not writable
             String tmpDir = System.getProperty("java.io.tmpdir", ".");
-            Path fallback = Paths.get(tmpDir, ".oqteris", "truststore.p12");
+            Path fallback = Paths.get(tmpDir, "OriginSD-Oqteris", "truststore.p12");
             try {
                 if (fallback.getParent() != null) {
                     Files.createDirectories(fallback.getParent());
