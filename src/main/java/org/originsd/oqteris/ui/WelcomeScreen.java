@@ -6,7 +6,6 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import org.originsd.oqteris.core.model.DocumentType;
 import org.originsd.oqteris.core.recovery.RecoveryManager;
 import org.originsd.oqteris.platform.DefaultViewerService;
 import org.originsd.oqteris.platform.DefaultViewerServiceFactory;
@@ -70,7 +69,7 @@ public class WelcomeScreen extends BorderPane {
         Label title = new Label("Oqteris");
         title.getStyleClass().add("welcome-title");
 
-        Label versionBadge = new Label("v1.0.0 LTS");
+        Label versionBadge = new Label("v" + org.originsd.oqteris.update.AppVersion.CURRENT_VERSION);
         versionBadge.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10px;");
 
         titleRow.getChildren().addAll(title, versionBadge);

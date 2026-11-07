@@ -28,6 +28,10 @@ jlink --no-header-files --no-man-pages --strip-debug --compress=2 --add-modules 
 if not exist dist mkdir dist
 
 echo === [3/3] Generating Native Windows EXE Installer with jpackage ===
+if exist target\package-input rmdir /s /q target\package-input
+mkdir target\package-input
+copy "target\%JAR_FILENAME%" target\package-input\
+
 set FILE_ASSOC_PARAM=
 if exist packaging\windows\pdf-association.properties (
     set FILE_ASSOC_PARAM=--file-associations "packaging\windows\pdf-association.properties"
@@ -37,12 +41,12 @@ jpackage ^
   --type exe ^
   --dest dist\ ^
   --name "Oqteris" ^
-  --app-version "1.0.0" ^
+  --app-version "1.1.0" ^
   --vendor "OriginSD" ^
   --copyright "© 2026 OriginSD" ^
   --description "Dedicated cross-platform desktop PDF reader and editor" ^
   --icon "src\main\resources\icons\oqteris-app-icon.ico" ^
-  --input target\ ^
+  --input target\package-input ^
   --main-jar "%JAR_FILENAME%" ^
   --main-class "org.originsd.oqteris.ui.OqterisLauncher" ^
   --runtime-image target\custom-runtime ^

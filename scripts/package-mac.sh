@@ -9,7 +9,7 @@
 set -euo pipefail
 
 APP_NAME="Oqteris"
-APP_VERSION="1.0.0"
+APP_VERSION="1.1.0"
 APP_VENDOR="OriginSD"
 APP_IDENTIFIER="org.originsd.oqteris"
 APP_DESCRIPTION="Dedicated cross-platform desktop PDF reader and editor"
@@ -39,6 +39,12 @@ echo "Optimized JRE created at target/custom-runtime"
 echo "=== [3/3] Packaging Native DMG Installer with jpackage ==="
 mkdir -p dist
 
+# Stage only the shaded JAR into a dedicated input folder so that intermediate build files,
+# unshaded jars, and target/custom-runtime do not leak into the /app directory
+rm -rf target/package-input
+mkdir -p target/package-input
+cp "$SHADED_JAR" target/package-input/
+
 jpackage \
   --type dmg \
   --dest dist/ \
@@ -49,7 +55,7 @@ jpackage \
   --description "$APP_DESCRIPTION" \
   --mac-package-name "$APP_NAME" \
   --mac-package-identifier "$APP_IDENTIFIER" \
-  --input target/ \
+  --input target/package-input \
   --main-jar "$JAR_FILENAME" \
   --main-class "$MAIN_CLASS" \
   --runtime-image target/custom-runtime

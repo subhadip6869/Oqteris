@@ -9,7 +9,7 @@
 $ErrorActionPreference = "Stop"
 
 $APP_NAME = "Oqteris"
-$APP_VERSION = "1.0.0"
+$APP_VERSION = "1.1.0"
 $APP_VENDOR = "OriginSD"
 $APP_DESCRIPTION = "Dedicated cross-platform desktop PDF reader and editor"
 $MAIN_CLASS = "org.originsd.oqteris.ui.OqterisLauncher"
@@ -46,17 +46,25 @@ if (-not (Test-Path dist)) {
 }
 
 Write-Host "=== [3/3] Generating Native Windows EXE Installer with jpackage ===" -ForegroundColor Cyan
+# Stage only the shaded JAR into a dedicated input folder so that intermediate build files,
+# unshaded jars, and target/custom-runtime do not leak into the /app directory
+$packageInput = "target\package-input"
+if (Test-Path $packageInput) {
+    Remove-Item -Recurse -Force $packageInput
+}
+New-Item -ItemType Directory -Path $packageInput | Out-Null
+Copy-Item $shadedJar.FullName -Destination $packageInput
 
 $jpackageArgs = @(
     "--type", "exe",
-    "--dest", "dist/",
+    "--dest", "dist",
     "--name", $APP_NAME,
     "--app-version", $APP_VERSION,
     "--vendor", $APP_VENDOR,
     "--copyright", "© 2026 OriginSD",
     "--description", $APP_DESCRIPTION,
     "--icon", $ICON_PATH,
-    "--input", "target/",
+    "--input", $packageInput,
     "--main-jar", $jarFilename,
     "--main-class", $MAIN_CLASS,
     "--runtime-image", "target/custom-runtime",

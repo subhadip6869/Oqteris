@@ -1,0 +1,218 @@
+name: Build and Package Oqteris Desktop
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [ published, created ]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Build & Test (Java 21)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 LTS
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Clean platform-specific JVM config on non-Windows
+        if: runner.os != 'Windows'
+        run: |
+          if [ -f .mvn/jvm.config ]; then
+            sed -i '/WINDOWS-ROOT/d' .mvn/jvm.config || rm -f .mvn/jvm.config
+          fi
+
+      - name: Run Maven Tests
+        run: xvfb-run --auto-servernum mvn test --batch-mode
+
+  package-multi-os:
+    name: Package Optimized Native Binary (${{ matrix.os }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            pkg-type: exe
+            artifact-name: Oqteris-Windows
+            installer-glob: dist/*.exe
+          - os: ubuntu-latest
+            pkg-type: deb,rpm
+            artifact-name: Oqteris-Linux
+            installer-glob: |
+              dist/*.deb
+              dist/*.rpm
+          - os: macos-latest
+            pkg-type: dmg
+            artifact-name: Oqteris-macOS
+            installer-glob: dist/*.dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 LTS
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Clean platform-specific JVM config on non-Windows
+        if: runner.os != 'Windows'
+        run: |
+          if [ -f .mvn/jvm.config ]; then
+            sed -i '/WINDOWS-ROOT/d' .mvn/jvm.config || rm -f .mvn/jvm.config
+          fi
+
+      - name: Build Fat JAR
+        run: mvn clean package -DskipTests --batch-mode
+
+      - name: Build Optimized Bundled JRE with jlink
+        run: jlink --no-header-files --no-man-pages --strip-debug --compress=2 --add-modules java.base,java.compiler,java.desktop,java.instrument,java.naming,java.net.http,java.rmi,java.scripting,java.sql,java.xml,jdk.crypto.ec,jdk.localedata,jdk.unsupported --output target/custom-runtime
+
+      - name: Package Native Installer with jpackage (Windows EXE)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir -Force dist
+          $jar = (Get-ChildItem target/oqteris-*-all.jar | Select-Object -First 1).Name
+          $packageInput = "target\package-input"
+          if (Test-Path $packageInput) { Remove-Item -Recurse -Force $packageInput }
+          New-Item -ItemType Directory -Path $packageInput | Out-Null
+          Copy-Item "target\$jar" -Destination $packageInput
+          $jpackageArgs = @(
+            "--type", "exe",
+            "--dest", "dist",
+            "--name", "Oqteris",
+            "--app-version", "1.1.0",
+            "--vendor", "OriginSD",
+            "--copyright", "© 2026 OriginSD",
+            "--description", "Dedicated cross-platform desktop PDF reader and editor",
+            "--icon", "src/main/resources/icons/oqteris-app-icon.ico",
+            "--input", $packageInput,
+            "--main-jar", $jar,
+            "--main-class", "org.originsd.oqteris.ui.OqterisLauncher",
+            "--runtime-image", "target/custom-runtime",
+            "--win-menu",
+            "--win-shortcut",
+            "--win-dir-chooser"
+          )
+          if (Test-Path "packaging/windows/pdf-association.properties") {
+            $jpackageArgs += @("--file-associations", "packaging/windows/pdf-association.properties")
+          }
+          & jpackage @jpackageArgs
+
+      - name: Install RPM Build Tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      - name: Package Native Installers with jpackage (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p dist
+          JAR_FILE=$(basename $(ls target/oqteris-*-all.jar | head -n 1))
+          rm -rf target/package-input
+          mkdir -p target/package-input
+          cp "target/$JAR_FILE" target/package-input/
+          jpackage \
+            --type deb \
+            --dest dist \
+            --name "Oqteris" \
+            --app-version "1.1.0" \
+            --vendor "OriginSD" \
+            --copyright "© 2026 OriginSD" \
+            --description "Dedicated cross-platform desktop PDF reader and editor" \
+            --icon src/main/resources/icons/oqteris-app-icon.png \
+            --input target/package-input \
+            --main-jar "$JAR_FILE" \
+            --main-class org.originsd.oqteris.ui.OqterisLauncher \
+            --runtime-image target/custom-runtime \
+            --linux-shortcut \
+            --linux-menu-group "Office;Viewer;"
+          jpackage \
+            --type rpm \
+            --dest dist \
+            --name "Oqteris" \
+            --app-version "1.1.0" \
+            --vendor "OriginSD" \
+            --copyright "© 2026 OriginSD" \
+            --description "Dedicated cross-platform desktop PDF reader and editor" \
+            --icon src/main/resources/icons/oqteris-app-icon.png \
+            --input target/package-input \
+            --main-jar "$JAR_FILE" \
+            --main-class org.originsd.oqteris.ui.OqterisLauncher \
+            --runtime-image target/custom-runtime \
+            --linux-shortcut \
+            --linux-menu-group "Office;Viewer;"
+
+      - name: Package Native Installer with jpackage (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          JAR_FILE=$(basename $(ls target/oqteris-*-all.jar | head -n 1))
+          rm -rf target/package-input
+          mkdir -p target/package-input
+          cp "target/$JAR_FILE" target/package-input/
+          jpackage \
+            --type dmg \
+            --dest dist \
+            --name "Oqteris" \
+            --app-version "1.1.0" \
+            --vendor "OriginSD" \
+            --copyright "© 2026 OriginSD" \
+            --mac-package-name "Oqteris" \
+            --mac-package-identifier "org.originsd.oqteris" \
+            --input target/package-input \
+            --main-jar "$JAR_FILE" \
+            --main-class org.originsd.oqteris.ui.OqterisLauncher \
+            --runtime-image target/custom-runtime
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}-installer
+          path: ${{ matrix.installer-glob }}
+
+  release:
+    name: Create GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+    needs: package-multi-os
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Generate SHA-256 Checksums
+        run: |
+          cd release-artifacts
+          find . -type f -exec sha256sum {} + > ../SHA256SUMS.txt
+          cat ../SHA256SUMS.txt
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-artifacts/**/*
+            SHA256SUMS.txt
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
