@@ -151,6 +151,13 @@ public class SettingsDialog extends Stage {
         ThemeManager.getInstance().applyTheme(scene);
         setScene(scene);
         sizeToScene();
+
+        // Refresh default viewer status when dialog regains focus
+        focusedProperty().addListener((obs, wasF, isF) -> {
+            if (isF) {
+                updateDefaultViewerStatus();
+            }
+        });
     }
 
     private void updateDefaultViewerStatus() {

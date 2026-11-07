@@ -33,6 +33,12 @@ public class WelcomeScreen extends BorderPane {
     private final VBox recoveryAlertBox = new VBox(8);
     private final VBox defaultViewerAlertBox = new VBox(8);
     private final TextField recentSearchField = new TextField();
+    private boolean openingFile = false;
+
+    public void setOpeningFile(boolean opening) {
+        this.openingFile = opening;
+        recentFilesBox.setDisable(opening);
+    }
 
     public WelcomeScreen(Runnable onOpenFile, Consumer<File> onOpenSpecificFile,
                          Runnable onOpenSettings, Runnable onOpenCertManager) {
@@ -110,6 +116,7 @@ public class WelcomeScreen extends BorderPane {
         dropZone.getStyleClass().add("welcome-drop-zone");
         dropZone.setCursor(javafx.scene.Cursor.HAND);
         dropZone.setOnMouseClicked(e -> {
+            if (openingFile) return;
             if (onOpenFile != null) onOpenFile.run();
         });
 
@@ -168,9 +175,24 @@ public class WelcomeScreen extends BorderPane {
 
         setTop(heroHeader);
         setCenter(centerContainer);
+
+        // Auto-refresh default viewer status when app window regains focus (e.g. returning from Windows Settings)
+        sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.windowProperty().addListener((wObs, oldW, newW) -> {
+                    if (newW != null) {
+                        newW.focusedProperty().addListener((fObs, wasF, isF) -> {
+                            if (isF) {
+                                checkDefaultViewerStatus();
+                            }
+                        });
+                    }
+                });
+            }
+        });
     }
 
-    private void checkDefaultViewerStatus() {
+    public void checkDefaultViewerStatus() {
         defaultViewerAlertBox.getChildren().clear();
         DefaultViewerService service = DefaultViewerServiceFactory.getInstance();
         DefaultViewerStatus status = service.checkStatus();
@@ -242,6 +264,7 @@ public class WelcomeScreen extends BorderPane {
         card.getChildren().addAll(iconBadge, textCol);
 
         card.setOnMouseClicked(e -> {
+            if (openingFile) return;
             if (onClick != null) onClick.run();
         });
 
@@ -342,6 +365,8 @@ public class WelcomeScreen extends BorderPane {
 
             row.getChildren().addAll(badge, fileInfo, spacer, timeLbl);
             row.setOnMouseClicked(e -> {
+                if (openingFile) return;
+                setOpeningFile(true);
                 if (onOpenSpecificFile != null) {
                     onOpenSpecificFile.accept(entry.getFile());
                 }

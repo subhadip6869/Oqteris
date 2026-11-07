@@ -402,6 +402,7 @@ public class MainWindow extends BorderPane implements MainWindowHost {
             }
         }
 
+        welcomeScreen.setOpeningFile(true);
         setBusy(true, "Opening " + file.getName() + "...");
         AsyncExecutor.execute(
                 () -> {
@@ -411,6 +412,7 @@ public class MainWindow extends BorderPane implements MainWindowHost {
                     return null;
                 },
                 view -> {
+                    welcomeScreen.setOpeningFile(false);
                     setBusy(false, "Ready");
                     if (view != null) {
                         addDocumentView(view);
@@ -423,6 +425,7 @@ public class MainWindow extends BorderPane implements MainWindowHost {
                     }
                 },
                 err -> {
+                    welcomeScreen.setOpeningFile(false);
                     setBusy(false, "Ready");
                     if (!(err instanceof UserCancelledException || (err.getCause() instanceof UserCancelledException))) {
                         Alert alert = new Alert(Alert.AlertType.ERROR, "Error opening file: " + err.getMessage(), ButtonType.OK);

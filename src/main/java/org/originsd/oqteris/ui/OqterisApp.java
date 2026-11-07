@@ -32,6 +32,20 @@ public class OqterisApp extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
+        // Ensure application presence (FriendlyAppName, SupportedTypes, icons) is registered in HKCU on Windows
+        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            AsyncExecutor.execute(() -> {
+                try {
+                    org.originsd.oqteris.platform.DefaultViewerService service =
+                            org.originsd.oqteris.platform.DefaultViewerServiceFactory.getInstance();
+                    if (service instanceof org.originsd.oqteris.platform.WindowsDefaultViewerService winService) {
+                        winService.registerAppPresence();
+                    }
+                } catch (Throwable ignored) {
+                }
+            });
+        }
+
         // Start single-instance listener to accept future file opens from OS / Explorer / CLI
         SingleInstanceManager.startServer(files -> {
             Platform.runLater(() -> {

@@ -40,6 +40,8 @@ public class PdfPageView extends StackPane {
     // Digital signature overlay state
     private final List<PdfSignatureInfo> pageSignatures = new ArrayList<>();
     private int viewRotation = 0;
+    private double renderedZoom = -1.0;
+    private int renderedRotation = -1;
     private Consumer<PdfSignatureInfo> onSignatureClicked;
     // Signatures whose own appearance already shows the validity mark (layered appearance); no overlay needed
     private Set<PdfSignatureInfo> layeredSignatures = Collections.emptySet();
@@ -90,12 +92,28 @@ public class PdfPageView extends StackPane {
         return pageIndex;
     }
 
+    public boolean isRenderedAt(double zoom, int rotation) {
+        return imageView.getImage() != null && Math.abs(renderedZoom - zoom) < 0.001 && renderedRotation == rotation;
+    }
+
+    public void markUnrendered() {
+        this.renderedZoom = -1.0;
+        this.renderedRotation = -1;
+    }
+
     public void updatePageImage(Image image) {
-        updatePageImage(image, 1.0);
+        updatePageImage(image, 1.0, 0);
     }
 
     public void updatePageImage(Image image, double zoom) {
+        updatePageImage(image, zoom, viewRotation);
+    }
+
+    public void updatePageImage(Image image, double zoom, int rotation) {
         if (image == null) return;
+        this.renderedZoom = zoom;
+        this.renderedRotation = rotation;
+        this.viewRotation = rotation;
         imageView.setImage(image);
         loadingLabel.setVisible(false);
         loadingLabel.setManaged(false);

@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Main UI view for viewing, annotating, and inspecting PDF documents and digital signatures.
@@ -75,6 +76,12 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private boolean singlePageView = false;
     private boolean handToolActive = false;
     private double lastDragX, lastDragY;
+
+    // Background thumbnail & progressive rendering state
+    private final List<ImageView> thumbnailImageViews = new ArrayList<>();
+    private Thread thumbnailThread;
+    private volatile boolean closed = false;
+    private final Set<Integer> inFlightPages = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     // Signatures whose appearance layers were redrawn with the real validity state, and the
     // verification results they were computed from (to detect re-verification).
@@ -138,6 +145,10 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         scrollPane.setContent(pagesContainer);
         scrollPane.setFitToWidth(true);
         scrollPane.getStyleClass().add("editor-canvas-container");
+
+        // Lazy viewport rendering to keep large documents responsive
+        scrollPane.vvalueProperty().addListener((obs, oldV, newV) -> updateVisiblePages());
+        scrollPane.viewportBoundsProperty().addListener((obs, oldB, newB) -> updateVisiblePages());
 
         setupHandToolInteractions();
         setCenter(scrollPane);
@@ -333,13 +344,15 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         pagesContainer.getChildren().clear();
         pageViews.clear();
         thumbnailsBox.getChildren().clear();
+        thumbnailImageViews.clear();
+        inFlightPages.clear();
 
         for (int i = 0; i < count; i++) {
             PdfPageView pageView = new PdfPageView(i);
             pageViews.add(pageView);
             pagesContainer.getChildren().add(pageView);
 
-            // Thumbnail container
+            // Thumbnail container placeholder
             VBox thumbContainer = createThumbnail(i);
             thumbnailsBox.getChildren().add(thumbContainer);
         }
@@ -347,7 +360,59 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         if (ribbonBuilder != null) {
             ribbonBuilder.getPageCountLabel().setText("/ " + count);
         }
-        refreshPageViews();
+
+        // Render initial visible page(s) immediately so Page 1 shows without blocking
+        renderInitialPages();
+
+        // Load thumbnails in dedicated low-priority background thread
+        startThumbnailLoader();
+    }
+
+    private void renderInitialPages() {
+        if (pageViews.isEmpty()) return;
+        renderPageAsync(0);
+        if (!singlePageView && pageViews.size() > 1) {
+            renderPageAsync(1);
+        }
+    }
+
+    private void startThumbnailLoader() {
+        if (thumbnailThread != null) {
+            thumbnailThread.interrupt();
+        }
+        final int count = model.getPageCount();
+        thumbnailThread = new Thread(() -> {
+            // Short delay giving the first page full priority over PDFBox rendering
+            try {
+                Thread.sleep(120);
+            } catch (InterruptedException e) {
+                return;
+            }
+
+            for (int i = 0; i < count; i++) {
+                if (closed || Thread.currentThread().isInterrupted()) break;
+                final int pageIdx = i;
+                Image thumb = renderer.renderThumbnail(pageIdx);
+                if (closed || Thread.currentThread().isInterrupted()) break;
+
+                if (thumb != null) {
+                    Platform.runLater(() -> {
+                        if (!closed && pageIdx < thumbnailImageViews.size()) {
+                            thumbnailImageViews.get(pageIdx).setImage(thumb);
+                        }
+                    });
+                }
+
+                try {
+                    Thread.sleep(15); // gentle yield to give UI and page renders priority
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }, "Oqteris-Thumbnail-Loader");
+        thumbnailThread.setDaemon(true);
+        thumbnailThread.setPriority(Thread.MIN_PRIORITY);
+        thumbnailThread.start();
     }
 
     private VBox createThumbnail(int index) {
@@ -360,6 +425,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         ImageView iv = new ImageView();
         iv.setFitWidth(100);
         iv.setPreserveRatio(true);
+        thumbnailImageViews.add(iv);
 
         Label lbl = new Label("Page " + (index + 1));
         lbl.getStyleClass().add("thumbnail-label");
@@ -367,36 +433,78 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         box.getChildren().addAll(iv, lbl);
         box.setOnMouseClicked(e -> jumpToPage(index));
 
-        // Render thumbnail async
-        AsyncExecutor.execute(
-                () -> renderer.renderThumbnail(index),
-                img -> {
-                    if (img != null) iv.setImage(img);
-                },
-                null
-        );
-
         return box;
     }
 
-    public void refreshPageViews() {
-        for (int i = 0; i < pageViews.size(); i++) {
-            final int pageIdx = i;
-            final PdfPageView pv = pageViews.get(i);
-            final double zoomAtRequest = currentZoom;
-            final int rotationAtRequest = userRotation;
+    public void renderPageAsync(int pageIdx) {
+        if (pageIdx < 0 || pageIdx >= pageViews.size()) return;
+        final PdfPageView pv = pageViews.get(pageIdx);
+        final double zoomAtRequest = currentZoom;
+        final int rotationAtRequest = userRotation;
 
-            AsyncExecutor.execute(
-                    () -> renderer.renderPage(pageIdx, zoomAtRequest, rotationAtRequest),
-                    img -> {
-                        if (img != null && zoomAtRequest == currentZoom && rotationAtRequest == userRotation) {
-                            pv.updatePageImage(img, zoomAtRequest);
-                            pv.setAnnotations(model.getAnnotations());
-                            applySignatures(pv);
-                        }
-                    },
-                    null
-            );
+        if (pv.isRenderedAt(zoomAtRequest, rotationAtRequest)) {
+            return;
+        }
+
+        if (!inFlightPages.add(pageIdx)) {
+            return; // Already being rendered
+        }
+
+        AsyncExecutor.execute(
+                () -> renderer.renderPage(pageIdx, zoomAtRequest, rotationAtRequest),
+                img -> {
+                    inFlightPages.remove(pageIdx);
+                    if (img != null && zoomAtRequest == currentZoom && rotationAtRequest == userRotation) {
+                        pv.updatePageImage(img, zoomAtRequest, rotationAtRequest);
+                        pv.setAnnotations(model.getAnnotations());
+                        applySignatures(pv);
+                    }
+                },
+                err -> inFlightPages.remove(pageIdx)
+        );
+    }
+
+    public void updateVisiblePages() {
+        if (pageViews.isEmpty()) return;
+        if (singlePageView) {
+            renderPageAsync(currentPage);
+            return;
+        }
+
+        double vValue = scrollPane.getVvalue();
+        double viewHeight = scrollPane.getViewportBounds().getHeight();
+        double contentHeight = pagesContainer.getBoundsInLocal().getHeight();
+
+        if (contentHeight <= 0 || viewHeight <= 0) {
+            renderInitialPages();
+            return;
+        }
+
+        double scrollY = vValue * Math.max(0, contentHeight - viewHeight);
+        double viewTop = scrollY;
+        double viewBottom = scrollY + viewHeight;
+
+        for (int i = 0; i < pageViews.size(); i++) {
+            PdfPageView pv = pageViews.get(i);
+            double pageTop = pv.getBoundsInParent().getMinY();
+            double pageBottom = pv.getBoundsInParent().getMaxY();
+
+            if (pageBottom >= viewTop - viewHeight && pageTop <= viewBottom + viewHeight) {
+                renderPageAsync(i);
+            }
+        }
+    }
+
+    public void refreshPageViews() {
+        for (PdfPageView pv : pageViews) {
+            pv.markUnrendered();
+        }
+        inFlightPages.clear();
+
+        if (singlePageView) {
+            renderPageAsync(currentPage);
+        } else {
+            updateVisiblePages();
         }
     }
 
@@ -407,6 +515,8 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             ribbonBuilder.getPageField().setText(String.valueOf(currentPage + 1));
         }
         statusPageLabel.setText("Page " + (currentPage + 1) + " of " + model.getPageCount());
+
+        renderPageAsync(currentPage);
 
         if (singlePageView) {
             for (int i = 0; i < pageViews.size(); i++) {
@@ -424,6 +534,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
                     scrollPane.setVvalue(targetY / totalHeight);
                 }
             }
+            updateVisiblePages();
         }
     }
 
@@ -434,18 +545,21 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         userRotation = (userRotation + 90) % 360;
         renderer.clearCache();
         refreshPageViews();
+        startThumbnailLoader();
     }
 
     public void rotateCounterClockwise() {
         userRotation = (userRotation + 270) % 360;
         renderer.clearCache();
         refreshPageViews();
+        startThumbnailLoader();
     }
 
     public void rotate180() {
         userRotation = (userRotation + 180) % 360;
         renderer.clearCache();
         refreshPageViews();
+        startThumbnailLoader();
     }
 
     public void highlightCurrentPage() {
@@ -562,6 +676,9 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         }
         if (single) {
             scrollPane.setVvalue(0);
+            renderPageAsync(currentPage);
+        } else {
+            updateVisiblePages();
         }
     }
 
@@ -936,6 +1053,11 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
     @Override
     public void close() {
+        closed = true;
+        if (thumbnailThread != null) {
+            thumbnailThread.interrupt();
+        }
+        inFlightPages.clear();
         try {
             model.close();
         } catch (Exception ignored) {
