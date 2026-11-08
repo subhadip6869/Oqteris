@@ -9,7 +9,7 @@
 set -euo pipefail
 
 APP_NAME="Oqteris"
-APP_VERSION="1.1.0"
+APP_VERSION="1.2.0"
 APP_VENDOR="OriginSD"
 APP_IDENTIFIER="org.originsd.oqteris"
 APP_DESCRIPTION="Oqteris PDF Reader"
