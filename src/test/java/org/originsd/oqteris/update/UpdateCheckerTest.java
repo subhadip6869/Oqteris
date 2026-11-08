@@ -109,7 +109,7 @@ public class UpdateCheckerTest {
     public void testAppMetadataRepository() {
         assertEquals("subhadip6869/Oqteris", AppVersion.GITHUB_REPO);
         assertTrue(AppVersion.GITHUB_REPO_URL.contains("github.com/subhadip6869/Oqteris"));
-        assertEquals("1.1.0", AppVersion.CURRENT_VERSION);
+        assertEquals("1.2.0", AppVersion.CURRENT_VERSION);
     }
 
     @Test

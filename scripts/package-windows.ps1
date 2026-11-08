@@ -9,7 +9,7 @@
 $ErrorActionPreference = "Stop"
 
 $APP_NAME = "Oqteris"
-$APP_VERSION = "1.1.0"
+$APP_VERSION = "1.2.0"
 $APP_VENDOR = "OriginSD"
 $APP_DESCRIPTION = "Oqteris PDF Reader"
 $MAIN_CLASS = "org.originsd.oqteris.ui.OqterisLauncher"
