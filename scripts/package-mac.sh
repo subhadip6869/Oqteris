@@ -12,7 +12,7 @@ APP_NAME="Oqteris"
 APP_VERSION="1.1.0"
 APP_VENDOR="OriginSD"
 APP_IDENTIFIER="org.originsd.oqteris"
-APP_DESCRIPTION="Dedicated cross-platform desktop PDF reader and editor"
+APP_DESCRIPTION="Oqteris PDF Reader"
 MAIN_CLASS="org.originsd.oqteris.ui.OqterisLauncher"
 ICON_PATH="src/main/resources/icons/oqteris-app-icon.png"
 

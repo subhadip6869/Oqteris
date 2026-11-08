@@ -44,7 +44,7 @@ jpackage ^
   --app-version "1.1.0" ^
   --vendor "OriginSD" ^
   --copyright "© 2026 OriginSD" ^
-  --description "Dedicated cross-platform desktop PDF reader and editor" ^
+  --description "Oqteris PDF Reader" ^
   --icon "src\main\resources\icons\oqteris-app-icon.ico" ^
   --input target\package-input ^
   --main-jar "%JAR_FILENAME%" ^
