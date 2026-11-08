@@ -40,8 +40,8 @@ public class UpdateCheckerService {
             synchronized (this) {
                 if (httpClient == null) {
                     httpClient = HttpClient.newBuilder()
-                            .connectTimeout(Duration.ofSeconds(10))
-                            .followRedirects(HttpClient.Redirect.NORMAL)
+                            .connectTimeout(Duration.ofSeconds(30))
+                            .followRedirects(HttpClient.Redirect.ALWAYS)
                             .build();
                 }
             }
@@ -100,34 +100,57 @@ public class UpdateCheckerService {
 
     /**
      * Downloads the release asset with live progress tracking, saving to a temporary file.
+     * Guaranteed not to delete the file on JVM exit so that installers can execute successfully.
      */
     public CompletableFuture<Path> downloadAsset(ReleaseAsset asset, Consumer<Double> progressCallback) {
         return CompletableFuture.supplyAsync(() -> {
             Path tempFile = null;
             try {
+                if (asset == null || asset.downloadUrl() == null || asset.downloadUrl().isBlank()) {
+                    throw new IllegalArgumentException("Asset download URL is empty or invalid");
+                }
+
                 String name = asset.name() != null ? asset.name() : "update.bin";
                 String suffix = name.contains(".") ? name.substring(name.lastIndexOf(".")) : ".tmp";
                 tempFile = Files.createTempFile("oqteris-update-", suffix);
-                tempFile.toFile().deleteOnExit();
 
-                final Path finalTempFile = tempFile;
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    try {
-                        Files.deleteIfExists(finalTempFile);
-                    } catch (Exception ignored) {}
-                }));
+                // Note: Do NOT register deleteOnExit() or a JVM shutdown hook on this file!
+                // Doing so would delete the installer binary when Oqteris terminates to allow
+                // the installer to run, causing "cannot find the file" errors.
+                // The updater command script cleans up the package after installation completes.
 
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(asset.downloadUrl()))
-                        .header("Accept", "application/octet-stream")
-                        .header("User-Agent", "Oqteris-PDF-Editor/" + AppVersion.CURRENT_VERSION)
-                        .timeout(Duration.ofMinutes(10))
-                        .GET()
-                        .build();
+                String currentUrl = asset.downloadUrl().trim();
+                HttpResponse<InputStream> response = null;
+                int redirects = 0;
+                final int MAX_REDIRECTS = 5;
 
-                HttpResponse<InputStream> response = getClient().send(request, HttpResponse.BodyHandlers.ofInputStream());
-                if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                    throw new RuntimeException("HTTP " + response.statusCode() + " downloading update package");
+                while (redirects < MAX_REDIRECTS) {
+                    URI uri = URI.create(currentUrl.replace(" ", "%20"));
+                    HttpRequest request = HttpRequest.newBuilder()
+                            .uri(uri)
+                            .header("Accept", "*/*")
+                            .header("User-Agent", "Oqteris-PDF-Editor/" + AppVersion.CURRENT_VERSION)
+                            .timeout(Duration.ofMinutes(15))
+                            .GET()
+                            .build();
+
+                    response = getClient().send(request, HttpResponse.BodyHandlers.ofInputStream());
+                    int statusCode = response.statusCode();
+
+                    if (statusCode >= 300 && statusCode < 400) {
+                        Optional<String> location = response.headers().firstValue("Location");
+                        if (location.isPresent() && !location.get().isBlank()) {
+                            currentUrl = uri.resolve(location.get()).toString();
+                            redirects++;
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                if (response == null || response.statusCode() < 200 || response.statusCode() >= 300) {
+                    int code = response != null ? response.statusCode() : -1;
+                    throw new RuntimeException("HTTP " + code + " error downloading update package");
                 }
 
                 long totalBytes = asset.sizeBytes();
@@ -137,15 +160,31 @@ public class UpdateCheckerService {
 
                 try (InputStream in = response.body();
                      OutputStream out = Files.newOutputStream(tempFile)) {
-                    byte[] buffer = new byte[16384];
+                    byte[] buffer = new byte[32768];
                     long bytesRead = 0;
                     int read;
+                    double lastReportedProgress = -1.0;
+                    long lastReportTime = 0;
+
                     while ((read = in.read(buffer)) != -1) {
                         out.write(buffer, 0, read);
                         bytesRead += read;
-                        if (totalBytes > 0 && progressCallback != null) {
-                            double progress = (double) bytesRead / totalBytes;
-                            Platform.runLater(() -> progressCallback.accept(progress));
+
+                        if (progressCallback != null) {
+                            long now = System.currentTimeMillis();
+                            if (totalBytes > 0) {
+                                double progress = Math.min(1.0, (double) bytesRead / totalBytes);
+                                if (progress - lastReportedProgress >= 0.005 || (now - lastReportTime) > 100) {
+                                    lastReportedProgress = progress;
+                                    lastReportTime = now;
+                                    Platform.runLater(() -> progressCallback.accept(progress));
+                                }
+                            } else {
+                                if ((now - lastReportTime) > 200) {
+                                    lastReportTime = now;
+                                    Platform.runLater(() -> progressCallback.accept(-1.0));
+                                }
+                            }
                         }
                     }
                 }
@@ -165,6 +204,7 @@ public class UpdateCheckerService {
 
     /**
      * Executes the platform-specific installer and ensures the downloaded package is deleted after execution.
+     * Provides a brief grace delay so Oqteris cleanly releases all file locks before the installer runs.
      */
     public void launchInstallerAndCleanup(Path packagePath, TargetPlatform platform) throws Exception {
         if (packagePath == null || !Files.exists(packagePath)) {
@@ -176,15 +216,15 @@ public class UpdateCheckerService {
 
         if (platform == TargetPlatform.WINDOWS) {
             if (lowerName.endsWith(".msi")) {
-                // Launch MSI and delete package file when MSI finishes
-                String cmd = String.format("start /wait msiexec /i \"%s\" & del /f /q \"%s\"", absPath, absPath);
+                // Give 1 second for Oqteris to exit and release file locks, then run MSI and delete package file
+                String cmd = String.format("ping 127.0.0.1 -n 2 >nul & start /wait msiexec /i \"%s\" & del /f /q \"%s\"", absPath, absPath);
                 new ProcessBuilder("cmd.exe", "/c", cmd).start();
-                Platform.exit();
+                terminateApp();
             } else if (lowerName.endsWith(".exe")) {
-                // Launch EXE and delete package file when installer process exits
-                String cmd = String.format("start /wait \"\" \"%s\" & del /f /q \"%s\"", absPath, absPath);
+                // Give 1 second for Oqteris to exit and release file locks, then run EXE and delete package file
+                String cmd = String.format("ping 127.0.0.1 -n 2 >nul & start /wait \"\" \"%s\" & del /f /q \"%s\"", absPath, absPath);
                 new ProcessBuilder("cmd.exe", "/c", cmd).start();
-                Platform.exit();
+                terminateApp();
             } else {
                 // Zip/other: open file and delete on exit
                 new ProcessBuilder("explorer.exe", "/select,", absPath).start();
@@ -192,8 +232,10 @@ public class UpdateCheckerService {
         } else if (platform == TargetPlatform.MACOS) {
             if (lowerName.endsWith(".dmg")) {
                 new ProcessBuilder("open", absPath).start();
+                terminateApp();
             } else if (lowerName.endsWith(".pkg")) {
                 new ProcessBuilder("open", absPath).start();
+                terminateApp();
             } else {
                 new ProcessBuilder("open", packagePath.getParent().toAbsolutePath().toString()).start();
             }
@@ -201,13 +243,25 @@ public class UpdateCheckerService {
             if (lowerName.endsWith(".deb")) {
                 String cmd = String.format("xdg-open \"%s\" || (sudo dpkg -i \"%s\" && rm -f \"%s\")", absPath, absPath, absPath);
                 new ProcessBuilder("sh", "-c", cmd).start();
+                terminateApp();
             } else if (lowerName.endsWith(".appimage")) {
                 new ProcessBuilder("chmod", "+x", absPath).start().waitFor();
                 new ProcessBuilder(absPath).start();
+                terminateApp();
             } else {
                 new ProcessBuilder("xdg-open", packagePath.getParent().toAbsolutePath().toString()).start();
             }
         }
+    }
+
+    private void terminateApp() {
+        Platform.exit();
+        new Thread(() -> {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException ignored) {}
+            System.exit(0);
+        }, "Oqteris-Update-Shutdown").start();
     }
 
     /**
@@ -312,7 +366,7 @@ public class UpdateCheckerService {
                     String downloadUrl = extractJsonString(obj, "browser_download_url");
                     long size = extractJsonLong(obj, "size");
                     String contentType = extractJsonString(obj, "content_type");
-                    if (aName != null && downloadUrl != null) {
+                    if (aName != null && !aName.isBlank() && downloadUrl != null && !downloadUrl.isBlank()) {
                         assets.add(new ReleaseAsset(aName, downloadUrl, size, contentType));
                     }
                 }
