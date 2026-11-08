@@ -102,12 +102,12 @@ mvn clean package -DskipTests
 ```
 The shaded executable JAR will be located at:
 ```bash
-target/oqteris-1.1.0-SNAPSHOT-all.jar
+target/oqteris-x.x.x-all.jar
 ```
 
 Run directly:
 ```bash
-java -jar target/oqteris-1.1.0-SNAPSHOT-all.jar [optional-pdf-path]
+java -jar target/oqteris-x.x.x-all.jar [optional-pdf-path]
 ```
 
 ---
@@ -125,7 +125,7 @@ Produces strictly an `.exe` installer using WiX Toolset and `jpackage --type exe
 # Or using CMD
 .\scripts\package-windows.bat
 ```
-Output: `dist\Oqteris-1.1.0.exe`
+Output: `dist\Oqteris-x.x.x.exe`
 
 ### Linux Native Packages (`.deb` & `.rpm`)
 Produces native Debian and RPM packages with desktop shortcuts and MIME associations:
@@ -133,7 +133,7 @@ Produces native Debian and RPM packages with desktop shortcuts and MIME associat
 chmod +x scripts/package-linux.sh
 ./scripts/package-linux.sh
 ```
-Output: `dist/Oqteris-1.1.0.deb` and `dist/Oqteris-1.1.0.rpm`
+Output: `dist/Oqteris-x.x.x.deb` and `dist/Oqteris-x.x.x.rpm`
 
 ### macOS Native Installer (`.dmg`)
 Produces a `.dmg` installer compatible with Apple Silicon and Intel:
@@ -141,7 +141,7 @@ Produces a `.dmg` installer compatible with Apple Silicon and Intel:
 chmod +x scripts/package-mac.sh
 ./scripts/package-mac.sh
 ```
-Output: `dist/Oqteris-1.1.0.dmg`
+Output: `dist/Oqteris-x.x.x.dmg`
 
 ---
 
