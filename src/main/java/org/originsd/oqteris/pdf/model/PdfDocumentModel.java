@@ -1,6 +1,7 @@
 package org.originsd.oqteris.pdf.model;
 
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -36,7 +37,9 @@ public class PdfDocumentModel extends AbstractDocumentModel implements Closeable
         super(DocumentType.PDF, file.getName());
         setFile(file);
         this.openPassword = password;
-        this.pdDocument = (password != null) ? Loader.loadPDF(file, password) : Loader.loadPDF(file);
+        this.pdDocument = (password != null)
+                ? Loader.loadPDF(file, password, IOUtils.createTempFileOnlyStreamCache())
+                : Loader.loadPDF(file, IOUtils.createTempFileOnlyStreamCache());
         extractMetadata();
         extractBookmarks();
         extractSignatures();
