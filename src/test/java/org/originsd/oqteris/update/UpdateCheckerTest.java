@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CompletionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -103,6 +104,20 @@ public class UpdateCheckerTest {
         // Verify successful deletion
         Files.deleteIfExists(tempPkg);
         assertFalse(Files.exists(tempPkg), "Downloaded package must be deleted successfully");
+    }
+
+    @Test
+    public void testDownloadAssetValidation() {
+        ReleaseAsset emptyAsset = new ReleaseAsset("test.msi", "", 100, "application/octet-stream");
+        CompletionException ex = assertThrows(CompletionException.class, () ->
+                UpdateCheckerService.getInstance().downloadAsset(emptyAsset, null).join()
+        );
+        assertTrue(ex.getCause().getMessage().contains("empty or invalid"), "Blank download URL must reject with proper message");
+
+        CompletionException exNull = assertThrows(CompletionException.class, () ->
+                UpdateCheckerService.getInstance().downloadAsset(null, null).join()
+        );
+        assertTrue(exNull.getCause().getMessage().contains("empty or invalid"), "Null asset must reject with proper message");
     }
 
     @Test

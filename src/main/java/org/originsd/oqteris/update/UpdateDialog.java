@@ -14,6 +14,7 @@ import org.originsd.oqteris.ui.icon.AppIcons;
 
 import java.awt.Desktop;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -34,6 +35,9 @@ public class UpdateDialog extends Stage {
     private final Button browserBtn;
     private final Button closeBtn;
 
+    private Path downloadedFile = null;
+    private volatile boolean installerLaunched = false;
+
     public UpdateDialog(Stage owner, ReleaseInfo release) {
         this.release = release;
         this.platform = TargetPlatform.current();
@@ -43,6 +47,7 @@ public class UpdateDialog extends Stage {
         initModality(Modality.APPLICATION_MODAL);
         setTitle("Software Update Available - Oqteris");
         setResizable(false);
+        setOnCloseRequest(e -> handleClose());
 
         VBox root = new VBox(12);
         root.setPadding(new Insets(20));
@@ -144,7 +149,7 @@ public class UpdateDialog extends Stage {
         browserBtn.setOnAction(e -> openBrowser(visitUrl));
 
         closeBtn = new Button("Remind Me Later");
-        closeBtn.setOnAction(e -> close());
+        closeBtn.setOnAction(e -> handleClose());
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -166,6 +171,15 @@ public class UpdateDialog extends Stage {
         ThemeManager.getInstance().applyTheme(scene);
         setScene(scene);
         sizeToScene();
+    }
+
+    private void handleClose() {
+        if (!installerLaunched && downloadedFile != null) {
+            try {
+                Files.deleteIfExists(downloadedFile);
+            } catch (Exception ignored) {}
+        }
+        close();
     }
 
     private void startDownload() {
@@ -190,17 +204,25 @@ public class UpdateDialog extends Stage {
         progressLabel.setText("0%");
 
         UpdateCheckerService.getInstance().downloadAsset(selectedAsset, progress -> {
-            progressBar.setProgress(progress);
-            int percent = (int) Math.round(progress * 100);
-            progressLabel.setText(percent + "%");
+            if (progress < 0) {
+                progressBar.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
+                progressLabel.setText("Downloading...");
+            } else {
+                progressBar.setProgress(progress);
+                int percent = (int) Math.round(progress * 100);
+                progressLabel.setText(percent + "%");
+            }
             statusLabel.setText("Downloading " + selectedAsset.name() + "...");
         }).thenAccept(downloadedFile -> javafx.application.Platform.runLater(() -> {
+            this.downloadedFile = downloadedFile;
             statusLabel.setText("Download completed. Starting installer...");
             progressBar.setProgress(1.0);
             progressLabel.setText("100%");
             try {
+                this.installerLaunched = true;
                 UpdateCheckerService.getInstance().launchInstallerAndCleanup(downloadedFile, platform);
             } catch (Exception ex) {
+                this.installerLaunched = false;
                 Alert errAlert = new Alert(Alert.AlertType.ERROR);
                 errAlert.setTitle("Update Execution Error");
                 errAlert.setHeaderText("Failed to launch updater");
@@ -209,7 +231,9 @@ public class UpdateDialog extends Stage {
             }
         })).exceptionally(ex -> {
             javafx.application.Platform.runLater(() -> {
-                statusLabel.setText("Download failed: " + ex.getMessage());
+                Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                String msg = cause.getMessage() != null ? cause.getMessage() : cause.toString();
+                statusLabel.setText("Download failed: " + msg);
                 downloadBtn.setDisable(false);
                 browserBtn.setDisable(false);
                 closeBtn.setText("Close");
