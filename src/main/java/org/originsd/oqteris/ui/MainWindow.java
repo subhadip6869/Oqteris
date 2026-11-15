@@ -99,6 +99,9 @@ public class MainWindow extends BorderPane implements MainWindowHost {
         documentTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             updateActiveView();
         });
+        documentTabPane.getTabs().addListener((javafx.collections.ListChangeListener<Tab>) change -> {
+            updateTabVisibility();
+        });
 
         welcomeScreen = new WelcomeScreen(
                 this::showOpenDialog,
@@ -108,6 +111,11 @@ public class MainWindow extends BorderPane implements MainWindowHost {
         );
         centerContainer.getChildren().addAll(welcomeScreen, documentTabPane);
         documentTabPane.setVisible(false);
+        documentTabPane.setManaged(false);
+        welcomeScreen.setVisible(true);
+        welcomeScreen.setManaged(true);
+        topContainer.setVisible(false);
+        topContainer.setManaged(false);
 
         setCenter(centerContainer);
 
@@ -356,7 +364,7 @@ public class MainWindow extends BorderPane implements MainWindowHost {
                     Optional<ButtonType> result = alert.showAndWait();
                     if (result.isPresent()) {
                         if (result.get() == ButtonType.YES) {
-                            saveActiveDocument(false);
+                            saveDocument(view, false);
                         } else if (result.get() == ButtonType.CANCEL) {
                             event.consume();
                             return;
@@ -470,6 +478,9 @@ public class MainWindow extends BorderPane implements MainWindowHost {
                     }
                 }
             }
+        });
+
+        tab.setOnClosed(e -> {
             view.close();
             activeViews.remove(view);
             AutosaveService.getInstance().clearRecovery(view.getDocument());
@@ -498,12 +509,20 @@ public class MainWindow extends BorderPane implements MainWindowHost {
     private void updateTabVisibility() {
         boolean hasTabs = !documentTabPane.getTabs().isEmpty();
         documentTabPane.setVisible(hasTabs);
+        documentTabPane.setManaged(hasTabs);
         welcomeScreen.setVisible(!hasTabs);
+        welcomeScreen.setManaged(!hasTabs);
+        topContainer.setVisible(hasTabs);
+        topContainer.setManaged(hasTabs);
+        zoomSlider.setDisable(!hasTabs);
         if (!hasTabs) {
             primaryStage.setTitle("Oqteris");
             ribbonContainer.getChildren().clear();
             contextualStatusContainer.getChildren().clear();
+            statusMessage.setText("Ready");
+            welcomeScreen.checkDefaultViewerStatus();
             welcomeScreen.checkRecovery();
+            welcomeScreen.refreshRecentFiles();
         } else {
             updateActiveView();
         }
@@ -603,9 +622,39 @@ public class MainWindow extends BorderPane implements MainWindowHost {
     public void closeActiveTab() {
         Tab tab = documentTabPane.getSelectionModel().getSelectedItem();
         if (tab != null) {
-            documentTabPane.getTabs().remove(tab);
-            updateTabVisibility();
+            closeTab(tab);
         }
+    }
+
+    public void closeTab(Tab tab) {
+        if (tab == null) return;
+        var closeRequest = tab.getOnCloseRequest();
+        if (closeRequest != null) {
+            javafx.event.Event ev = new javafx.event.Event(tab, tab, Tab.TAB_CLOSE_REQUEST_EVENT);
+            closeRequest.handle(ev);
+            if (ev.isConsumed()) {
+                return; // user cancelled closing
+            }
+        }
+        var onClosed = tab.getOnClosed();
+        documentTabPane.getTabs().remove(tab);
+        if (onClosed != null) {
+            onClosed.handle(new javafx.event.Event(tab, tab, Tab.TAB_CLOSE_REQUEST_EVENT));
+        }
+    }
+
+    public void closeAllTabs() {
+        for (Tab tab : new ArrayList<>(documentTabPane.getTabs())) {
+            closeTab(tab);
+        }
+    }
+
+    public WelcomeScreen getWelcomeScreen() {
+        return welcomeScreen;
+    }
+
+    public TabPane getDocumentTabPane() {
+        return documentTabPane;
     }
 
     public List<DocumentModel> getAllOpenDocuments() {
