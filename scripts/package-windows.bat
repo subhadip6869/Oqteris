@@ -41,7 +41,7 @@ jpackage ^
   --type exe ^
   --dest dist\ ^
   --name "Oqteris" ^
-  --app-version "1.2.0" ^
+  --app-version "1.3.0" ^
   --vendor "OriginSD" ^
   --copyright "© 2026 OriginSD" ^
   --description "Oqteris PDF Reader" ^

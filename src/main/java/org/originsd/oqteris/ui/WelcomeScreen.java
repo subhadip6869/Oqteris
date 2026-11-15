@@ -1,11 +1,11 @@
 package org.originsd.oqteris.ui;
 
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.*;
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.function.Consumer;
+
 import org.originsd.oqteris.core.recovery.RecoveryManager;
 import org.originsd.oqteris.platform.DefaultViewerService;
 import org.originsd.oqteris.platform.DefaultViewerServiceFactory;
@@ -13,17 +13,20 @@ import org.originsd.oqteris.platform.DefaultViewerStatus;
 import org.originsd.oqteris.platform.RegistrationResult;
 import org.originsd.oqteris.ui.icon.AppResources;
 
-import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.function.Consumer;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
 
 /**
  * Modern Start Center / Welcome Screen for Oqteris PDF Reader and Editor.
- * Focused exclusively on PDF workflows, recent files, security trust management, and OS integration.
+ * Focused exclusively on PDF workflows, recent files, security trust
+ * management, and OS integration.
  */
 public class WelcomeScreen extends BorderPane {
+
     private final Runnable onOpenFile;
     private final Consumer<File> onOpenSpecificFile;
     private final Runnable onOpenSettings;
@@ -41,7 +44,7 @@ public class WelcomeScreen extends BorderPane {
     }
 
     public WelcomeScreen(Runnable onOpenFile, Consumer<File> onOpenSpecificFile,
-                         Runnable onOpenSettings, Runnable onOpenCertManager) {
+            Runnable onOpenSettings, Runnable onOpenCertManager) {
         this.onOpenFile = onOpenFile;
         this.onOpenSpecificFile = onOpenSpecificFile;
         this.onOpenSettings = onOpenSettings;
@@ -116,8 +119,12 @@ public class WelcomeScreen extends BorderPane {
         dropZone.getStyleClass().add("welcome-drop-zone");
         dropZone.setCursor(javafx.scene.Cursor.HAND);
         dropZone.setOnMouseClicked(e -> {
-            if (openingFile) return;
-            if (onOpenFile != null) onOpenFile.run();
+            if (openingFile) {
+                return;
+            }
+            if (onOpenFile != null) {
+                onOpenFile.run();
+            }
         });
 
         Label dropIcon = new Label("📂");
@@ -264,8 +271,12 @@ public class WelcomeScreen extends BorderPane {
         card.getChildren().addAll(iconBadge, textCol);
 
         card.setOnMouseClicked(e -> {
-            if (openingFile) return;
-            if (onClick != null) onClick.run();
+            if (openingFile) {
+                return;
+            }
+            if (onClick != null) {
+                onClick.run();
+            }
         });
 
         return card;
@@ -274,7 +285,9 @@ public class WelcomeScreen extends BorderPane {
     public void checkRecovery() {
         recoveryAlertBox.getChildren().clear();
         List<RecoveryManager.RecoveryRecord> records = RecoveryManager.findRecoverableDocuments();
-        if (records.isEmpty()) return;
+        if (records.isEmpty()) {
+            return;
+        }
 
         HBox banner = new HBox(12);
         banner.setAlignment(Pos.CENTER_LEFT);
@@ -365,7 +378,9 @@ public class WelcomeScreen extends BorderPane {
 
             row.getChildren().addAll(badge, fileInfo, spacer, timeLbl);
             row.setOnMouseClicked(e -> {
-                if (openingFile) return;
+                if (openingFile) {
+                    return;
+                }
                 setOpeningFile(true);
                 if (onOpenSpecificFile != null) {
                     onOpenSpecificFile.accept(entry.getFile());

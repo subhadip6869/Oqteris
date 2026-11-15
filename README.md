@@ -3,8 +3,35 @@
 <div align="center">
   <img src="src/main/resources/icons/oqteris-logo.png" alt="Oqteris Logo" width="160"/>
   <h3>Dedicated Cross-Platform Desktop PDF Reader and Editor</h3>
-  <p><strong>Java 21 LTS &bull; JavaFX 21 &bull; Apache PDFBox 3.0.5 &bull; Bouncy Castle 1.86 &bull; OriginSD Architecture</strong></p>
 </div>
+
+> [!NOTE]
+> **Java 21 LTS &bull; JavaFX 21 &bull; Apache PDFBox 3.0.5 &bull; Bouncy Castle 1.86 &bull; OriginSD Architecture**
+
+---
+
+## Application Screenshots
+
+### Welcome & Start Center
+*Clean dashboard featuring recent document history, quick action shortcuts, and drag-and-drop workspace.*
+
+<p align="center">
+  <img src="src/main/resources/screenshots/oqteris-welcome-screen.png" alt="Oqteris Welcome Screen" width="850"/>
+</p>
+
+### Continuous PDF Viewing & Digital Signature Verification
+*High-fidelity continuous page rendering, 9-tab Office ribbon navigation, and real-time CMS / PKCS#7 digital signature verification with green-tick validity badge.*
+
+<p align="center">
+  <img src="src/main/resources/screenshots/pdf-signature-green-tick-verification.png" alt="PDF Viewer and Digital Signature Verification" width="850"/>
+</p>
+
+### About Dialog & Publisher Credentials
+*Application specifications, release version, Apache 2.0 license, and OriginSD architecture metadata.*
+
+<p align="center">
+  <img src="src/main/resources/screenshots/about-oqteris.png" alt="About Oqteris" width="550"/>
+</p>
 
 ---
 

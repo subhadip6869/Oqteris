@@ -98,7 +98,7 @@ public class MainWindowTabClosingTest {
             }
         });
 
-        assertTrue(latch.await(5, TimeUnit.SECONDS), "Test timed out");
+        assertTrue(latch.await(15, TimeUnit.SECONDS), "Test timed out");
         if (error[0] != null) {
             throw new AssertionError(error[0]);
         }

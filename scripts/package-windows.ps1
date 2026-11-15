@@ -1,4 +1,4 @@
-<#
+﻿<#
  ==============================================================================
  Oqteris Desktop - Windows Native Packaging Script with Optimized Bundled JRE
  Target output: Native Windows EXE installer (with zero host JRE dependency)
@@ -9,7 +9,7 @@
 $ErrorActionPreference = "Stop"
 
 $APP_NAME = "Oqteris"
-$APP_VERSION = "1.2.0"
+$APP_VERSION = "1.3.0"
 $APP_VENDOR = "OriginSD"
 $APP_DESCRIPTION = "Oqteris PDF Reader"
 $MAIN_CLASS = "org.originsd.oqteris.ui.OqterisLauncher"
