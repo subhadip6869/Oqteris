@@ -124,7 +124,7 @@ public class UpdateCheckerTest {
     public void testAppMetadataRepository() {
         assertEquals("subhadip6869/Oqteris", AppVersion.GITHUB_REPO);
         assertTrue(AppVersion.GITHUB_REPO_URL.contains("github.com/subhadip6869/Oqteris"));
-        assertEquals("1.2.0", AppVersion.CURRENT_VERSION);
+        assertEquals("1.3.0", AppVersion.CURRENT_VERSION);
     }
 
     @Test
@@ -151,7 +151,7 @@ public class UpdateCheckerTest {
         assertFalse(res500.isSuccess());
 
         // 200 Update Available
-        ReleaseInfo rel200 = new ReleaseInfo("v1.2.0", "Release 1.2.0", "notes", "https://github.com", "2026-11-03", java.util.List.of());
+        ReleaseInfo rel200 = new ReleaseInfo("v1.4.0", "Release 1.4.0", "notes", "https://github.com", "2026-11-03", java.util.List.of());
         UpdateCheckResult resAvailable = new UpdateCheckResult(
                 UpdateCheckResult.Status.UPDATE_AVAILABLE, rel200, 200, null
         );

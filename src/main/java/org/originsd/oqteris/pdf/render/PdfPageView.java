@@ -126,6 +126,9 @@ public class PdfPageView extends StackPane {
                 overlayCanvas = null;
             }
 
+            searchHighlights.clear();
+            pageSignatures.clear();
+
             setStyle("-fx-background-color: #f8fafc; -fx-border-color: #cbd5e1; -fx-border-width: 1px;");
         }
     }

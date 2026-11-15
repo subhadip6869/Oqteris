@@ -11,6 +11,7 @@ import org.originsd.oqteris.core.model.AbstractDocumentModel;
 import org.originsd.oqteris.core.model.DocumentType;
 import org.originsd.oqteris.crypto.signature.PdfSignatureInfo;
 import org.originsd.oqteris.crypto.signature.PdfSignatureVerifier;
+import org.originsd.oqteris.pdf.render.BoundedResourceCache;
 
 import java.io.Closeable;
 import java.io.File;
@@ -40,6 +41,7 @@ public class PdfDocumentModel extends AbstractDocumentModel implements Closeable
         this.pdDocument = (password != null)
                 ? Loader.loadPDF(file, password, IOUtils.createTempFileOnlyStreamCache())
                 : Loader.loadPDF(file, IOUtils.createTempFileOnlyStreamCache());
+        this.pdDocument.setResourceCache(new BoundedResourceCache());
         extractMetadata();
         extractBookmarks();
         extractSignatures();
@@ -151,6 +153,10 @@ public class PdfDocumentModel extends AbstractDocumentModel implements Closeable
     @Override
     public void close() throws IOException {
         if (pdDocument != null) {
+            org.apache.pdfbox.pdmodel.ResourceCache rc = pdDocument.getResourceCache();
+            if (rc instanceof BoundedResourceCache brc) {
+                brc.clear();
+            }
             pdDocument.close();
         }
     }

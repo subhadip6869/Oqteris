@@ -8,12 +8,14 @@ import org.apache.pdfbox.rendering.PDFRenderer;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
  * Handles rendering PDF pages to JavaFX Images with caching and rotation support.
+ * Optimized with memory bounds to avoid holding uncompressed raster buffers indefinitely.
  */
 public class PdfPageRenderer {
     /** Screen DPI used for the 100 % display size of a page. */
@@ -21,11 +23,13 @@ public class PdfPageRenderer {
     /** Extra pixels rendered per screen pixel so text and vectors stay sharp. */
     public static final double SUPERSAMPLE = 1.25;
 
-    private static final int MAX_PAGE_CACHE = 8;
-    private static final int MAX_THUMB_CACHE = 32;
+    // Strict bounded LRU caches to keep memory footprint flat during scrolling
+    private static final int MAX_PAGE_CACHE = 4;
+    private static final int MAX_THUMB_CACHE = 16;
 
     private final PDDocument pdDocument;
     private final PDFRenderer pdfRenderer;
+    private Field rendererPageImageField;
 
     // Strict LRU cache to prevent heap bloat on documents with many pages
     private final Map<String, Image> pageCache = Collections.synchronizedMap(
@@ -49,6 +53,12 @@ public class PdfPageRenderer {
     public PdfPageRenderer(PDDocument pdDocument) {
         this.pdDocument = pdDocument;
         this.pdfRenderer = new PDFRenderer(pdDocument);
+        try {
+            rendererPageImageField = PDFRenderer.class.getDeclaredField("pageImage");
+            rendererPageImageField.setAccessible(true);
+        } catch (Throwable ignored) {
+            rendererPageImageField = null;
+        }
     }
 
     /**
@@ -86,17 +96,27 @@ public class PdfPageRenderer {
             if (cached != null) {
                 return cached;
             }
+            BufferedImage bImg = null;
             try {
-                BufferedImage bImg = pdfRenderer.renderImageWithDPI(pageIndex, dpi);
+                bImg = pdfRenderer.renderImageWithDPI(pageIndex, dpi);
                 if (rotation != 0) {
-                    bImg = rotateImage(bImg, rotation);
+                    BufferedImage rotated = rotateImage(bImg, rotation);
+                    bImg.flush();
+                    bImg = rotated;
                 }
                 Image fxImg = SwingFXUtils.toFXImage(bImg, null);
+                bImg.flush();
+                bImg = null;
+
                 if (fxImg != null) {
                     pageCache.put(cacheKey, fxImg);
                 }
+                clearRendererPageImage();
                 return fxImg;
             } catch (Exception e) {
+                if (bImg != null) {
+                    bImg.flush();
+                }
                 System.err.println("[PdfPageRenderer] Error rendering page " + pageIndex + ": " + e.getMessage());
                 return null;
             }
@@ -116,14 +136,22 @@ public class PdfPageRenderer {
         synchronized (pdfRenderer) {
             cached = thumbCache.get(pageIndex);
             if (cached != null) return cached;
+            BufferedImage bImg = null;
             try {
-                BufferedImage bImg = pdfRenderer.renderImageWithDPI(pageIndex, 36.0f);
+                bImg = pdfRenderer.renderImageWithDPI(pageIndex, 36.0f);
                 Image fxImg = SwingFXUtils.toFXImage(bImg, null);
+                bImg.flush();
+                bImg = null;
+
                 if (fxImg != null) {
                     thumbCache.put(pageIndex, fxImg);
                 }
+                clearRendererPageImage();
                 return fxImg;
             } catch (Exception e) {
+                if (bImg != null) {
+                    bImg.flush();
+                }
                 return null;
             }
         }
@@ -132,6 +160,25 @@ public class PdfPageRenderer {
     public void clearCache() {
         pageCache.clear();
         thumbCache.clear();
+        clearRendererPageImage();
+    }
+
+    public void evictPage(int pageIndex) {
+        String prefix = pageIndex + ":";
+        pageCache.keySet().removeIf(k -> k.startsWith(prefix));
+    }
+
+    private void clearRendererPageImage() {
+        if (rendererPageImageField != null) {
+            try {
+                Object img = rendererPageImageField.get(pdfRenderer);
+                if (img instanceof BufferedImage bi) {
+                    bi.flush();
+                }
+                rendererPageImageField.set(pdfRenderer, null);
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     private static BufferedImage rotateImage(BufferedImage img, int angle) {

@@ -83,6 +83,10 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private final Set<Integer> inFlightThumbnails = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private volatile boolean closed = false;
     private final Set<Integer> inFlightPages = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private volatile int currentRenderFirst = 0;
+    private volatile int currentRenderLast = 0;
+    private volatile int currentKeepFirst = 0;
+    private volatile int currentKeepLast = 0;
 
     // Signatures whose appearance layers were redrawn with the real validity state, and the
     // verification results they were computed from (to detect re-verification).
@@ -350,11 +354,24 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
     public void loadPages() {
         int count = model.getPageCount();
+        for (PdfPageView pv : pageViews) {
+            pv.unload();
+        }
         pagesContainer.getChildren().clear();
         pageViews.clear();
+        for (ImageView iv : thumbnailImageViews) {
+            iv.setImage(null);
+        }
         thumbnailsBox.getChildren().clear();
         thumbnailImageViews.clear();
         inFlightPages.clear();
+        inFlightThumbnails.clear();
+        renderer.clearCache();
+
+        currentRenderFirst = 0;
+        currentRenderLast = Math.min(1, count - 1);
+        currentKeepFirst = 0;
+        currentKeepLast = Math.min(2, count - 1);
 
         for (int i = 0; i < count; i++) {
             PdfPageView pageView = new PdfPageView(i);
@@ -388,7 +405,13 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private void updateVisibleThumbnails() {
         if (thumbScroll == null || thumbnailImageViews.isEmpty() || closed) return;
         if (sideTabPane.getSelectionModel().getSelectedIndex() != 0) {
-            // Thumbnails tab not active; only load first 3 thumbnails quietly
+            // Thumbnails tab not active; keep only first 3 thumbnails and unload all others
+            for (int i = 3; i < thumbnailImageViews.size(); i++) {
+                ImageView iv = thumbnailImageViews.get(i);
+                if (iv.getImage() != null) {
+                    iv.setImage(null);
+                }
+            }
             for (int i = 0; i < Math.min(3, thumbnailImageViews.size()); i++) {
                 renderThumbnailAsync(i);
             }
@@ -408,8 +431,18 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         int first = Math.max(0, (int) Math.floor((viewTop - 160) / itemH));
         int last = Math.min(thumbnailImageViews.size() - 1, (int) Math.ceil((viewBottom + 160) / itemH));
 
-        for (int i = first; i <= last; i++) {
-            renderThumbnailAsync(i);
+        int keepFirst = Math.max(0, first - 5);
+        int keepLast = Math.min(thumbnailImageViews.size() - 1, last + 5);
+
+        for (int i = 0; i < thumbnailImageViews.size(); i++) {
+            if (i >= first && i <= last) {
+                renderThumbnailAsync(i);
+            } else if (i < keepFirst || i > keepLast) {
+                ImageView iv = thumbnailImageViews.get(i);
+                if (iv.getImage() != null) {
+                    iv.setImage(null);
+                }
+            }
         }
     }
 
@@ -420,15 +453,38 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         if (!inFlightThumbnails.add(pageIdx)) return;
 
         AsyncExecutor.execute(
-                () -> renderer.renderThumbnail(pageIdx),
+                () -> {
+                    if (closed || !isThumbnailNeeded(pageIdx)) return null;
+                    return renderer.renderThumbnail(pageIdx);
+                },
                 thumb -> {
                     inFlightThumbnails.remove(pageIdx);
                     if (thumb != null && !closed && pageIdx < thumbnailImageViews.size()) {
-                        thumbnailImageViews.get(pageIdx).setImage(thumb);
+                        if (isThumbnailNeeded(pageIdx)) {
+                            thumbnailImageViews.get(pageIdx).setImage(thumb);
+                        }
                     }
                 },
                 err -> inFlightThumbnails.remove(pageIdx)
         );
+    }
+
+    private boolean isThumbnailNeeded(int pageIdx) {
+        if (closed) return false;
+        if (sideTabPane.getSelectionModel().getSelectedIndex() != 0) {
+            return pageIdx < 3;
+        }
+        if (thumbScroll == null) return pageIdx < 3;
+        double vValue = thumbScroll.getVvalue();
+        double viewHeight = thumbScroll.getViewportBounds().getHeight();
+        double contentHeight = thumbnailsBox.getBoundsInLocal().getHeight();
+        double scrollY = vValue * Math.max(0, contentHeight - viewHeight);
+        double viewTop = scrollY;
+        double viewBottom = scrollY + (viewHeight > 0 ? viewHeight : 600.0);
+        double itemH = 160.0;
+        int first = Math.max(0, (int) Math.floor((viewTop - 160) / itemH) - 5);
+        int last = Math.min(thumbnailImageViews.size() - 1, (int) Math.ceil((viewBottom + 160) / itemH) + 5);
+        return pageIdx >= first && pageIdx <= last;
     }
 
     private VBox createThumbnail(int index) {
@@ -455,7 +511,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     public void renderPageAsync(int pageIdx) {
-        if (pageIdx < 0 || pageIdx >= pageViews.size()) return;
+        if (pageIdx < 0 || pageIdx >= pageViews.size() || closed) return;
         final PdfPageView pv = pageViews.get(pageIdx);
         final double zoomAtRequest = currentZoom;
         final int rotationAtRequest = userRotation;
@@ -469,17 +525,37 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         }
 
         AsyncExecutor.execute(
-                () -> renderer.renderPage(pageIdx, zoomAtRequest, rotationAtRequest),
+                () -> {
+                    // Check before starting expensive rendering: is page still in render window?
+                    if (closed || !isPageInRenderWindow(pageIdx)) {
+                        return null;
+                    }
+                    return renderer.renderPage(pageIdx, zoomAtRequest, rotationAtRequest);
+                },
                 img -> {
                     inFlightPages.remove(pageIdx);
+                    if (closed) return;
                     if (img != null && zoomAtRequest == currentZoom && rotationAtRequest == userRotation) {
-                        pv.updatePageImage(img, zoomAtRequest, rotationAtRequest);
-                        pv.setAnnotations(model.getAnnotations());
-                        applySignatures(pv);
+                        // Check before updating UI: is page still within the keep window?
+                        if (isPageInKeepWindow(pageIdx)) {
+                            pv.updatePageImage(img, zoomAtRequest, rotationAtRequest);
+                            pv.setAnnotations(model.getAnnotations());
+                            applySignatures(pv);
+                        }
                     }
                 },
                 err -> inFlightPages.remove(pageIdx)
         );
+    }
+
+    public boolean isPageInRenderWindow(int pageIdx) {
+        if (singlePageView) return pageIdx == currentPage;
+        return pageIdx >= currentRenderFirst && pageIdx <= currentRenderLast;
+    }
+
+    public boolean isPageInKeepWindow(int pageIdx) {
+        if (singlePageView) return pageIdx == currentPage;
+        return pageIdx >= currentKeepFirst && pageIdx <= currentKeepLast;
     }
 
     /**
@@ -488,15 +564,20 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
      * detached from the scene graph. This prevents both heap bloat and GPU RTTexture allocation
      * crashes (NGCanvas.renderForcedContent NPE) for off-screen pages.
      *
-     * <p>Render window: visible pages + 2 pages above + 2 pages below (pre-fetch buffer).
-     * Unload window: pages > 4 away from center to give hysteresis and prevent thrashing.</p>
+     * <p>Render window: visible pages + 1 page above + 1 page below (pre-fetch buffer).
+     * Keep window: visible pages + 2 pages above + 2 pages below.
+     * Unload window: pages outside the keep window are unloaded immediately.</p>
      */
     public void updateVisiblePages() {
-        if (pageViews.isEmpty()) return;
+        if (pageViews.isEmpty() || closed) return;
         if (singlePageView) {
+            currentRenderFirst = currentPage;
+            currentRenderLast = currentPage;
+            currentKeepFirst = currentPage;
+            currentKeepLast = currentPage;
             renderPageAsync(currentPage);
             for (int i = 0; i < pageViews.size(); i++) {
-                if (Math.abs(i - currentPage) > 1) {
+                if (i != currentPage) {
                     pageViews.get(i).unload();
                 }
             }
@@ -508,6 +589,10 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         double contentHeight = pagesContainer.getBoundsInLocal().getHeight();
 
         if (contentHeight <= 0 || viewHeight <= 0) {
+            currentRenderFirst = 0;
+            currentRenderLast = Math.min(1, pageViews.size() - 1);
+            currentKeepFirst = 0;
+            currentKeepLast = Math.min(2, pageViews.size() - 1);
             renderInitialPages();
             return;
         }
@@ -523,11 +608,23 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         int detectedCurrentPage = currentPage;
         double minCenterDist = Double.MAX_VALUE;
 
-        // First pass: detect which page center is closest to viewport center
+        int visibleFirst = -1;
+        int visibleLast = -1;
+
+        // First pass: detect visible page span and page closest to viewport center
         for (int i = 0; i < pageViews.size(); i++) {
             PdfPageView pv = pageViews.get(i);
             double pageTop = getPageTop(pv, i, estPageH, spacing);
-            double pageBottom = pageTop + (pv.getHeight() > 0 ? pv.getHeight() : estPageH);
+            double pageH = pv.getHeight() > 0 ? pv.getHeight() : estPageH;
+            double pageBottom = pageTop + pageH;
+
+            // Visibility detection
+            if (pageBottom >= viewTop && pageTop <= viewBottom) {
+                if (visibleFirst == -1) visibleFirst = i;
+                visibleLast = i;
+            }
+
+            // Center detection for current page status
             double pageCenter = (pageTop + pageBottom) / 2.0;
             double dist = Math.abs(pageCenter - viewCenter);
             if (dist < minCenterDist) {
@@ -536,12 +633,23 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             }
         }
 
-        // Second pass: render window [center-2 .. center+2], unload everything > center+4
-        int renderFirst = Math.max(0, detectedCurrentPage - 2);
-        int renderLast = Math.min(pageViews.size() - 1, detectedCurrentPage + 2);
-        int keepFirst = Math.max(0, detectedCurrentPage - 4);
-        int keepLast = Math.min(pageViews.size() - 1, detectedCurrentPage + 4);
+        if (visibleFirst == -1) visibleFirst = detectedCurrentPage;
+        if (visibleLast == -1) visibleLast = detectedCurrentPage;
 
+        // Render window: visible pages +/- 1 page
+        int renderFirst = Math.max(0, visibleFirst - 1);
+        int renderLast = Math.min(pageViews.size() - 1, visibleLast + 1);
+
+        // Keep window: visible pages +/- 2 pages
+        int keepFirst = Math.max(0, visibleFirst - 2);
+        int keepLast = Math.min(pageViews.size() - 1, visibleLast + 2);
+
+        this.currentRenderFirst = renderFirst;
+        this.currentRenderLast = renderLast;
+        this.currentKeepFirst = keepFirst;
+        this.currentKeepLast = keepLast;
+
+        // Second pass: render needed pages, immediately unload off-screen pages
         for (int i = 0; i < pageViews.size(); i++) {
             PdfPageView pv = pageViews.get(i);
             if (i >= renderFirst && i <= renderLast) {
@@ -549,7 +657,6 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             } else if (i < keepFirst || i > keepLast) {
                 pv.unload();
             }
-            // Pages in keepFirst..renderFirst-1 or renderLast+1..keepLast are kept but not re-rendered
         }
 
         if (detectedCurrentPage != currentPage) {
@@ -593,15 +700,17 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         }
         statusPageLabel.setText("Page " + (currentPage + 1) + " of " + model.getPageCount());
 
-        renderPageAsync(currentPage);
-
         if (singlePageView) {
             for (int i = 0; i < pageViews.size(); i++) {
                 boolean visible = (i == currentPage);
                 pageViews.get(i).setVisible(visible);
                 pageViews.get(i).setManaged(visible);
+                if (i != currentPage) {
+                    pageViews.get(i).unload();
+                }
             }
             scrollPane.setVvalue(0);
+            renderPageAsync(currentPage);
         } else {
             if (currentPage < pageViews.size()) {
                 PdfPageView target = pageViews.get(currentPage);
@@ -762,6 +871,9 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             boolean visible = !single || (i == currentPage);
             pageViews.get(i).setVisible(visible);
             pageViews.get(i).setManaged(visible);
+            if (single && i != currentPage) {
+                pageViews.get(i).unload();
+            }
         }
         if (single) {
             scrollPane.setVvalue(0);
@@ -1145,9 +1257,19 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         closed = true;
         inFlightThumbnails.clear();
         inFlightPages.clear();
+        for (PdfPageView pv : pageViews) {
+            pv.unload();
+        }
+        pageViews.clear();
+        for (ImageView iv : thumbnailImageViews) {
+            iv.setImage(null);
+        }
+        thumbnailImageViews.clear();
+        renderer.clearCache();
         try {
             model.close();
         } catch (Exception ignored) {
         }
+        System.gc();
     }
 }
