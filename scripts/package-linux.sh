@@ -11,7 +11,7 @@ APP_NAME="Oqteris"
 APP_VERSION="1.3.0"
 APP_VENDOR="OriginSD"
 APP_DESCRIPTION="Oqteris PDF Reader"
-MAIN_CLASS="org.originsd.oqteris.ui.OqterisLauncher"
+MAIN_CLASS="app.vercel.originsd.oqteris.ui.OqterisLauncher"
 ICON_PATH="src/main/resources/icons/oqteris-app-icon.png"
 
 echo "=== [1/4] Building Application JAR with Maven ==="

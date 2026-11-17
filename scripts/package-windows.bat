@@ -48,7 +48,7 @@ jpackage ^
   --icon "src\main\resources\icons\oqteris-app-icon.ico" ^
   --input target\package-input ^
   --main-jar "%JAR_FILENAME%" ^
-  --main-class "org.originsd.oqteris.ui.OqterisLauncher" ^
+  --main-class "ui.app.vercel.originsd.oqteris.OqterisLauncher" ^
   --runtime-image target\custom-runtime ^
   --win-menu ^
   --win-shortcut ^

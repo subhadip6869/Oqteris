@@ -101,7 +101,7 @@ jobs:
             "--icon", "src/main/resources/icons/oqteris-app-icon.ico",
             "--input", $packageInput,
             "--main-jar", $jar,
-            "--main-class", "org.originsd.oqteris.ui.OqterisLauncher",
+            "--main-class", "app.vercel.originsd.oqteris.ui.OqterisLauncher",
             "--runtime-image", "target/custom-runtime",
             "--win-menu",
             "--win-shortcut",
@@ -137,7 +137,7 @@ jobs:
             --icon src/main/resources/icons/oqteris-app-icon.png \
             --input target/package-input \
             --main-jar "$JAR_FILE" \
-            --main-class org.originsd.oqteris.ui.OqterisLauncher \
+            --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
             --runtime-image target/custom-runtime \
             --linux-shortcut \
             --linux-menu-group "Office;Viewer;"
@@ -152,7 +152,7 @@ jobs:
             --icon src/main/resources/icons/oqteris-app-icon.png \
             --input target/package-input \
             --main-jar "$JAR_FILE" \
-            --main-class org.originsd.oqteris.ui.OqterisLauncher \
+            --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
             --runtime-image target/custom-runtime \
             --linux-shortcut \
             --linux-menu-group "Office;Viewer;"
@@ -174,10 +174,10 @@ jobs:
             --copyright "© 2026 OriginSD" \
             --description "Oqteris PDF Reader" \
             --mac-package-name "Oqteris" \
-            --mac-package-identifier "org.originsd.oqteris" \
+            --mac-package-identifier "app.vercel.originsd.oqteris" \
             --input target/package-input \
             --main-jar "$JAR_FILE" \
-            --main-class org.originsd.oqteris.ui.OqterisLauncher \
+            --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
             --runtime-image target/custom-runtime
 
       - name: Upload Installer Artifact

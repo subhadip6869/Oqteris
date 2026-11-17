@@ -1,4 +1,4 @@
-﻿<#
+<#
  ==============================================================================
  Oqteris Desktop - Windows Native Packaging Script with Optimized Bundled JRE
  Target output: Native Windows EXE installer (with zero host JRE dependency)
@@ -12,7 +12,7 @@ $APP_NAME = "Oqteris"
 $APP_VERSION = "1.3.0"
 $APP_VENDOR = "OriginSD"
 $APP_DESCRIPTION = "Oqteris PDF Reader"
-$MAIN_CLASS = "org.originsd.oqteris.ui.OqterisLauncher"
+$MAIN_CLASS = "ui.app.vercel.originsd.oqteris.OqterisLauncher"
 $ICON_PATH = "src\main\resources\icons\oqteris-app-icon.ico"
 $FILE_ASSOC = "packaging\windows\pdf-association.properties"
 
@@ -61,7 +61,7 @@ $jpackageArgs = @(
     "--name", $APP_NAME,
     "--app-version", $APP_VERSION,
     "--vendor", $APP_VENDOR,
-    "--copyright", "© 2026 OriginSD",
+    "--copyright", "� 2026 OriginSD",
     "--description", $APP_DESCRIPTION,
     "--icon", $ICON_PATH,
     "--input", $packageInput,

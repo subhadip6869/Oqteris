@@ -42,7 +42,7 @@ When a user opens a signed PDF document, Oqteris evaluates the signature diction
 
 ## 4. Cryptographic Verification Pipeline
 
-The verification engine (`org.originsd.oqteris.crypto.signature.PdfSignatureVerifier`) performs a four-stage pipeline on every signed PDF:
+The verification engine (`app.vercel.originsd.oqteris.crypto.signature.PdfSignatureVerifier`) performs a four-stage pipeline on every signed PDF:
 
 ```
 [ Stage 1: Byte-Range Tamper Detection ]
@@ -106,7 +106,7 @@ Oqteris maintains an independent, application-managed keystore at:
 - **Linux / macOS**: `$HOME/.oqteris/truststore.p12`
 - **Fallback** (if `user.home` is not writable): `<java.io.tmpdir>/.oqteris/truststore.p12`
 
-The trust store is managed by `TrustStoreManager` (`org.originsd.oqteris.crypto.trust.TrustStoreManager`), a thread-safe singleton that provides:
+The trust store is managed by `TrustStoreManager` (`app.vercel.originsd.oqteris.crypto.trust.TrustStoreManager`), a thread-safe singleton that provides:
 - Password-encrypted persistence using industry-standard PKCS#12.
 - Certificate storage with alias identifiers, SHA-256 and SHA-1 fingerprints, import dates, and user notes.
 - **Trust levels** (defined in `TrustLevel`):
@@ -145,7 +145,7 @@ Users and system administrators can inspect and manage certificates directly ins
 
 ## 6. Certificate Inspection Details
 
-The `CertificateDetails` class (`org.originsd.oqteris.crypto.trust.CertificateDetails`) exposes the following attributes for every X.509 certificate in the chain:
+The `CertificateDetails` class (`app.vercel.originsd.oqteris.crypto.trust.CertificateDetails`) exposes the following attributes for every X.509 certificate in the chain:
 
 | Attribute | Description |
 |---|---|

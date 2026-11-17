@@ -42,21 +42,21 @@ mvn test
 
 Expected output:
 ```
-[INFO] Running org.originsd.oqteris.crypto.CertificateTrustManagerTest
+[INFO] Running crypto.app.vercel.originsd.oqteris.CertificateTrustManagerTest
 [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.originsd.oqteris.crypto.PdfSignatureVerifierTest
+[INFO] Running crypto.app.vercel.originsd.oqteris.PdfSignatureVerifierTest
 [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.originsd.oqteris.pdf.PasswordProtectedPdfTest
+[INFO] Running pdf.app.vercel.originsd.oqteris.PasswordProtectedPdfTest
 [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.originsd.oqteris.platform.DefaultViewerServiceTest
+[INFO] Running platform.app.vercel.originsd.oqteris.DefaultViewerServiceTest
 [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.originsd.oqteris.platform.PdfFileOpenHelperTest
+[INFO] Running platform.app.vercel.originsd.oqteris.PdfFileOpenHelperTest
 [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.originsd.oqteris.platform.SingleInstanceManagerTest
+[INFO] Running platform.app.vercel.originsd.oqteris.SingleInstanceManagerTest
 [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.originsd.oqteris.samples.SampleFilesVerificationTest
+[INFO] Running samples.app.vercel.originsd.oqteris.SampleFilesVerificationTest
 [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] Running org.originsd.oqteris.ui.UiLibraryTest
+[INFO] Running ui.app.vercel.originsd.oqteris.UiLibraryTest
 [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
 [INFO] 
 [INFO] Results:
@@ -136,7 +136,7 @@ jpackage `
   --icon "src/main/resources/icons/oqteris-logo.ico" `
   --input target/app-input `
   --main-jar oqteris-x.x.x-all.jar `
-  --main-class org.originsd.oqteris.ui.OqterisLauncher `
+  --main-class ui.app.vercel.originsd.oqteris.OqterisLauncher `
   --dest target/dist
 ```
 
@@ -152,7 +152,7 @@ jpackage `
   --icon "src/main/resources/icons/oqteris-logo.ico" `
   --input target/app-input `
   --main-jar oqteris-x.x.x-all.jar `
-  --main-class org.originsd.oqteris.ui.OqterisLauncher `
+  --main-class ui.app.vercel.originsd.oqteris.OqterisLauncher `
   --file-associations packaging/windows/pdf-association.properties `
   --win-menu `
   --win-shortcut `
@@ -192,7 +192,7 @@ jpackage \
   --icon "src/main/resources/icons/oqteris-logo.png" \
   --input target/app-input \
   --main-jar oqteris-x.x.x-all.jar \
-  --main-class org.originsd.oqteris.ui.OqterisLauncher \
+  --main-class ui.app.vercel.originsd.oqteris.OqterisLauncher \
   --linux-shortcut \
   --linux-menu-group "Office;Viewer;Graphics;" \
   --dest target/installer
@@ -214,7 +214,7 @@ jpackage \
   --icon "src/main/resources/icons/oqteris-logo.png" \
   --input target/app-input \
   --main-jar oqteris-x.x.x-all.jar \
-  --main-class org.originsd.oqteris.ui.OqterisLauncher \
+  --main-class ui.app.vercel.originsd.oqteris.OqterisLauncher \
   --linux-shortcut \
   --dest target/installer
 ```
@@ -260,7 +260,7 @@ jpackage \
   --icon "src/main/resources/icons/oqteris-logo.icns" \
   --input target/app-input \
   --main-jar oqteris-x.x.x-all.jar \
-  --main-class org.originsd.oqteris.ui.OqterisLauncher \
+  --main-class ui.app.vercel.originsd.oqteris.OqterisLauncher \
   --dest target/installer
 ```
 
