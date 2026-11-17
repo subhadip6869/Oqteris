@@ -9,11 +9,11 @@
 set -euo pipefail
 
 APP_NAME="Oqteris"
-APP_VERSION="1.3.0"
+APP_VERSION="1.4.0"
 APP_VENDOR="OriginSD"
-APP_IDENTIFIER="org.originsd.oqteris"
+APP_IDENTIFIER="app.vercel.originsd.oqteris"
 APP_DESCRIPTION="Oqteris PDF Reader"
-MAIN_CLASS="org.originsd.oqteris.ui.OqterisLauncher"
+MAIN_CLASS="app.vercel.originsd.oqteris.ui.OqterisLauncher"
 ICON_PATH="src/main/resources/icons/oqteris-app-icon.png"
 
 echo "=== [1/3] Building Application JAR with Maven ==="
@@ -55,6 +55,7 @@ jpackage \
   --description "$APP_DESCRIPTION" \
   --mac-package-name "$APP_NAME" \
   --mac-package-identifier "$APP_IDENTIFIER" \
+  --install-dir "/Applications/OriginSD" \
   --input target/package-input \
   --main-jar "$JAR_FILENAME" \
   --main-class "$MAIN_CLASS" \

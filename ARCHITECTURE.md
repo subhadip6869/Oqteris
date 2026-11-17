@@ -47,25 +47,25 @@ graph TD
 
 ## 2. Core Infrastructure & Shell Services
 
-### 2.1 Shell & Window Lifecycle (`org.originsd.oqteris.ui`)
+### 2.1 Shell & Window Lifecycle (`app.vercel.originsd.oqteris.ui`)
 - **`MainWindow`**: Primary desktop container. Manages application menu bars, ribbon containers, document tabs, and the status bar.
 - **`WelcomeScreen`**: Clean entry center providing one-click access to open files, recent PDF history, security trust management, application preferences, and drag-and-drop file opening.
 - **`AsyncExecutor`**: Offloads compute-heavy document parsing, font rasterization, and cryptographic signature checking from the JavaFX UI Application Thread. Callbacks update the UI safely via `Platform.runLater`.
 - **`ThemeManager`**: Manages dynamic light and dark theme switching (`theme-light.css` / `theme-dark.css`) across all active windows and dialogs.
 - **`RecentFilesManager`**: Persists recently opened PDF history with last-accessed timestamps.
 
-### 2.2 Document Model & Registry (`org.originsd.oqteris.core`)
+### 2.2 Document Model & Registry (`app.vercel.originsd.oqteris.core`)
 - **`DocumentType`**: Represents the supported document type (`PDF`).
 - **`AbstractDocumentModel`**: Base model providing title, modified state, Dublin Core metadata, and event listener dispatching (`DocumentListener`).
 - **`DocumentRegistry`**: Central registry for format importers and exporters (`PdfImporter`).
 
-### 2.3 Autosave & Recovery (`org.originsd.oqteris.core.recovery`)
+### 2.3 Autosave & Recovery (`app.vercel.originsd.oqteris.core.recovery`)
 - **`AutosaveService`**: Background daemon running at configurable intervals (default: 2 minutes) that snapshots modified documents to `~/.oqteris/recovery/`.
 - **`RecoveryManager`**: Inspects the recovery directory on launch after unexpected terminations, offering users the ability to restore uncommitted sessions.
 
 ---
 
-## 3. PDF Viewing & Rendering Subsystem (`org.originsd.oqteris.pdf`)
+## 3. PDF Viewing & Rendering Subsystem (`app.vercel.originsd.oqteris.pdf`)
 
 ### 3.1 Document Model (`PdfDocumentModel`)
 Wraps the underlying Apache PDFBox `PDDocument` structure:
@@ -88,7 +88,7 @@ This ensures visual fidelity while never modifying the PDF bytes on disk.
 
 ---
 
-## 4. Security & Cryptography Subsystem (`org.originsd.oqteris.crypto`)
+## 4. Security & Cryptography Subsystem (`app.vercel.originsd.oqteris.crypto`)
 
 ### 4.1 Digital Signature Verification (`PdfSignatureVerifier`)
 Implements an uncompromising four-stage verification pipeline for PPKLite / CMS / PKCS#7 detached signatures:
@@ -127,7 +127,7 @@ flowchart TD
 
 ---
 
-## 5. Platform Integration Subsystem (`org.originsd.oqteris.platform`)
+## 5. Platform Integration Subsystem (`app.vercel.originsd.oqteris.platform`)
 
 ### 5.1 Default PDF Viewer Service (`DefaultViewerService`)
 Clean operating-system abstraction decoupled from UI components:
@@ -166,8 +166,8 @@ classDiagram
 
 - **Windows (`WindowsDefaultViewerService`)**:
   - Registers ProgID `Oqteris.PDF` and `OpenWithProgids` in `HKCU\Software\Classes`.
-  - Registers capabilities in `HKCU\Software\Oqteris\Capabilities` and `RegisteredApplications`.
-  - Configures `oqteris-document.ico` as the file-type icon.
+  - Registers capabilities in `HKCU\Software\OriginSD\Oqteris\Capabilities` and `RegisteredApplications`.
+  - Configures `oqteris-pdf-file-icon.ico` as the file-type icon.
   - Queries `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.pdf\UserChoice` for default detection.
   - On Windows 10/11, launches `ms-settings:defaultapps` and guides the user to confirm default application selection.
 - **Linux (`LinuxDefaultViewerService`)**:
@@ -198,7 +198,7 @@ classDiagram
 
 ---
 
-## 7. Desktop Ribbon Interface Subsystem (`org.originsd.oqteris.ui.ribbon` & `org.originsd.oqteris.pdf.ui.ribbon`)
+## 7. Desktop Ribbon Interface Subsystem (`app.vercel.originsd.oqteris.ui.ribbon` & `app.vercel.originsd.oqteris.pdf.ui.ribbon`)
 
 ### 7.1 Architecture & Component Hierarchy
 

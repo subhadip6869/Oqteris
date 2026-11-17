@@ -9,10 +9,10 @@
 $ErrorActionPreference = "Stop"
 
 $APP_NAME = "Oqteris"
-$APP_VERSION = "1.3.0"
+$APP_VERSION = "1.4.0"
 $APP_VENDOR = "OriginSD"
 $APP_DESCRIPTION = "Oqteris PDF Reader"
-$MAIN_CLASS = "org.originsd.oqteris.ui.OqterisLauncher"
+$MAIN_CLASS = "app.vercel.originsd.oqteris.ui.OqterisLauncher"
 $ICON_PATH = "src\main\resources\icons\oqteris-app-icon.ico"
 $FILE_ASSOC = "packaging\windows\pdf-association.properties"
 
@@ -68,9 +68,11 @@ $jpackageArgs = @(
     "--main-jar", $jarFilename,
     "--main-class", $MAIN_CLASS,
     "--runtime-image", "target/custom-runtime",
+    "--install-dir", "OriginSD\Oqteris",
+    "--win-dir-chooser",
     "--win-menu",
-    "--win-shortcut",
-    "--win-dir-chooser"
+    "--win-menu-group", "OriginSD",
+    "--win-shortcut"
 )
 
 if (Test-Path $FILE_ASSOC) {

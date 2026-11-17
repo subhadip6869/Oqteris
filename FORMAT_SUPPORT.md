@@ -56,9 +56,9 @@ Oqteris is exclusively a dedicated PDF reader and editor. Its primary format is 
 
 | Operating System | Integration Mechanism | File Extension | MIME Type | Icon Asset |
 |---|---|---|---|---|
-| **Windows** | Registry ProgID (`Oqteris.PDF`), `RegisteredApplications` | `.pdf` | `application/pdf` | `oqteris-document.ico` |
-| **Linux** | Freedesktop `.desktop` (`oqteris.desktop`), `xdg-mime` | `.pdf` | `application/pdf` | `oqteris-logo.png` |
-| **macOS** | Bundle `CFBundleDocumentTypes`, LaunchServices | `.pdf` | `application/pdf` | `oqteris-document.icns` |
+| **Windows** | Registry ProgID (`Oqteris.PDF`), `RegisteredApplications` | `.pdf` | `application/pdf` | `oqteris-pdf-file-icon.ico` |
+| **Linux** | Freedesktop `.desktop` (`oqteris.desktop`), `xdg-mime` | `.pdf` | `application/pdf` | `oqteris-app-icon.png` |
+| **macOS** | Bundle `CFBundleDocumentTypes`, LaunchServices | `.pdf` | `application/pdf` | `oqteris-pdf-file-icon.icns` |
 
 ---
 
