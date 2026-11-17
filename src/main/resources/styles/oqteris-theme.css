@@ -858,6 +858,14 @@
     -fx-padding: 2px 4px 0 4px;
 }
 
+.document-tab-pane > .tab-header-area > .tab-header-background,
+.document-tab-pane .tab-header-background,
+.tab-pane > .tab-header-area > .tab-header-background,
+.tab-pane .tab-header-background {
+    -fx-background-color: -color-surface;
+    -fx-background-insets: 0;
+}
+
 .document-tab-pane > .tab-header-area .tab,
 .tab-pane > .tab-header-area .tab {
     -fx-background-color: -color-surface;
@@ -1181,6 +1189,16 @@
     -fx-border-color: -color-border !important;
     -fx-border-width: 0 0 1px 0 !important;
     -fx-padding: 0 4px !important;
+}
+
+.sidebar-tab-pane > .tab-header-area > .tab-header-background,
+.sidebar-tab-pane .tab-header-background {
+    -fx-background-color: -color-surface-secondary !important;
+    -fx-background-insets: 0 !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .headers-region {
+    -fx-background-color: transparent !important;
 }
 
 .sidebar-tab-pane > .tab-header-area .tab {

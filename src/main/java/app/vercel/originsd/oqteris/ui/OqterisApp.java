@@ -1,11 +1,11 @@
 package app.vercel.originsd.oqteris.ui;
 
+import app.vercel.originsd.oqteris.platform.PdfFileOpenHelper;
+import app.vercel.originsd.oqteris.platform.SingleInstanceManager;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import app.vercel.originsd.oqteris.platform.PdfFileOpenHelper;
-import app.vercel.originsd.oqteris.platform.SingleInstanceManager;
 
 import java.io.File;
 import java.util.List;
@@ -27,7 +27,7 @@ public class OqterisApp extends Application {
         // Factory and file handler wired dynamically by module initializer
         AppBootstrap.initialize(mainWindow);
 
-        Scene scene = new Scene(mainWindow, 1280, 820);
+        Scene scene = new Scene(mainWindow, 1200, 720);
         ThemeManager.getInstance().applyTheme(scene);
         primaryStage.setScene(scene);
         primaryStage.show();

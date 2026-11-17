@@ -220,17 +220,41 @@
     -fx-border-width: 0 0 1px 0 !important;
 }
 
+.document-tab-pane > .tab-header-area > .tab-header-background,
+.document-tab-pane .tab-header-background,
+.tab-pane > .tab-header-area > .tab-header-background,
+.tab-pane .tab-header-background {
+    -fx-background-color: #E2E8F0 !important;
+    -fx-background-insets: 0 !important;
+}
+
+.document-tab-pane > .tab-header-area .headers-region,
+.tab-pane > .tab-header-area .headers-region {
+    -fx-background-color: transparent !important;
+}
+
 .document-tab-pane > .tab-header-area .tab,
 .tab-pane > .tab-header-area .tab {
     -fx-background-color: #F1F5F9 !important;
     -fx-border-color: #CBD5E1 !important;
     -fx-border-width: 1px 1px 0 1px !important;
     -fx-border-radius: 6px 6px 0 0 !important;
+    -fx-background-radius: 6px 6px 0 0 !important;
 }
 
 .document-tab-pane > .tab-header-area .tab .tab-label,
 .tab-pane > .tab-header-area .tab .tab-label {
     -fx-text-fill: #64748B !important;
+}
+
+.document-tab-pane > .tab-header-area .tab:hover,
+.tab-pane > .tab-header-area .tab:hover {
+    -fx-background-color: #E2E8F0 !important;
+}
+
+.document-tab-pane > .tab-header-area .tab:hover .tab-label,
+.tab-pane > .tab-header-area .tab:hover .tab-label {
+    -fx-text-fill: #1E293B !important;
 }
 
 .document-tab-pane > .tab-header-area .tab:selected,
@@ -244,6 +268,11 @@
 .tab-pane > .tab-header-area .tab:selected .tab-label {
     -fx-text-fill: #1E293B !important;
     -fx-font-weight: bold !important;
+}
+
+.document-tab-pane > .tab-header-area .tab .focus-indicator,
+.tab-pane > .tab-header-area .tab .focus-indicator {
+    -fx-border-color: transparent !important;
 }
 
 /* Left Panel / Sidebar (Thumbnails, Bookmarks, Signatures) */
@@ -260,13 +289,34 @@
     -fx-border-width: 0 0 1px 0 !important;
 }
 
+.sidebar-tab-pane > .tab-header-area > .tab-header-background,
+.sidebar-tab-pane .tab-header-background {
+    -fx-background-color: #EDF1F8 !important;
+    -fx-background-insets: 0 !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .headers-region {
+    -fx-background-color: transparent !important;
+}
+
 .sidebar-tab-pane > .tab-header-area .tab {
     -fx-background-color: transparent !important;
+    -fx-border-color: transparent !important;
+    -fx-background-radius: 4px 4px 0 0 !important;
 }
 
 .sidebar-tab-pane > .tab-header-area .tab .tab-label,
 .sidebar-tab-pane > .tab-header-area .tab .label {
     -fx-text-fill: #65718A !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab:hover {
+    -fx-background-color: #E2E8F0 !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab:hover .tab-label,
+.sidebar-tab-pane > .tab-header-area .tab:hover .label {
+    -fx-text-fill: #1E293B !important;
 }
 
 .sidebar-tab-pane > .tab-header-area .tab:selected {
@@ -279,6 +329,10 @@
 .sidebar-tab-pane > .tab-header-area .tab:selected .label {
     -fx-text-fill: #3659C9 !important;
     -fx-font-weight: bold !important;
+}
+
+.sidebar-tab-pane > .tab-header-area .tab .focus-indicator {
+    -fx-border-color: transparent !important;
 }
 
 .sidebar-tab-pane > .tab-content-area {
