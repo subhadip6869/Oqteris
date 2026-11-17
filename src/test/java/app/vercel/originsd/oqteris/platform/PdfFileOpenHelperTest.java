@@ -95,7 +95,7 @@ public class PdfFileOpenHelperTest {
     @Test
     public void testResolveMangledWindowsCliArguments() throws Exception {
         File samplePdf = new File("samples", "sample_signed.pdf");
-        if (!samplePdf.exists()) return;
+        byte[] dummyPdf = "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF".getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
         File targetDir = new File("target", "test-mangled-resolve");
         targetDir.mkdirs();
@@ -109,25 +109,31 @@ public class PdfFileOpenHelperTest {
 
         for (String name : testNames) {
             File dest = new File(targetDir, name);
-            java.nio.file.Files.copy(samplePdf.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            if (samplePdf.exists()) {
+                java.nio.file.Files.copy(samplePdf.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                java.nio.file.Files.write(dest.toPath(), dummyPdf);
+            }
             assertTrue(dest.exists());
 
-            // Simulate Windows CP_ACP downsampling where non-ASCII characters become '?'
-            StringBuilder mangledSb = new StringBuilder();
-            for (char c : dest.getAbsolutePath().toCharArray()) {
-                mangledSb.append(c < 128 ? c : '?');
+            try {
+                // Simulate Windows CP_ACP downsampling where non-ASCII characters become '?'
+                StringBuilder mangledSb = new StringBuilder();
+                for (char c : dest.getAbsolutePath().toCharArray()) {
+                    mangledSb.append(c < 128 ? c : '?');
+                }
+                String mangledCliArg = mangledSb.toString();
+                assertTrue(mangledCliArg.contains("?"), "Mangled arg must contain ?");
+
+                // validatePdfFile should automatically resolve the mangled '?' path back to the real file on disk
+                File resolved = PdfFileOpenHelper.validatePdfFile(mangledCliArg);
+                assertNotNull(resolved, "validatePdfFile should successfully resolve mangled CLI argument for: " + name);
+                assertEquals(dest.getCanonicalPath(), resolved.getCanonicalPath());
+                assertTrue(resolved.exists());
+                assertTrue(PdfFileOpenHelper.isPdfFile(resolved));
+            } finally {
+                dest.delete();
             }
-            String mangledCliArg = mangledSb.toString();
-            assertTrue(mangledCliArg.contains("?"), "Mangled arg must contain ?");
-
-            // validatePdfFile should automatically resolve the mangled '?' path back to the real file on disk
-            File resolved = PdfFileOpenHelper.validatePdfFile(mangledCliArg);
-            assertNotNull(resolved, "validatePdfFile should successfully resolve mangled CLI argument for: " + name);
-            assertEquals(dest.getCanonicalPath(), resolved.getCanonicalPath());
-            assertTrue(resolved.exists());
-            assertTrue(PdfFileOpenHelper.isPdfFile(resolved));
-
-            dest.delete();
         }
     }
 }

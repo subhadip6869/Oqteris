@@ -98,38 +98,44 @@ public class SingleInstanceManagerTest {
     @Test
     public void testSingleInstanceIPCMangledCliArguments() throws Exception {
         File samplePdf = new File("samples", "sample_signed.pdf");
-        if (!samplePdf.exists()) return;
+        byte[] dummyPdf = "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF".getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
         File targetDir = new File("target", "test-ipc-mangled");
         targetDir.mkdirs();
 
         File unicodePdf = new File(targetDir, "বাংলা_নথি_ডকুমেন্ট.pdf");
-        java.nio.file.Files.copy(samplePdf.toPath(), unicodePdf.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-        StringBuilder mangled = new StringBuilder();
-        for (char c : unicodePdf.getAbsolutePath().toCharArray()) {
-            mangled.append(c < 128 ? c : '?');
+        if (samplePdf.exists()) {
+            java.nio.file.Files.copy(samplePdf.toPath(), unicodePdf.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } else {
+            java.nio.file.Files.write(unicodePdf.toPath(), dummyPdf);
         }
 
-        List<File> received = new ArrayList<>();
-        CountDownLatch latch = new CountDownLatch(1);
+        try {
+            StringBuilder mangled = new StringBuilder();
+            for (char c : unicodePdf.getAbsolutePath().toCharArray()) {
+                mangled.append(c < 128 ? c : '?');
+            }
 
-        SingleInstanceManager.startServer(files -> {
-            received.addAll(files);
-            latch.countDown();
-        });
+            List<File> received = new ArrayList<>();
+            CountDownLatch latch = new CountDownLatch(1);
 
-        Thread.sleep(100);
+            SingleInstanceManager.startServer(files -> {
+                received.addAll(files);
+                latch.countDown();
+            });
 
-        // Notify with simulated Windows mangled argument
-        boolean handled = SingleInstanceManager.notifyRunningInstance(List.of(mangled.toString()));
-        assertTrue(handled, "notifyRunningInstance should return true");
+            Thread.sleep(100);
 
-        boolean receivedInTime = latch.await(3, TimeUnit.SECONDS);
-        assertTrue(receivedInTime, "Primary instance should receive resolved file within timeout");
-        assertEquals(1, received.size());
-        assertEquals(unicodePdf.getCanonicalPath(), received.get(0).getCanonicalPath());
+            // Notify with simulated Windows mangled argument
+            boolean handled = SingleInstanceManager.notifyRunningInstance(List.of(mangled.toString()));
+            assertTrue(handled, "notifyRunningInstance should return true");
 
-        unicodePdf.delete();
+            boolean receivedInTime = latch.await(3, TimeUnit.SECONDS);
+            assertTrue(receivedInTime, "Primary instance should receive resolved file within timeout");
+            assertEquals(1, received.size());
+            assertEquals(unicodePdf.getCanonicalPath(), received.get(0).getCanonicalPath());
+        } finally {
+            unicodePdf.delete();
+        }
     }
 }
