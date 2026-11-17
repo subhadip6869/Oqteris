@@ -1,7 +1,7 @@
 # Oqteris
 
 <div align="center">
-  <img src="src/main/resources/icons/oqteris-logo.png" alt="Oqteris Logo" width="160"/>
+  <img src="src/main/resources/icons/oqteris-app-icon.png" alt="Oqteris Logo" width="160"/>
   <h3>Dedicated Cross-Platform Desktop PDF Reader and Editor</h3>
 </div>
 
@@ -42,11 +42,11 @@ Oqteris adheres to the **OriginSD Desktop Application Master Architecture Standa
 - **Publisher / Organization:** OriginSD
 - **Developer:** Subhadip Dutta
 - **Location:** Bankura, West Bengal, India
-- **Official Website:** [https://originsd.org](https://originsd.org)
+- **Official Website:** [https://originsd.vercel.app](https://originsd.vercel.app)
 - **GitHub Organization / Profile:** [https://github.com/subhadip6869](https://github.com/subhadip6869)
 - **GitHub Repository:** [https://github.com/subhadip6869/Oqteris.git](https://github.com/subhadip6869/Oqteris.git)
-- **Authoritative Maven Group ID:** `org.originsd`
-- **Application Package Namespace:** `org.originsd.oqteris`
+- **Authoritative Maven Group ID:** `app.vercel.originsd`
+- **Application Package Namespace:** `app.vercel.originsd.oqteris`
 
 ---
 
@@ -146,11 +146,7 @@ Production-ready packaging scripts bundle a stripped minimal JRE runtime (~35–
 ### Windows Native Installer (`.exe`)
 Produces strictly an `.exe` installer using WiX Toolset and `jpackage --type exe`:
 ```powershell
-# Using PowerShell
 .\scripts\package-windows.ps1
-
-# Or using CMD
-.\scripts\package-windows.bat
 ```
 Output: `dist\Oqteris-x.x.x.exe`
 
@@ -194,5 +190,5 @@ Sample documents for verification are located in `samples/`:
 - **Publisher:** OriginSD
 - **Developer:** Subhadip Dutta &bull; Bankura, West Bengal, India
 - **License:** Apache License, Version 2.0
-- **Official Website:** [https://originsd.org](https://originsd.org)
+- **Official Website:** [https://originsd.vercel.app](https://originsd.vercel.app)
 - **Copyright:** &copy; 2026 OriginSD. All rights reserved.

@@ -8,10 +8,10 @@
 set -euo pipefail
 
 APP_NAME="Oqteris"
-APP_VERSION="1.3.0"
+APP_VERSION="1.4.0"
 APP_VENDOR="OriginSD"
 APP_DESCRIPTION="Oqteris PDF Reader"
-MAIN_CLASS="org.originsd.oqteris.ui.OqterisLauncher"
+MAIN_CLASS="app.vercel.originsd.oqteris.ui.OqterisLauncher"
 ICON_PATH="src/main/resources/icons/oqteris-app-icon.png"
 
 echo "=== [1/4] Building Application JAR with Maven ==="
@@ -52,12 +52,13 @@ jpackage \
   --copyright "© 2026 OriginSD" \
   --description "$APP_DESCRIPTION" \
   --icon "$ICON_PATH" \
+  --install-dir "/opt/OriginSD" \
   --input target/package-input \
   --main-jar "$JAR_FILENAME" \
   --main-class "$MAIN_CLASS" \
   --runtime-image target/custom-runtime \
   --linux-shortcut \
-  --linux-menu-group "Office;Viewer;"
+  --linux-menu-group "Office;Viewer;OriginSD;"
 
 echo "=== [4/4] Packaging Native RPM Installer with jpackage (if rpmbuild available) ==="
 if command -v rpmbuild &> /dev/null; then
@@ -70,12 +71,13 @@ if command -v rpmbuild &> /dev/null; then
     --copyright "© 2026 OriginSD" \
     --description "$APP_DESCRIPTION" \
     --icon "$ICON_PATH" \
+    --install-dir "/opt/OriginSD" \
     --input target/package-input \
     --main-jar "$JAR_FILENAME" \
     --main-class "$MAIN_CLASS" \
     --runtime-image target/custom-runtime \
     --linux-shortcut \
-    --linux-menu-group "Office;Viewer;"
+    --linux-menu-group "Office;Viewer;OriginSD;"
 fi
 
 echo "=== Native Linux Packages generated successfully in dist/ ==="
