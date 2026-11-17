@@ -117,14 +117,17 @@ public final class PdfFileOpenHelper {
             return direct;
         }
 
-        String normalized = mangledPath.replace('/', '\\');
-        int lastBackslash = normalized.lastIndexOf('\\');
-        if (lastBackslash == -1) {
-            return findMatchInDir(new File("."), normalized);
+        int lastSep = Math.max(mangledPath.lastIndexOf('/'), mangledPath.lastIndexOf('\\'));
+        if (lastSep == -1) {
+            return findMatchInDir(new File("."), mangledPath);
         }
 
-        String parentPath = normalized.substring(0, lastBackslash);
-        String fileNamePattern = normalized.substring(lastBackslash + 1);
+        String parentPath = mangledPath.substring(0, lastSep);
+        String fileNamePattern = mangledPath.substring(lastSep + 1);
+
+        if (parentPath.isEmpty()) {
+            parentPath = (lastSep == 0 && mangledPath.startsWith("/")) ? "/" : ".";
+        }
 
         File parentDir = new File(parentPath);
         if (!parentDir.exists() && parentPath.contains("?")) {
@@ -139,12 +142,16 @@ public final class PdfFileOpenHelper {
     }
 
     private static File resolveMangledDirectory(String mangledDirPath) {
-        int lastBackslash = mangledDirPath.lastIndexOf('\\');
-        if (lastBackslash == -1) {
+        int lastSep = Math.max(mangledDirPath.lastIndexOf('/'), mangledDirPath.lastIndexOf('\\'));
+        if (lastSep == -1) {
             return null;
         }
-        String grandParentPath = mangledDirPath.substring(0, lastBackslash);
-        String dirPattern = mangledDirPath.substring(lastBackslash + 1);
+        String grandParentPath = mangledDirPath.substring(0, lastSep);
+        String dirPattern = mangledDirPath.substring(lastSep + 1);
+
+        if (grandParentPath.isEmpty()) {
+            grandParentPath = (lastSep == 0 && mangledDirPath.startsWith("/")) ? "/" : ".";
+        }
 
         File grandParent = new File(grandParentPath);
         if (!grandParent.exists() && grandParentPath.contains("?")) {
