@@ -9,10 +9,10 @@
 $ErrorActionPreference = "Stop"
 
 $APP_NAME = "Oqteris"
-$APP_VERSION = "1.3.0"
+$APP_VERSION = "1.4.0"
 $APP_VENDOR = "OriginSD"
 $APP_DESCRIPTION = "Oqteris PDF Reader"
-$MAIN_CLASS = "ui.app.vercel.originsd.oqteris.OqterisLauncher"
+$MAIN_CLASS = "app.vercel.originsd.oqteris.ui.OqterisLauncher"
 $ICON_PATH = "src\main\resources\icons\oqteris-app-icon.ico"
 $FILE_ASSOC = "packaging\windows\pdf-association.properties"
 

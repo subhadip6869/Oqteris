@@ -41,14 +41,14 @@ jpackage ^
   --type exe ^
   --dest dist\ ^
   --name "Oqteris" ^
-  --app-version "1.3.0" ^
+  --app-version "1.4.0" ^
   --vendor "OriginSD" ^
   --copyright "© 2026 OriginSD" ^
   --description "Oqteris PDF Reader" ^
   --icon "src\main\resources\icons\oqteris-app-icon.ico" ^
   --input target\package-input ^
   --main-jar "%JAR_FILENAME%" ^
-  --main-class "ui.app.vercel.originsd.oqteris.OqterisLauncher" ^
+  --main-class "app.vercel.originsd.oqteris.ui.OqterisLauncher" ^
   --runtime-image target\custom-runtime ^
   --win-menu ^
   --win-shortcut ^
