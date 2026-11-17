@@ -192,11 +192,11 @@ public class WindowsDefaultViewerService implements DefaultViewerService {
             }
 
             // 7. Register Capabilities for Default Programs
-            executeRegAdd("HKCU\\Software\\Oqteris\\Capabilities", "ApplicationDescription", "REG_SZ", APP_DESCRIPTION);
-            executeRegAdd("HKCU\\Software\\Oqteris\\Capabilities", "ApplicationName", "REG_SZ", APP_NAME);
-            executeRegAdd("HKCU\\Software\\Oqteris\\Capabilities\\FileAssociations", ".pdf", "REG_SZ", PROG_ID);
-            executeRegAdd("HKCU\\Software\\Oqteris\\Capabilities\\MIMEAssociations", "application/pdf", "REG_SZ", PROG_ID);
-            executeRegAdd("HKCU\\Software\\RegisteredApplications", APP_NAME, "REG_SZ", "Software\\Oqteris\\Capabilities");
+            executeRegAdd("HKCU\\Software\\OriginSD\\Oqteris\\Capabilities", "ApplicationDescription", "REG_SZ", APP_DESCRIPTION);
+            executeRegAdd("HKCU\\Software\\OriginSD\\Oqteris\\Capabilities", "ApplicationName", "REG_SZ", APP_NAME);
+            executeRegAdd("HKCU\\Software\\OriginSD\\Oqteris\\Capabilities\\FileAssociations", ".pdf", "REG_SZ", PROG_ID);
+            executeRegAdd("HKCU\\Software\\OriginSD\\Oqteris\\Capabilities\\MIMEAssociations", "application/pdf", "REG_SZ", PROG_ID);
+            executeRegAdd("HKCU\\Software\\RegisteredApplications", APP_NAME, "REG_SZ", "Software\\OriginSD\\Oqteris\\Capabilities");
 
             // 8. Notify shell of association / icon change
             notifyShellAssocChanged();
@@ -260,10 +260,22 @@ public class WindowsDefaultViewerService implements DefaultViewerService {
         } catch (Throwable ignored) {
         }
 
-        // 3. Known Program Files installation paths
+        // 3. Known Program Files installation paths (OriginSD\Oqteris)
         String progFiles = System.getenv("ProgramFiles");
         if (progFiles != null) {
-            File exe = new File(progFiles, "Oqteris" + File.separator + EXE_NAME);
+            File exe = new File(progFiles, "OriginSD" + File.separator + "Oqteris" + File.separator + EXE_NAME);
+            if (exe.isFile()) {
+                return exe.getAbsolutePath();
+            }
+            File exeLegacy = new File(progFiles, "Oqteris" + File.separator + EXE_NAME);
+            if (exeLegacy.isFile()) {
+                return exeLegacy.getAbsolutePath();
+            }
+        }
+
+        String progFilesX86 = System.getenv("ProgramFiles(x86)");
+        if (progFilesX86 != null) {
+            File exe = new File(progFilesX86, "OriginSD" + File.separator + "Oqteris" + File.separator + EXE_NAME);
             if (exe.isFile()) {
                 return exe.getAbsolutePath();
             }
@@ -271,11 +283,15 @@ public class WindowsDefaultViewerService implements DefaultViewerService {
 
         String localApp = System.getenv("LOCALAPPDATA");
         if (localApp != null) {
-            File exe = new File(localApp, "Programs" + File.separator + "Oqteris" + File.separator + EXE_NAME);
+            File exe = new File(localApp, "Programs" + File.separator + "OriginSD" + File.separator + "Oqteris" + File.separator + EXE_NAME);
             if (exe.isFile()) {
                 return exe.getAbsolutePath();
             }
-            File exe2 = new File(localApp, "Oqteris" + File.separator + EXE_NAME);
+            File exeOld = new File(localApp, "Programs" + File.separator + "Oqteris" + File.separator + EXE_NAME);
+            if (exeOld.isFile()) {
+                return exeOld.getAbsolutePath();
+            }
+            File exe2 = new File(localApp, "OriginSD" + File.separator + "Oqteris" + File.separator + EXE_NAME);
             if (exe2.isFile()) {
                 return exe2.getAbsolutePath();
             }

@@ -146,11 +146,7 @@ Production-ready packaging scripts bundle a stripped minimal JRE runtime (~35–
 ### Windows Native Installer (`.exe`)
 Produces strictly an `.exe` installer using WiX Toolset and `jpackage --type exe`:
 ```powershell
-# Using PowerShell
 .\scripts\package-windows.ps1
-
-# Or using CMD
-.\scripts\package-windows.bat
 ```
 Output: `dist\Oqteris-x.x.x.exe`
 

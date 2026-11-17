@@ -1,6 +1,5 @@
 # Ensure shell scripts always keep LF line endings across all platforms
 *.sh text eol=lf
 
-# Batch and PowerShell scripts
-*.bat text eol=crlf
+# PowerShell scripts
 *.ps1 text eol=crlf

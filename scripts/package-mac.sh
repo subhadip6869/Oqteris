@@ -55,6 +55,7 @@ jpackage \
   --description "$APP_DESCRIPTION" \
   --mac-package-name "$APP_NAME" \
   --mac-package-identifier "$APP_IDENTIFIER" \
+  --install-dir "/Applications/OriginSD" \
   --input target/package-input \
   --main-jar "$JAR_FILENAME" \
   --main-class "$MAIN_CLASS" \

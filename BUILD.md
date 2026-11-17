@@ -153,8 +153,10 @@ jpackage `
   --input target/app-input `
   --main-jar oqteris-x.x.x-all.jar `
   --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher `
+  --install-dir "OriginSD\Oqteris" `
   --file-associations packaging/windows/pdf-association.properties `
   --win-menu `
+  --win-menu-group "OriginSD" `
   --win-shortcut `
   --win-dir-chooser `
   --dest target/installer
@@ -174,7 +176,7 @@ Oqteris provides automated file association registration via `WindowsDefaultView
 2. Sets the DefaultIcon to `oqteris-document.ico`.
 3. Sets `shell\open\command` to the Oqteris launcher passing `"%1"`.
 4. Registers `Oqteris.PDF` in `HKCU\Software\Classes\.pdf\OpenWithProgids`.
-5. Declares application capabilities in `HKCU\Software\Oqteris\Capabilities` and registers with `HKCU\Software\RegisteredApplications`.
+5. Declares application capabilities in `HKCU\Software\OriginSD\Oqteris\Capabilities` and registers with `HKCU\Software\RegisteredApplications`.
 6. On Windows 10 and 11, Windows policy protects the `UserChoice` registry key to prevent silent hijacking. Oqteris automatically launches `ms-settings:defaultapps` and guides the user to confirm Oqteris as their default PDF viewer.
 
 ---
@@ -190,11 +192,12 @@ jpackage \
   --vendor "OriginSD" \
   --description "Dedicated PDF Reader and Editor" \
   --icon "src/main/resources/icons/oqteris-logo.png" \
+  --install-dir "/opt/OriginSD" \
   --input target/app-input \
   --main-jar oqteris-x.x.x-all.jar \
   --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
   --linux-shortcut \
-  --linux-menu-group "Office;Viewer;Graphics;" \
+  --linux-menu-group "Office;Viewer;OriginSD;" \
   --dest target/installer
 ```
 
@@ -212,10 +215,12 @@ jpackage \
   --vendor "OriginSD" \
   --description "Dedicated PDF Reader and Editor" \
   --icon "src/main/resources/icons/oqteris-logo.png" \
+  --install-dir "/opt/OriginSD" \
   --input target/app-input \
   --main-jar oqteris-x.x.x-all.jar \
   --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
   --linux-shortcut \
+  --linux-menu-group "Office;Viewer;OriginSD;" \
   --dest target/installer
 ```
 
@@ -261,6 +266,7 @@ jpackage \
   --input target/app-input \
   --main-jar oqteris-x.x.x-all.jar \
   --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
+  --install-dir "/Applications/OriginSD" \
   --dest target/installer
 ```
 

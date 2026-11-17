@@ -1,4 +1,4 @@
-<#
+﻿<#
  ==============================================================================
  Oqteris Desktop - Windows Native Packaging Script with Optimized Bundled JRE
  Target output: Native Windows EXE installer (with zero host JRE dependency)
@@ -68,9 +68,11 @@ $jpackageArgs = @(
     "--main-jar", $jarFilename,
     "--main-class", $MAIN_CLASS,
     "--runtime-image", "target/custom-runtime",
+    "--install-dir", "OriginSD\Oqteris",
+    "--win-dir-chooser",
     "--win-menu",
-    "--win-shortcut",
-    "--win-dir-chooser"
+    "--win-menu-group", "OriginSD",
+    "--win-shortcut"
 )
 
 if (Test-Path $FILE_ASSOC) {

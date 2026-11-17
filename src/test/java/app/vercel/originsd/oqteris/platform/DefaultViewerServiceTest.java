@@ -38,9 +38,9 @@ public class DefaultViewerServiceTest {
         assertTrue(cmd.contains("java") || cmd.contains("javaw"));
         assertTrue(cmd.contains("%1"));
 
-        String effectiveCmd = winService.getEffectiveLaunchCommand("C:\\Program Files\\Oqteris\\Oqteris.exe");
+        String effectiveCmd = winService.getEffectiveLaunchCommand("C:\\Program Files\\OriginSD\\Oqteris\\Oqteris.exe");
         assertNotNull(effectiveCmd);
-        assertTrue(effectiveCmd.contains("Oqteris.exe"));
+        assertTrue(effectiveCmd.contains("OriginSD\\Oqteris\\Oqteris.exe"));
         assertTrue(effectiveCmd.contains("%1"));
 
         // Status check shouldn't throw exceptions

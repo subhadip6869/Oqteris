@@ -101,6 +101,19 @@ public class LinuxDefaultViewerService implements DefaultViewerService {
     }
 
     private String buildLaunchCommand() {
+        // Check standard OriginSD installation locations under /opt/OriginSD/Oqteris
+        File[] knownInstallations = new File[] {
+                new File("/opt/OriginSD/Oqteris/bin/Oqteris"),
+                new File("/opt/OriginSD/Oqteris/bin/oqteris"),
+                new File("/opt/OriginSD/Oqteris/Oqteris"),
+                new File("/opt/oqteris/bin/oqteris")
+        };
+        for (File candidate : knownInstallations) {
+            if (candidate.isFile() && candidate.canExecute()) {
+                return "\"" + candidate.getAbsolutePath() + "\"";
+            }
+        }
+
         String javaHome = System.getProperty("java.home");
         File javaBin = new File(javaHome, "bin/java");
         String javaPath = javaBin.exists() ? javaBin.getAbsolutePath() : "java";
