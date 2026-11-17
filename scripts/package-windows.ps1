@@ -61,7 +61,7 @@ $jpackageArgs = @(
     "--name", $APP_NAME,
     "--app-version", $APP_VERSION,
     "--vendor", $APP_VENDOR,
-    "--copyright", "� 2026 OriginSD",
+    "--copyright", "© 2026 OriginSD",
     "--description", $APP_DESCRIPTION,
     "--icon", $ICON_PATH,
     "--input", $packageInput,

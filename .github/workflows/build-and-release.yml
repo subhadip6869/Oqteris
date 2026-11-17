@@ -75,42 +75,9 @@ jobs:
             sed -i '/WINDOWS-ROOT/d' .mvn/jvm.config || rm -f .mvn/jvm.config
           fi
 
-      - name: Build Fat JAR
-        run: mvn clean package -DskipTests --batch-mode
-
-      - name: Build Optimized Bundled JRE with jlink
-        run: jlink --no-header-files --no-man-pages --strip-debug --compress=2 --add-modules java.base,java.compiler,java.desktop,java.instrument,java.naming,java.net.http,java.rmi,java.scripting,java.sql,java.xml,jdk.crypto.ec,jdk.localedata,jdk.unsupported --output target/custom-runtime
-
-      - name: Package Native Installer with jpackage (Windows EXE)
+      - name: Run Windows Packaging Script
         if: runner.os == 'Windows'
-        run: |
-          mkdir -Force dist
-          $jar = (Get-ChildItem target/oqteris-*-all.jar | Select-Object -First 1).Name
-          $packageInput = "target\package-input"
-          if (Test-Path $packageInput) { Remove-Item -Recurse -Force $packageInput }
-          New-Item -ItemType Directory -Path $packageInput | Out-Null
-          Copy-Item "target\$jar" -Destination $packageInput
-          $jpackageArgs = @(
-            "--type", "exe",
-            "--dest", "dist",
-            "--name", "Oqteris",
-            "--app-version", "1.4.0",
-            "--vendor", "OriginSD",
-            "--copyright", "© 2026 OriginSD",
-            "--description", "Oqteris PDF Reader",
-            "--icon", "src/main/resources/icons/oqteris-app-icon.ico",
-            "--input", $packageInput,
-            "--main-jar", $jar,
-            "--main-class", "app.vercel.originsd.oqteris.ui.OqterisLauncher",
-            "--runtime-image", "target/custom-runtime",
-            "--win-menu",
-            "--win-shortcut",
-            "--win-dir-chooser"
-          )
-          if (Test-Path "packaging/windows/pdf-association.properties") {
-            $jpackageArgs += @("--file-associations", "packaging/windows/pdf-association.properties")
-          }
-          & jpackage @jpackageArgs
+        run: pwsh -ExecutionPolicy Bypass -File scripts/package-windows.ps1
 
       - name: Install RPM Build Tools (Linux)
         if: runner.os == 'Linux'
@@ -118,67 +85,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y rpm
 
-      - name: Package Native Installers with jpackage (Linux)
+      - name: Run Linux Packaging Script
         if: runner.os == 'Linux'
         run: |
-          mkdir -p dist
-          JAR_FILE=$(basename $(ls target/oqteris-*-all.jar | head -n 1))
-          rm -rf target/package-input
-          mkdir -p target/package-input
-          cp "target/$JAR_FILE" target/package-input/
-          jpackage \
-            --type deb \
-            --dest dist \
-            --name "Oqteris" \
-            --app-version "1.4.0" \
-            --vendor "OriginSD" \
-            --copyright "© 2026 OriginSD" \
-            --description "Oqteris PDF Reader" \
-            --icon src/main/resources/icons/oqteris-app-icon.png \
-            --input target/package-input \
-            --main-jar "$JAR_FILE" \
-            --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
-            --runtime-image target/custom-runtime \
-            --linux-shortcut \
-            --linux-menu-group "Office;Viewer;"
-          jpackage \
-            --type rpm \
-            --dest dist \
-            --name "Oqteris" \
-            --app-version "1.4.0" \
-            --vendor "OriginSD" \
-            --copyright "© 2026 OriginSD" \
-            --description "Oqteris PDF Reader" \
-            --icon src/main/resources/icons/oqteris-app-icon.png \
-            --input target/package-input \
-            --main-jar "$JAR_FILE" \
-            --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
-            --runtime-image target/custom-runtime \
-            --linux-shortcut \
-            --linux-menu-group "Office;Viewer;"
+          chmod +x scripts/package-linux.sh
+          ./scripts/package-linux.sh
 
-      - name: Package Native Installer with jpackage (macOS)
+      - name: Run macOS Packaging Script
         if: runner.os == 'macOS'
         run: |
-          mkdir -p dist
-          JAR_FILE=$(basename $(ls target/oqteris-*-all.jar | head -n 1))
-          rm -rf target/package-input
-          mkdir -p target/package-input
-          cp "target/$JAR_FILE" target/package-input/
-          jpackage \
-            --type dmg \
-            --dest dist \
-            --name "Oqteris" \
-            --app-version "1.4.0" \
-            --vendor "OriginSD" \
-            --copyright "© 2026 OriginSD" \
-            --description "Oqteris PDF Reader" \
-            --mac-package-name "Oqteris" \
-            --mac-package-identifier "app.vercel.originsd.oqteris" \
-            --input target/package-input \
-            --main-jar "$JAR_FILE" \
-            --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
-            --runtime-image target/custom-runtime
+          chmod +x scripts/package-mac.sh
+          ./scripts/package-mac.sh
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
