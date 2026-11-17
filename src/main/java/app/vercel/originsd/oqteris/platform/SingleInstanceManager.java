@@ -1,6 +1,7 @@
 package app.vercel.originsd.oqteris.platform;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.function.Consumer;
  * Manages single-instance lifecycle and inter-process communication (IPC)
  * to route newly opened PDF document requests to the active application window.
  * Uses a robust, zero-network file-based IPC queue that avoids OS firewall prompts.
+ * Fully supports Unicode file paths across all languages and locales.
  */
 public class SingleInstanceManager {
     private static final String LOCK_FILE_NAME = ".instance.lock";
@@ -88,10 +90,14 @@ public class SingleInstanceManager {
         File reqFile = new File(requestsDir, "request_" + requestId + ".req");
         File ackFile = new File(requestsDir, "request_" + requestId + ".ack");
 
-        try (FileWriter writer = new FileWriter(reqFile)) {
-            List<String> safeArgs = args != null ? args : List.of();
-            for (String arg : safeArgs) {
-                writer.write(arg + "\n");
+        try (BufferedWriter writer = Files.newBufferedWriter(reqFile.toPath(), StandardCharsets.UTF_8)) {
+            List<String> rawArgs = args != null ? args : List.of();
+            for (String arg : rawArgs) {
+                if (arg == null || arg.isBlank()) continue;
+                File validated = PdfFileOpenHelper.validatePdfFile(arg);
+                String resolved = (validated != null) ? validated.getAbsolutePath() : arg;
+                writer.write(resolved);
+                writer.newLine();
             }
         } catch (Exception e) {
             cleanLockFile();
@@ -137,7 +143,7 @@ public class SingleInstanceManager {
             parent.mkdirs();
         }
 
-        try (FileWriter writer = new FileWriter(lockFile)) {
+        try (BufferedWriter writer = Files.newBufferedWriter(lockFile.toPath(), StandardCharsets.UTF_8)) {
             writer.write(ProcessHandle.current().pid() + "\n" + System.currentTimeMillis() + "\n");
         } catch (Exception e) {
             System.err.println("[SingleInstanceManager] Could not write lock file: " + e.getMessage());
@@ -149,7 +155,8 @@ public class SingleInstanceManager {
         // Register shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(SingleInstanceManager::stopServer, "Oqteris-IPC-Shutdown"));
 
-        File requestsDir = getRequestsDir();
+        // Process any pending requests that arrived before or during startup
+        processPendingRequests(onFilesReceived);
 
         poller = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "Oqteris-IPC-Poller");
@@ -159,42 +166,48 @@ public class SingleInstanceManager {
 
         poller.scheduleWithFixedDelay(() -> {
             if (!running) return;
-            try {
-                File[] reqs = requestsDir.listFiles((d, name) -> name.startsWith("request_") && name.endsWith(".req"));
-                if (reqs == null || reqs.length == 0) return;
+            processPendingRequests(onFilesReceived);
+        }, 50, 100, TimeUnit.MILLISECONDS);
+    }
 
-                for (File req : reqs) {
-                    List<File> files = new ArrayList<>();
-                    try (BufferedReader reader = new BufferedReader(new FileReader(req))) {
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            if (!line.isBlank()) {
-                                File f = PdfFileOpenHelper.validatePdfFile(line);
-                                if (f != null) {
-                                    files.add(f);
-                                }
-                            }
+    /**
+     * Scans and processes all pending .req files in the IPC requests directory,
+     * decoding paths using StandardCharsets.UTF_8 to preserve international characters.
+     */
+    public static synchronized void processPendingRequests(Consumer<List<File>> onFilesReceived) {
+        File requestsDir = getRequestsDir();
+        File[] reqs = requestsDir.listFiles((d, name) -> name.startsWith("request_") && name.endsWith(".req"));
+        if (reqs == null || reqs.length == 0) return;
+
+        for (File req : reqs) {
+            List<File> files = new ArrayList<>();
+            try (BufferedReader reader = Files.newBufferedReader(req.toPath(), StandardCharsets.UTF_8)) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.isBlank()) {
+                        File f = PdfFileOpenHelper.validatePdfFile(line);
+                        if (f != null) {
+                            files.add(f);
                         }
-                    } catch (Exception ignored) {
-                    }
-
-                    // Write acknowledgment
-                    String name = req.getName();
-                    String ackName = name.substring(0, name.length() - 4) + ".ack";
-                    File ack = new File(requestsDir, ackName);
-                    try {
-                        ack.createNewFile();
-                        req.delete();
-                    } catch (Exception ignored) {
-                    }
-
-                    if (onFilesReceived != null && !files.isEmpty()) {
-                        onFilesReceived.accept(files);
                     }
                 }
             } catch (Exception ignored) {
             }
-        }, 50, 100, TimeUnit.MILLISECONDS);
+
+            // Write acknowledgment
+            String name = req.getName();
+            String ackName = name.substring(0, name.length() - 4) + ".ack";
+            File ack = new File(requestsDir, ackName);
+            try {
+                ack.createNewFile();
+                req.delete();
+            } catch (Exception ignored) {
+            }
+
+            if (onFilesReceived != null && !files.isEmpty()) {
+                onFilesReceived.accept(files);
+            }
+        }
     }
 
     public static synchronized void stopServer() {

@@ -36,7 +36,7 @@ public class AppBootstrap {
         Optional<DocumentType> typeOpt = DocumentRegistry.getInstance().detectDocumentType(file);
         if (typeOpt.isEmpty() || typeOpt.get() != DocumentType.PDF) {
             // Also check file extension or magic bytes directly
-            if (!file.getName().toLowerCase().endsWith(".pdf")) {
+            if (!app.vercel.originsd.oqteris.platform.PdfFileOpenHelper.isPdfFile(file)) {
                 return null;
             }
         }

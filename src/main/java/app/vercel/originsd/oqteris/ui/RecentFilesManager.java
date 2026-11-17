@@ -47,7 +47,7 @@ public class RecentFilesManager {
     private void load() {
         if (!java.nio.file.Files.exists(storagePath)) return;
         try {
-            String data = java.nio.file.Files.readString(storagePath);
+            String data = java.nio.file.Files.readString(storagePath, java.nio.charset.StandardCharsets.UTF_8);
             if (data == null || data.isBlank()) return;
 
             String[] parts = data.split("\\|\\|");
@@ -85,7 +85,7 @@ public class RecentFilesManager {
                     sb.append("||");
                 }
             }
-            java.nio.file.Files.writeString(storagePath, sb.toString());
+            java.nio.file.Files.writeString(storagePath, sb.toString(), java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception ignored) {
         }
     }
