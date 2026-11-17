@@ -1094,6 +1094,16 @@
     -fx-text-fill: -color-text-muted;
 }
 
+.welcome-drop-zone .ikonli-font-icon,
+.welcome-drop-icon {
+    -fx-icon-color: -color-text-muted;
+}
+
+.welcome-drop-zone:hover .ikonli-font-icon,
+.welcome-drop-zone:hover .welcome-drop-icon {
+    -fx-icon-color: -color-primary;
+}
+
 .action-card {
     -fx-background-color: -color-surface-secondary;
     -fx-border-color: -color-border;
@@ -1119,8 +1129,10 @@
     -fx-text-fill: -color-text-secondary;
 }
 
-.action-card .ikonli-font-icon {
-    -fx-icon-color: -color-primary;
+.action-card-badge .ikonli-font-icon,
+.action-card .action-card-badge .ikonli-font-icon,
+.action-card-icon {
+    -fx-icon-color: #ffffff !important;
 }
 
 .recent-scroll-pane,

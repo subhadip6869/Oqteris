@@ -11,6 +11,7 @@ import app.vercel.originsd.oqteris.platform.DefaultViewerService;
 import app.vercel.originsd.oqteris.platform.DefaultViewerServiceFactory;
 import app.vercel.originsd.oqteris.platform.DefaultViewerStatus;
 import app.vercel.originsd.oqteris.platform.RegistrationResult;
+import app.vercel.originsd.oqteris.ui.icon.AppIcons;
 import app.vercel.originsd.oqteris.ui.icon.AppResources;
 
 import javafx.geometry.Insets;
@@ -19,6 +20,12 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import org.kordamp.ikonli.Ikon;
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignC;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignF;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignS;
 
 /**
  * Modern Start Center / Welcome Screen for Oqteris PDF Reader and Editor.
@@ -107,9 +114,9 @@ public class WelcomeScreen extends BorderPane {
 
         VBox cardsBox = new VBox(10);
         cardsBox.getChildren().addAll(
-                createActionCard("Open PDF Document...", "Browse your system to view or edit a PDF", "📄", "#2563eb", onOpenFile),
-                createActionCard("Security & Trust Store", "Manage certificates and digital signature trust levels", "🛡️", "#059669", onOpenCertManager),
-                createActionCard("Application Settings", "Configure default author, theme, and default viewer", "⚙️", "#6366f1", onOpenSettings)
+                createActionCard("Open PDF Document...", "Browse your system to view or edit a PDF", MaterialDesignF.FILE_PDF_BOX, "#2563eb", onOpenFile),
+                createActionCard("Security & Trust Store", "Manage certificates and digital signature trust levels", MaterialDesignS.SHIELD_CHECK, "#059669", onOpenCertManager),
+                createActionCard("Application Settings", "Configure default author, theme, and default viewer", MaterialDesignC.COG_OUTLINE, "#6366f1", onOpenSettings)
         );
 
         // Drag & drop drop-zone indicator
@@ -127,8 +134,8 @@ public class WelcomeScreen extends BorderPane {
             }
         });
 
-        Label dropIcon = new Label("📂");
-        dropIcon.setStyle("-fx-font-size: 24px;");
+        FontIcon dropIcon = AppIcons.of(MaterialDesignF.FOLDER_OPEN_OUTLINE, 28);
+        dropIcon.getStyleClass().add("welcome-drop-icon");
         Label dropText = new Label("Drag & drop a PDF here");
         dropText.getStyleClass().add("welcome-drop-title");
         Label dropSub = new Label("or click to browse files");
@@ -240,6 +247,47 @@ public class WelcomeScreen extends BorderPane {
             banner.getChildren().addAll(msg, spacer, setDefaultBtn, dismissBtn);
             defaultViewerAlertBox.getChildren().add(banner);
         }
+    }
+
+    private HBox createActionCard(String title, String desc, Ikon ikon, String accentColor, Runnable onClick) {
+        HBox card = new HBox(14);
+        card.getStyleClass().add("action-card");
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPadding(new Insets(12, 16, 12, 16));
+        card.setCursor(javafx.scene.Cursor.HAND);
+
+        StackPane iconBadge = new StackPane();
+        iconBadge.getStyleClass().add("action-card-badge");
+        iconBadge.setPrefSize(40, 40);
+        iconBadge.setMinSize(40, 40);
+        iconBadge.setStyle("-fx-background-color: " + accentColor + "; -fx-background-radius: 8px;");
+
+        FontIcon badgeIcon = AppIcons.of(ikon, 20, Color.WHITE);
+        badgeIcon.getStyleClass().add("action-card-icon");
+        iconBadge.getChildren().add(badgeIcon);
+
+        VBox textCol = new VBox(2);
+        Label cardTitle = new Label(title);
+        cardTitle.getStyleClass().add("action-card-title");
+        cardTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: " + accentColor + ";");
+
+        Label cardDesc = new Label(desc);
+        cardDesc.setWrapText(true);
+        cardDesc.getStyleClass().add("action-card-desc");
+
+        textCol.getChildren().addAll(cardTitle, cardDesc);
+        card.getChildren().addAll(iconBadge, textCol);
+
+        card.setOnMouseClicked(e -> {
+            if (openingFile) {
+                return;
+            }
+            if (onClick != null) {
+                onClick.run();
+            }
+        });
+
+        return card;
     }
 
     private HBox createActionCard(String title, String desc, String badgeChar, String accentColor, Runnable onClick) {
