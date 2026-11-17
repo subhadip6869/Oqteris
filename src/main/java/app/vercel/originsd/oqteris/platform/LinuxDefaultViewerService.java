@@ -58,7 +58,7 @@ public class LinuxDefaultViewerService implements DefaultViewerService {
             if (!iconDir.exists()) {
                 iconDir.mkdirs();
             }
-            File logoIcon = new File(iconDir, "oqteris-logo.png");
+            File logoIcon = new File(iconDir, "oqteris-app-icon.png");
             AppResources.extractResourceToDisk(AppResources.APP_LOGO_PNG, logoIcon);
 
             String launchExec = buildLaunchCommand();

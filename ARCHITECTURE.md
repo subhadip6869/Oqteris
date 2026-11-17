@@ -167,7 +167,7 @@ classDiagram
 - **Windows (`WindowsDefaultViewerService`)**:
   - Registers ProgID `Oqteris.PDF` and `OpenWithProgids` in `HKCU\Software\Classes`.
   - Registers capabilities in `HKCU\Software\OriginSD\Oqteris\Capabilities` and `RegisteredApplications`.
-  - Configures `oqteris-document.ico` as the file-type icon.
+  - Configures `oqteris-pdf-file-icon.ico` as the file-type icon.
   - Queries `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.pdf\UserChoice` for default detection.
   - On Windows 10/11, launches `ms-settings:defaultapps` and guides the user to confirm default application selection.
 - **Linux (`LinuxDefaultViewerService`)**:

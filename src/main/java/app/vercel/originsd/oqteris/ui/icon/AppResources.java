@@ -8,33 +8,25 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * Centralized resource manager for application branding and file association icons.
- * Provides access to:
- * - Icon A: Oqteris application logo (oqteris-logo.png / oqteris-logo.ico / oqteris-app-icon)
- * - Icon B: PDF document association icon (oqteris-document.png / oqteris-document.ico / oqteris-pdf-file-icon)
+ * Standardized icon sets:
+ * - Application Icon: /icons/oqteris-app-icon.png and /icons/oqteris-app-icon.ico
+ * - PDF Document Icon: /icons/oqteris-pdf-file-icon.png and /icons/oqteris-pdf-file-icon.ico
  */
 public final class AppResources {
 
-    public static final String APP_LOGO_PNG = "/icons/oqteris-logo.png";
-    public static final String APP_LOGO_ICO = "/icons/oqteris-logo.ico";
-    public static final String PDF_DOCUMENT_PNG = "/icons/oqteris-document.png";
-    public static final String PDF_DOCUMENT_ICO = "/icons/oqteris-document.ico";
+    public static final String APP_LOGO_PNG = "/icons/oqteris-app-icon.png";
+    public static final String APP_LOGO_ICO = "/icons/oqteris-app-icon.ico";
+    public static final String PDF_DOCUMENT_PNG = "/icons/oqteris-pdf-file-icon.png";
+    public static final String PDF_DOCUMENT_ICO = "/icons/oqteris-pdf-file-icon.ico";
 
     private AppResources() {}
 
     public static InputStream getAppLogoStream() {
-        InputStream in = AppResources.class.getResourceAsStream(APP_LOGO_PNG);
-        if (in == null) {
-            in = AppResources.class.getResourceAsStream("/icons/oqteris-app-icon.png");
-        }
-        return in;
+        return AppResources.class.getResourceAsStream(APP_LOGO_PNG);
     }
 
     public static InputStream getPdfDocumentIconStream() {
-        InputStream in = AppResources.class.getResourceAsStream(PDF_DOCUMENT_PNG);
-        if (in == null) {
-            in = AppResources.class.getResourceAsStream("/icons/oqteris-pdf-file-icon.png");
-        }
-        return in;
+        return AppResources.class.getResourceAsStream(PDF_DOCUMENT_PNG);
     }
 
     public static Image getAppLogo() {

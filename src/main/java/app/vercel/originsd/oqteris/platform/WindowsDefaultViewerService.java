@@ -147,8 +147,8 @@ public class WindowsDefaultViewerService implements DefaultViewerService {
         try {
             // 1. Prepare icon files on disk
             File iconDir = getAppIconDir();
-            File docIcon = new File(iconDir, "oqteris-document.ico");
-            File appIcon = new File(iconDir, "oqteris-logo.ico");
+            File docIcon = new File(iconDir, "oqteris-pdf-file-icon.ico");
+            File appIcon = new File(iconDir, "oqteris-app-icon.ico");
 
             AppResources.extractResourceToDisk(AppResources.PDF_DOCUMENT_ICO, docIcon);
             AppResources.extractResourceToDisk(AppResources.APP_LOGO_ICO, appIcon);
@@ -157,7 +157,7 @@ public class WindowsDefaultViewerService implements DefaultViewerService {
             String exePath = findExecutablePath();
             String launchCommand = getEffectiveLaunchCommand(exePath);
 
-            // 3. Register ProgID (with Document Icon so associated files use oqteris-document.ico)
+            // 3. Register ProgID (with Document Icon so associated files use oqteris-pdf-file-icon.ico)
             executeRegAdd("HKCU\\Software\\Classes\\" + PROG_ID, null, "REG_SZ", "PDF Document");
             executeRegAdd("HKCU\\Software\\Classes\\" + PROG_ID, "FriendlyTypeName", "REG_SZ", "PDF Document");
             executeRegAdd("HKCU\\Software\\Classes\\" + PROG_ID + "\\DefaultIcon", null, "REG_SZ", "\"" + docIcon.getAbsolutePath() + "\"");
@@ -165,7 +165,7 @@ public class WindowsDefaultViewerService implements DefaultViewerService {
 
             // 4. Register Applications\Oqteris.exe
             // FriendlyAppName "Oqteris" ensures Windows uses the application name in Default App Selection / Open With
-            // DefaultIcon ensures Explorer displays the document icon (oqteris-document) for associated PDFs.
+            // DefaultIcon ensures Explorer displays the document icon (oqteris-pdf-file-icon) for associated PDFs.
             // SupportedTypes ensures Oqteris is listed automatically in the available applications / Open With list.
             executeRegAdd("HKCU\\Software\\Classes\\Applications\\" + EXE_NAME, "FriendlyAppName", "REG_SZ", APP_NAME);
             executeRegAdd("HKCU\\Software\\Classes\\Applications\\" + EXE_NAME, "ApplicationCompany", "REG_SZ", "OriginSD");

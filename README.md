@@ -1,7 +1,7 @@
 # Oqteris
 
 <div align="center">
-  <img src="src/main/resources/icons/oqteris-logo.png" alt="Oqteris Logo" width="160"/>
+  <img src="src/main/resources/icons/oqteris-app-icon.png" alt="Oqteris Logo" width="160"/>
   <h3>Dedicated Cross-Platform Desktop PDF Reader and Editor</h3>
 </div>
 

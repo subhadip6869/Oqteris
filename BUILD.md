@@ -122,8 +122,8 @@ cp target/oqteris-x.x.x-all.jar target/app-input/
 ### 4.1 Windows Integration & Packaging
 
 #### Application & Document Icons
-- **Application Icon**: `src/main/resources/icons/oqteris-logo.ico` (multi-resolution ICO for the executable and installer).
-- **PDF Document Icon**: `src/main/resources/icons/oqteris-document.ico` (file association icon).
+- **Application Icon**: `src/main/resources/icons/oqteris-app-icon.ico` (multi-resolution ICO for the executable and installer).
+- **PDF Document Icon**: `src/main/resources/icons/oqteris-pdf-file-icon.ico` (file association icon).
 
 #### Portable App Image (No external tools required)
 ```powershell
@@ -133,7 +133,7 @@ jpackage `
   --app-version "x.x.x" `
   --vendor "OriginSD" `
   --description "Dedicated PDF Reader and Editor" `
-  --icon "src/main/resources/icons/oqteris-logo.ico" `
+  --icon "src/main/resources/icons/oqteris-app-icon.ico" `
   --input target/app-input `
   --main-jar oqteris-x.x.x-all.jar `
   --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher `
@@ -149,7 +149,7 @@ jpackage `
   --app-version "x.x.x" `
   --vendor "OriginSD" `
   --description "Dedicated PDF Reader and Editor" `
-  --icon "src/main/resources/icons/oqteris-logo.ico" `
+  --icon "src/main/resources/icons/oqteris-app-icon.ico" `
   --input target/app-input `
   --main-jar oqteris-x.x.x-all.jar `
   --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher `
@@ -167,13 +167,13 @@ jpackage `
 extension=pdf
 mime-type=application/pdf
 description=PDF Document
-icon=src/main/resources/icons/oqteris-document.ico
+icon=src/main/resources/icons/oqteris-pdf-file-icon.ico
 ```
 
 #### In-App Default PDF Viewer Registration on Windows
 Oqteris provides automated file association registration via `WindowsDefaultViewerService`:
 1. Registers the ProgID `Oqteris.PDF` in `HKCU\Software\Classes\Oqteris.PDF`.
-2. Sets the DefaultIcon to `oqteris-document.ico`.
+2. Sets the DefaultIcon to `oqteris-pdf-file-icon.ico`.
 3. Sets `shell\open\command` to the Oqteris launcher passing `"%1"`.
 4. Registers `Oqteris.PDF` in `HKCU\Software\Classes\.pdf\OpenWithProgids`.
 5. Declares application capabilities in `HKCU\Software\OriginSD\Oqteris\Capabilities` and registers with `HKCU\Software\RegisteredApplications`.
@@ -191,7 +191,7 @@ jpackage \
   --app-version "x.x.x" \
   --vendor "OriginSD" \
   --description "Dedicated PDF Reader and Editor" \
-  --icon "src/main/resources/icons/oqteris-logo.png" \
+  --icon "src/main/resources/icons/oqteris-app-icon.png" \
   --install-dir "/opt/OriginSD" \
   --input target/app-input \
   --main-jar oqteris-x.x.x-all.jar \
@@ -214,7 +214,7 @@ jpackage \
   --app-version "x.x.x" \
   --vendor "OriginSD" \
   --description "Dedicated PDF Reader and Editor" \
-  --icon "src/main/resources/icons/oqteris-logo.png" \
+  --icon "src/main/resources/icons/oqteris-app-icon.png" \
   --install-dir "/opt/OriginSD" \
   --input target/app-input \
   --main-jar oqteris-x.x.x-all.jar \
@@ -232,7 +232,7 @@ Version=1.0
 Name=Oqteris
 GenericName=PDF Reader & Editor
 Comment=View, annotate, and verify digital signatures on PDF documents
-Icon=oqteris-logo
+Icon=oqteris-app-icon
 Exec=oqteris %f
 Terminal=false
 MimeType=application/pdf;
@@ -262,7 +262,7 @@ jpackage \
   --app-version "x.x.x" \
   --vendor "OriginSD" \
   --description "Dedicated PDF Reader and Editor" \
-  --icon "src/main/resources/icons/oqteris-logo.icns" \
+  --icon "src/main/resources/icons/oqteris-app-icon.icns" \
   --input target/app-input \
   --main-jar oqteris-x.x.x-all.jar \
   --main-class app.vercel.originsd.oqteris.ui.OqterisLauncher \
@@ -289,7 +289,7 @@ In the macOS application bundle, the PDF document association is declared in `Co
             <string>application/pdf</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>oqteris-document.icns</string>
+        <string>oqteris-pdf-file-icon.icns</string>
         <key>LSHandlerRank</key>
         <string>Default</string>
     </dict>
@@ -302,7 +302,7 @@ In the macOS application bundle, the PDF document association is declared in `Co
 
 ### Test Case 1: Welcome Screen & Branding
 1. Launch Oqteris: `mvn javafx:run` (or `java -jar target/oqteris-x.x.x-all.jar`).
-2. Verify that the window displays the **Oqteris** title and application logo (`oqteris-logo.png`).
+2. Verify that the window displays the **Oqteris** title and application logo (`oqteris-app-icon.png`).
 3. Verify that the Welcome Screen presents PDF-focused actions:
    - "Open PDF Document..."
    - "Security & Trust Store"
