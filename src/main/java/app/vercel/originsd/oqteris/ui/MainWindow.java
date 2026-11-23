@@ -364,6 +364,9 @@ public class MainWindow extends BorderPane implements MainWindowHost {
                             event.consume();
                             return;
                         }
+                    } else {
+                        event.consume();
+                        return;
                     }
                 }
             }
@@ -460,7 +463,7 @@ public class MainWindow extends BorderPane implements MainWindowHost {
         tab.setOnCloseRequest(e -> {
             if (view.getDocument().isModified()) {
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
-                        "Save changes to '" + view.getDocument().getTitle() + "' before closing?",
+                        "Document '" + view.getDocument().getTitle() + "' has unsaved changes. Save before closing?",
                         ButtonType.YES, ButtonType.NO, ButtonType.CANCEL);
                 alert.initOwner(primaryStage);
                 Optional<ButtonType> res = alert.showAndWait();
@@ -471,6 +474,9 @@ public class MainWindow extends BorderPane implements MainWindowHost {
                         e.consume();
                         return;
                     }
+                } else {
+                    e.consume();
+                    return;
                 }
             }
         });

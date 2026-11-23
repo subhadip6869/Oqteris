@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -52,6 +53,16 @@ public class PdfPageView extends StackPane {
     // Signatures whose own appearance already shows the validity mark (layered appearance); no overlay needed
     private Set<PdfSignatureInfo> layeredSignatures = Collections.emptySet();
 
+    // Selection state
+    private double dragStartX;
+    private double dragStartY;
+    private boolean isDraggingSelection = false;
+    private double[] selectionRect = null; // [x, y, w, h] in relative ratios 0.0..1.0
+    private String selectedText = null;
+    private boolean handToolActive = false;
+    private Consumer<Integer> onSelectionStarted;
+    private BiConsumer<Integer, double[]> onSelectionChanged;
+
     public PdfPageView(int pageIndex) {
         this.pageIndex = pageIndex;
         this.loadingLabel = new Label("Loading page " + (pageIndex + 1) + "...");
@@ -64,6 +75,7 @@ public class PdfPageView extends StackPane {
         setStyle("-fx-background-color: #f8fafc; -fx-border-color: #cbd5e1; -fx-border-width: 1px;");
 
         loadingLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #888888;");
+        setCursor(javafx.scene.Cursor.TEXT);
 
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
@@ -72,8 +84,117 @@ public class PdfPageView extends StackPane {
         // Only ImageView and label are permanent children; Canvas is attached lazily
         getChildren().addAll(loadingLabel, imageView);
 
+        // Hovering over page: shows 'I'-like text selection cursor (or HAND over signatures)
+        setOnMouseMoved(e -> {
+            if (handToolActive) {
+                setCursor(javafx.scene.Cursor.OPEN_HAND);
+                return;
+            }
+            if (overlayCanvas != null && !pageSignatures.isEmpty()) {
+                double pw = overlayCanvas.getWidth();
+                double ph = overlayCanvas.getHeight();
+                double offX = (getWidth() - pw) / 2.0;
+                double offY = (getHeight() - ph) / 2.0;
+                double mx = e.getX() - offX;
+                double my = e.getY() - offY;
+                for (PdfSignatureInfo s : pageSignatures) {
+                    double[] r = signatureRect(s);
+                    if (mx >= r[0] * pw && mx <= (r[0] + r[2]) * pw
+                            && my >= r[1] * ph && my <= (r[1] + r[3]) * ph) {
+                        setCursor(javafx.scene.Cursor.HAND);
+                        return;
+                    }
+                }
+            }
+            setCursor(javafx.scene.Cursor.TEXT);
+        });
+
+        setOnMouseExited(e -> {
+            if (!handToolActive && !isDraggingSelection) {
+                setCursor(null);
+            }
+        });
+
+        // Mouse pressed: initiates text/object selection when Select Tool is active
+        setOnMousePressed(e -> {
+            if (handToolActive) return;
+            if (e.getButton() != javafx.scene.input.MouseButton.PRIMARY) return;
+
+            double pw = overlayCanvas != null ? overlayCanvas.getWidth() : getWidth();
+            double ph = overlayCanvas != null ? overlayCanvas.getHeight() : getHeight();
+            double offX = (getWidth() - pw) / 2.0;
+            double offY = (getHeight() - ph) / 2.0;
+
+            dragStartX = e.getX() - offX;
+            dragStartY = e.getY() - offY;
+            isDraggingSelection = true;
+
+            selectionRect = null;
+            selectedText = null;
+            redrawOverlay();
+
+            if (onSelectionStarted != null) {
+                onSelectionStarted.accept(pageIndex);
+            }
+
+            setCursor(javafx.scene.Cursor.TEXT);
+            e.consume();
+        });
+
+        // Mouse dragged: updates visual selection rectangle in real time
+        setOnMouseDragged(e -> {
+            if (handToolActive || !isDraggingSelection) return;
+            if (e.getButton() != javafx.scene.input.MouseButton.PRIMARY) return;
+
+            double pw = overlayCanvas != null ? overlayCanvas.getWidth() : getWidth();
+            double ph = overlayCanvas != null ? overlayCanvas.getHeight() : getHeight();
+            if (pw <= 0 || ph <= 0) return;
+
+            double offX = (getWidth() - pw) / 2.0;
+            double offY = (getHeight() - ph) / 2.0;
+
+            double curX = e.getX() - offX;
+            double curY = e.getY() - offY;
+
+            double minX = Math.max(0, Math.min(dragStartX, curX));
+            double maxX = Math.min(pw, Math.max(dragStartX, curX));
+            double minY = Math.max(0, Math.min(dragStartY, curY));
+            double maxY = Math.min(ph, Math.max(dragStartY, curY));
+
+            double w = maxX - minX;
+            double h = maxY - minY;
+
+            if (w > 2 || h > 2) {
+                selectionRect = new double[]{ minX / pw, minY / ph, w / pw, h / ph };
+                redrawOverlay();
+            }
+
+            setCursor(javafx.scene.Cursor.TEXT);
+            e.consume();
+        });
+
+        // Mouse released: completes selection and triggers text extraction
+        setOnMouseReleased(e -> {
+            if (handToolActive || !isDraggingSelection) return;
+            isDraggingSelection = false;
+
+            if (selectionRect != null) {
+                if (selectionRect[2] < 0.004 && selectionRect[3] < 0.004) {
+                    selectionRect = null;
+                    selectedText = null;
+                    redrawOverlay();
+                } else if (onSelectionChanged != null) {
+                    onSelectionChanged.accept(pageIndex, selectionRect);
+                }
+            }
+
+            setCursor(javafx.scene.Cursor.TEXT);
+            e.consume();
+        });
+
         // Clicking a signature field opens its details
         setOnMouseClicked(e -> {
+            if (handToolActive) return;
             if (onSignatureClicked == null || overlayCanvas == null) return;
             double pw = overlayCanvas.getWidth();
             double ph = overlayCanvas.getHeight();
@@ -128,6 +249,8 @@ public class PdfPageView extends StackPane {
 
             searchHighlights.clear();
             pageSignatures.clear();
+            selectionRect = null;
+            selectedText = null;
 
             setStyle("-fx-background-color: #f8fafc; -fx-border-color: #cbd5e1; -fx-border-width: 1px;");
         }
@@ -183,6 +306,7 @@ public class PdfPageView extends StackPane {
             overlayCanvas.setWidth(w);
             overlayCanvas.setHeight(h);
         }
+        overlayCanvas.toFront();
     }
 
     public void setAnnotations(List<PdfAnnotation> annots) {
@@ -235,7 +359,15 @@ public class PdfPageView extends StackPane {
 
     public void redrawOverlay() {
         // Canvas might not exist yet (page not loaded) or was removed on unload
-        if (overlayCanvas == null) return;
+        if (overlayCanvas == null) {
+            double w = getWidth() > 0 ? getWidth() : getPrefWidth();
+            double h = getHeight() > 0 ? getHeight() : getPrefHeight();
+            if (w > 0 && h > 0) {
+                ensureCanvas(w, h);
+            } else {
+                return;
+            }
+        }
 
         GraphicsContext gc = overlayCanvas.getGraphicsContext2D();
         double pageW = overlayCanvas.getWidth();
@@ -329,5 +461,66 @@ public class PdfPageView extends StackPane {
                 gc.strokeLine(cx - u, cy + u, cx + u, cy - u);
             }
         }
+
+        // 4. Draw active selection rectangle
+        if (selectionRect != null && selectionRect.length >= 4 && selectionRect[2] > 0 && selectionRect[3] > 0) {
+            double sx = selectionRect[0] * pageW;
+            double sy = selectionRect[1] * pageH;
+            double sw = selectionRect[2] * pageW;
+            double sh = selectionRect[3] * pageH;
+
+            // Semi-transparent blue selection fill (classic PDF highlight color: rgba(37, 99, 235, 0.35))
+            gc.setFill(Color.rgb(37, 99, 235, 0.35));
+            gc.fillRect(sx, sy, sw, sh);
+
+            // Crisp selection border
+            gc.setStroke(Color.rgb(37, 99, 235, 0.90));
+            gc.setLineWidth(1.0);
+            gc.strokeRect(sx, sy, sw, sh);
+        }
+    }
+
+    public double[] getSelectionRect() {
+        return selectionRect;
+    }
+
+    public void setSelectionRect(double[] rect) {
+        this.selectionRect = rect;
+        redrawOverlay();
+    }
+
+    public String getSelectedText() {
+        return selectedText;
+    }
+
+    public void setSelectedText(String text) {
+        this.selectedText = text;
+    }
+
+    public void clearSelection() {
+        this.selectionRect = null;
+        this.selectedText = null;
+        redrawOverlay();
+    }
+
+    public void setHandToolActive(boolean active) {
+        this.handToolActive = active;
+        if (active) {
+            setCursor(javafx.scene.Cursor.OPEN_HAND);
+        } else {
+            setCursor(javafx.scene.Cursor.TEXT);
+        }
+    }
+
+    public boolean isHandToolActive() {
+        return handToolActive;
+    }
+
+    public void setOnSelectionStarted(Consumer<Integer> callback) {
+        this.onSelectionStarted = callback;
+    }
+
+    public void setOnSelectionChanged(BiConsumer<Integer, double[]> callback) {
+        this.onSelectionChanged = callback;
     }
 }

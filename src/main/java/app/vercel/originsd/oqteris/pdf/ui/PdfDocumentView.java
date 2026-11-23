@@ -10,7 +10,10 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.PDFTextStripperByArea;
 import org.controlsfx.control.textfield.TextFields;
 import com.pixelduke.control.Ribbon;
 import org.kordamp.ikonli.materialdesign2.*;
@@ -31,6 +34,7 @@ import app.vercel.originsd.oqteris.update.UpdateCheckerService;
 
 import app.vercel.originsd.oqteris.pdf.print.PrintPreviewDialog;
 
+import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -158,6 +162,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         scrollPane.viewportBoundsProperty().addListener((obs, oldB, newB) -> updateVisiblePages());
 
         setupHandToolInteractions();
+        setHandToolActive(false);
         setCenter(scrollPane);
 
         // Sidebar
@@ -203,18 +208,66 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             if (handToolActive) {
                 scrollPane.setCursor(javafx.scene.Cursor.OPEN_HAND);
                 pagesContainer.setCursor(javafx.scene.Cursor.OPEN_HAND);
+            } else {
+                scrollPane.setCursor(javafx.scene.Cursor.DEFAULT);
+                pagesContainer.setCursor(javafx.scene.Cursor.DEFAULT);
             }
         });
     }
 
     public void setHandToolActive(boolean active) {
         this.handToolActive = active;
+        for (PdfPageView pv : pageViews) {
+            pv.setHandToolActive(active);
+        }
         if (active) {
             scrollPane.setCursor(javafx.scene.Cursor.OPEN_HAND);
             pagesContainer.setCursor(javafx.scene.Cursor.OPEN_HAND);
         } else {
             scrollPane.setCursor(javafx.scene.Cursor.DEFAULT);
             pagesContainer.setCursor(javafx.scene.Cursor.TEXT);
+        }
+    }
+
+    private void setupPageViewSelection(PdfPageView pv) {
+        pv.setHandToolActive(handToolActive);
+        pv.setOnSelectionStarted(idx -> {
+            for (PdfPageView other : pageViews) {
+                if (other.getPageIndex() != idx) {
+                    other.clearSelection();
+                }
+            }
+        });
+        pv.setOnSelectionChanged((idx, normRect) -> {
+            String text = extractTextFromPageRect(idx, normRect);
+            pv.setSelectedText(text);
+        });
+    }
+
+    public String extractTextFromPageRect(int pageIndex, double[] normRect) {
+        if (normRect == null || pageIndex < 0 || pageIndex >= model.getPageCount()) return "";
+        try {
+            PDPage page = model.getPdDocument().getPage(pageIndex);
+            PDRectangle mediaBox = page.getMediaBox();
+            if (mediaBox == null) mediaBox = PDRectangle.A4;
+            double pageW = mediaBox.getWidth();
+            double pageH = mediaBox.getHeight();
+
+            double x = Math.max(0, normRect[0] * pageW);
+            double y = Math.max(0, normRect[1] * pageH);
+            double w = Math.min(pageW - x, normRect[2] * pageW);
+            double h = Math.min(pageH - y, normRect[3] * pageH);
+
+            if (w <= 1 || h <= 1) return "";
+
+            PDFTextStripperByArea stripper = new PDFTextStripperByArea();
+            stripper.setSortByPosition(true);
+            stripper.addRegion("sel", new Rectangle2D.Double(x, y, w, h));
+            stripper.extractRegions(page);
+            String text = stripper.getTextForRegion("sel");
+            return text != null ? text.trim() : "";
+        } catch (Exception ex) {
+            return "";
         }
     }
 
@@ -377,6 +430,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         for (int i = 0; i < count; i++) {
             PdfPageView pageView = new PdfPageView(i);
+            setupPageViewSelection(pageView);
             pageViews.add(pageView);
             pagesContainer.getChildren().add(pageView);
 
@@ -1207,6 +1261,17 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     @Override
     public void copy() {
         try {
+            for (PdfPageView pv : pageViews) {
+                if (pv.getSelectionRect() != null) {
+                    String selected = pv.getSelectedText();
+                    if (selected != null && !selected.isBlank()) {
+                        javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+                        cc.putString(selected);
+                        javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+                        return;
+                    }
+                }
+            }
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setStartPage(currentPage + 1);
             stripper.setEndPage(currentPage + 1);
@@ -1226,6 +1291,12 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
             cc.putString(fullText);
             javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+
+            if (currentPage >= 0 && currentPage < pageViews.size()) {
+                PdfPageView pv = pageViews.get(currentPage);
+                pv.setSelectionRect(new double[]{0.0, 0.0, 1.0, 1.0});
+                pv.setSelectedText(fullText);
+            }
         } catch (Exception ignored) {
         }
     }
