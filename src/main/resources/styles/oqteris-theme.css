@@ -1341,5 +1341,132 @@
     -fx-background-color: -color-selected;
     -fx-text-fill: -color-primary;
 }
-    -fx-text-fill: -color-primary;
+
+/* ==========================================================================
+   13. Print Dialog & Live Preview Styles
+   ========================================================================== */
+.print-dialog-root {
+    -fx-background-color: -color-bg;
+}
+
+.print-header-bar {
+    -fx-background-color: -color-surface-secondary;
+    -fx-border-color: -color-border;
+    -fx-border-width: 0 0 1 0;
+}
+
+.print-header-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-primary;
+}
+
+.print-footer-bar {
+    -fx-background-color: -color-surface-secondary;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1 0 0 0;
+}
+
+.print-options-scroll {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 0 1 0 0;
+}
+
+.print-options-scroll > .viewport {
+    -fx-background-color: -color-surface;
+}
+
+.print-options-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 10px;
+}
+
+.print-options-scroll .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.print-options-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: -color-border;
+    -fx-background-radius: 5px;
+}
+
+.print-options-scroll .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: -color-text-muted;
+}
+
+.print-options-panel {
+    -fx-background-color: -color-surface;
+}
+
+.print-section {
+    -fx-background-color: -color-surface;
+}
+
+.print-section-title {
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-muted;
+    -fx-padding: 0 0 4 0;
+}
+
+.print-preview-panel {
+    -fx-background-color: -color-bg;
+}
+
+.print-preview-info-bar {
+    -fx-background-color: -color-surface-secondary;
+    -fx-border-color: -color-border;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8px 14px;
+    -fx-alignment: center-left;
+}
+
+.print-preview-info-text {
+    -fx-font-size: 11.5px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-text-primary;
+}
+
+.print-preview-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-text-secondary;
+}
+
+.print-preview-area {
+    -fx-background-color: -color-surface-secondary;
+    -fx-padding: 20px;
+}
+
+.print-preview-frame {
+    -fx-background-color: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 14, 0, 0, 3);
+    -fx-padding: 2px;
+}
+
+.print-preview-nav {
+    -fx-background-color: -color-surface-secondary;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1 0 0 0;
+}
+
+.print-nav-btn {
+    -fx-background-color: transparent;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+    -fx-padding: 4px 6px;
+}
+
+.print-nav-btn:hover {
+    -fx-background-color: -color-selected;
+}
+
+.print-preview-page-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: -color-text-secondary;
+    -fx-min-width: 120px;
+    -fx-alignment: center;
+    -fx-text-alignment: center;
 }

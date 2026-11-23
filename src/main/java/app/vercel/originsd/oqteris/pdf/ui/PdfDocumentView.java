@@ -29,6 +29,8 @@ import app.vercel.originsd.oqteris.ui.icon.AppIcons;
 import app.vercel.originsd.oqteris.ui.ribbon.MainWindowHost;
 import app.vercel.originsd.oqteris.update.UpdateCheckerService;
 
+import app.vercel.originsd.oqteris.pdf.print.PrintPreviewDialog;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -1230,26 +1232,15 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
     @Override
     public void print() {
-        javafx.print.PrinterJob job = javafx.print.PrinterJob.createPrinterJob();
-        if (job != null && job.showPrintDialog(getScene() != null ? getScene().getWindow() : null)) {
-            boolean success = true;
-            for (int p = 0; p < model.getPageCount(); p++) {
-                try {
-                    Image pageImg = renderer.renderPage(p, 2.0, userRotation);
-                    ImageView iv = new ImageView(pageImg);
-                    if (!job.printPage(iv)) {
-                        success = false;
-                        break;
-                    }
-                } catch (Exception ex) {
-                    success = false;
-                    break;
-                }
-            }
-            if (success) {
-                job.endJob();
-            }
-        }
+        javafx.stage.Window owner = (getScene() != null) ? getScene().getWindow() : null;
+        PrintPreviewDialog dialog = new PrintPreviewDialog(
+                owner,
+                model.getPdDocument(),
+                renderer,
+                userRotation,
+                currentPage
+        );
+        dialog.showAndWait();
     }
 
     @Override
