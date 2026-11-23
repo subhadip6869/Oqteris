@@ -9,13 +9,24 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
+import org.apache.pdfbox.multipdf.LayerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.printing.PDFPageable;
+import org.apache.pdfbox.printing.PDFPrintable;
+import org.apache.pdfbox.util.Matrix;
 
+import javax.print.PrintService;
+import javax.print.attribute.HashPrintRequestAttributeSet;
+import javax.print.attribute.PrintRequestAttributeSet;
+import javax.print.attribute.standard.*;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -55,24 +66,360 @@ public class PdfPrintService {
      * @return {@code true} if the job completed successfully.
      */
     public boolean print(PrinterJob job, PrintOptions opts) {
+        try {
+            return print(opts);
+        } catch (Exception e) {
+            System.err.println("[PdfPrintService] Vector print error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Executes pristine vector printing using Apache PDFBox's vector print engine and Java Print Service.
+     * Preserves original PDF text, embedded fonts, vectors, and resolution with 0% bitmap blurriness.
+     * Correctly sets DEVMODE landscape/portrait orientation on the target printer.
+     */
+    public boolean print(PrintOptions opts) throws Exception {
+        PDDocument printDoc = buildPrintDocument(opts);
+        try {
+            java.awt.print.PrinterJob printJob = java.awt.print.PrinterJob.getPrinterJob();
+            PrintService service = resolvePrintService(opts);
+            if (service != null) {
+                printJob.setPrintService(service);
+            }
+
+            PrintRequestAttributeSet attr = buildPrintAttributes(opts, printDoc);
+            org.apache.pdfbox.printing.Orientation orientation = resolvePdfBoxOrientation(opts, printDoc);
+
+            // Pass RASTERIZE_OFF (0.0f) so PDFBox paints vectors and text directly to Graphics2D!
+            PDFPageable pageable = new PDFPageable(printDoc, orientation, false, PDFPrintable.RASTERIZE_OFF, true);
+            printJob.setPageable(pageable);
+
+            printJob.print(attr);
+            return true;
+        } finally {
+            printDoc.close();
+        }
+    }
+
+    /**
+     * Constructs a native vector {@link PDDocument} reflecting the chosen page ranges,
+     * orientation, page scaling, N-up grid imposition, or saddle-stitch booklet imposition.
+     * All original PDF vectors, text objects, and fonts are preserved via {@link LayerUtility} form XObjects.
+     */
+    public PDDocument buildPrintDocument(PrintOptions opts) throws IOException {
+        PDDocument printDoc = new PDDocument();
         List<Integer> pageIndices = resolvePageIndices(opts);
-        if (pageIndices.isEmpty()) return false;
+        if (pageIndices.isEmpty()) return printDoc;
 
-        PageLayout layout = buildPageLayout(job, opts, pageIndices);
-        job.getJobSettings().setPageLayout(layout);
-        setDuplexHint(job, opts);
+        List<Integer> ordered = applyOrder(pageIndices, opts.isReverseOrder());
 
-        boolean success;
-        if (opts.isBookletPrint()) {
-            success = printBooklet(job, opts, pageIndices, layout);
-        } else if (opts.nupCount() > 1) {
-            success = printNUp(job, opts, pageIndices, layout);
-        } else {
-            success = printSimple(job, opts, pageIndices, layout);
+        // Determine base paper dimensions in points (default: A4 595.28 x 841.89)
+        float paperW = 595.28f;
+        float paperH = 841.89f;
+        if (pdDocument.getNumberOfPages() > 0) {
+            PDRectangle r = pdDocument.getPage(0).getMediaBox();
+            if (r != null) {
+                paperW = Math.min(r.getWidth(), r.getHeight());
+                paperH = Math.max(r.getWidth(), r.getHeight());
+            }
         }
 
-        if (success) job.endJob();
-        return success;
+        boolean isLandscape = isLandscapeSheet(opts, ordered);
+        float sheetW = isLandscape ? paperH : paperW;
+        float sheetH = isLandscape ? paperW : paperH;
+        PDRectangle sheetBox = new PDRectangle(sheetW, sheetH);
+
+        LayerUtility layerUtil = new LayerUtility(printDoc);
+
+        if (opts.isBookletPrint()) {
+            buildBookletDocument(printDoc, layerUtil, ordered, sheetBox, opts);
+        } else if (opts.getPageHandlingMode() == PrintOptions.PageHandlingMode.MULTIPLE && opts.nupCount() > 1) {
+            buildNUpDocument(printDoc, layerUtil, ordered, sheetBox, opts);
+        } else {
+            buildScaleDocument(printDoc, layerUtil, ordered, sheetBox, opts);
+        }
+
+        return printDoc;
+    }
+
+    public boolean isLandscapeSheet(PrintOptions opts, List<Integer> pageIndices) {
+        if (opts.getOrientation() == PrintOptions.OrientationMode.LANDSCAPE) return true;
+        if (opts.getOrientation() == PrintOptions.OrientationMode.PORTRAIT) return false;
+
+        // Auto mode:
+        if (opts.isBookletPrint()) return true;
+        if (opts.getPageHandlingMode() == PrintOptions.PageHandlingMode.MULTIPLE) {
+            // 2-up is 2 portrait pages side-by-side -> sheet is landscape
+            if (opts.getPagesPerSheet() == PrintOptions.PagesPerSheet.TWO) return true;
+            if (opts.getPagesPerSheet() == PrintOptions.PagesPerSheet.SIX) return true;
+        }
+
+        if (!pageIndices.isEmpty()) {
+            int firstIdx = pageIndices.get(0);
+            if (firstIdx >= 0 && firstIdx < pdDocument.getNumberOfPages()) {
+                PDRectangle box = pdDocument.getPage(firstIdx).getMediaBox();
+                if (box != null && box.getWidth() > box.getHeight()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void buildScaleDocument(PDDocument printDoc, LayerUtility layerUtil,
+                                    List<Integer> pages, PDRectangle sheetBox,
+                                    PrintOptions opts) throws IOException {
+        double margin = opts.getEffectiveMarginPoints();
+        double availW = Math.max(10.0, sheetBox.getWidth() - 2.0 * margin);
+        double availH = Math.max(10.0, sheetBox.getHeight() - 2.0 * margin);
+
+        for (int pageIdx : pages) {
+            if (pageIdx < 0 || pageIdx >= pdDocument.getNumberOfPages()) continue;
+            PDPage srcPage = pdDocument.getPage(pageIdx);
+            PDRectangle srcBox = srcPage.getMediaBox();
+            if (srcBox == null) srcBox = PDRectangle.A4;
+
+            PDPage sheetPage = new PDPage(sheetBox);
+            printDoc.addPage(sheetPage);
+
+            PDFormXObject form = layerUtil.importPageAsForm(pdDocument, srcPage);
+            double srcW = srcBox.getWidth();
+            double srcH = srcBox.getHeight();
+
+            double baseFitScale = Math.min(availW / srcW, availH / srcH);
+            double scale = switch (opts.getFitMode()) {
+                case ACTUAL_SIZE      -> 1.0;
+                case CUSTOM_SCALE     -> (opts.getCustomScalePct() / 100.0);
+                case SHRINK_OVERSIZED -> Math.min(1.0, baseFitScale);
+                case FIT_PAGE         -> baseFitScale;
+            };
+
+            double dw = srcW * scale;
+            double dh = srcH * scale;
+
+            double dx = margin;
+            double dy = margin;
+            if (opts.isCenterOnPage()) {
+                dx = margin + (availW - dw) / 2.0;
+                dy = margin + (availH - dh) / 2.0;
+            }
+
+            try (PDPageContentStream cs = new PDPageContentStream(printDoc, sheetPage, PDPageContentStream.AppendMode.OVERWRITE, false)) {
+                cs.saveGraphicsState();
+                Matrix matrix = Matrix.getTranslateInstance((float) dx, (float) dy);
+                matrix.scale((float) scale, (float) scale);
+                cs.transform(matrix);
+                cs.drawForm(form);
+                cs.restoreGraphicsState();
+            }
+        }
+    }
+
+    private void buildNUpDocument(PDDocument printDoc, LayerUtility layerUtil,
+                                  List<Integer> pages, PDRectangle sheetBox,
+                                  PrintOptions opts) throws IOException {
+        int nup = opts.nupCount();
+        int cols = switch (nup) {
+            case 1 -> 1; case 2 -> 2; case 4 -> 2;
+            case 6 -> 3; case 9 -> 3; case 16 -> 4;
+            default -> 2;
+        };
+        int rows = switch (nup) {
+            case 1 -> 1; case 2 -> 1; case 4 -> 2;
+            case 6 -> 2; case 9 -> 3; case 16 -> 4;
+            default -> 2;
+        };
+
+        float cellW = sheetBox.getWidth() / cols;
+        float cellH = sheetBox.getHeight() / rows;
+        double margin = opts.getEffectiveMarginPoints() * (cellW / sheetBox.getWidth());
+        double availW = Math.max(10.0, cellW - 2.0 * margin);
+        double availH = Math.max(10.0, cellH - 2.0 * margin);
+
+        for (int i = 0; i < pages.size(); i += nup) {
+            PDPage sheetPage = new PDPage(sheetBox);
+            printDoc.addPage(sheetPage);
+
+            try (PDPageContentStream cs = new PDPageContentStream(printDoc, sheetPage, PDPageContentStream.AppendMode.OVERWRITE, false)) {
+                for (int k = 0; k < nup; k++) {
+                    int slot = k;
+                    int idx = i + k;
+                    if (idx >= pages.size()) break;
+                    int pageIdx = pages.get(idx);
+                    if (pageIdx < 0 || pageIdx >= pdDocument.getNumberOfPages()) continue;
+
+                    int r = slot / cols;
+                    int c = slot % cols;
+                    if (!opts.isNupHorizontalFirst()) {
+                        r = slot % rows;
+                        c = slot / rows;
+                    }
+
+                    float cellX = c * cellW;
+                    float cellY = (rows - 1 - r) * cellH;
+
+                    PDPage srcPage = pdDocument.getPage(pageIdx);
+                    PDRectangle srcBox = srcPage.getMediaBox();
+                    if (srcBox == null) srcBox = PDRectangle.A4;
+
+                    PDFormXObject form = layerUtil.importPageAsForm(pdDocument, srcPage);
+                    double srcW = srcBox.getWidth();
+                    double srcH = srcBox.getHeight();
+
+                    double scale = Math.min(availW / srcW, availH / srcH);
+                    double dw = srcW * scale;
+                    double dh = srcH * scale;
+
+                    double dx = cellX + margin + (availW - dw) / 2.0;
+                    double dy = cellY + margin + (availH - dh) / 2.0;
+
+                    cs.saveGraphicsState();
+                    Matrix matrix = Matrix.getTranslateInstance((float) dx, (float) dy);
+                    matrix.scale((float) scale, (float) scale);
+                    cs.transform(matrix);
+                    cs.drawForm(form);
+                    cs.restoreGraphicsState();
+
+                    if (opts.isNupPageBorders()) {
+                        cs.setStrokingColor(0.82f, 0.82f, 0.82f);
+                        cs.setLineWidth(0.5f);
+                        cs.addRect(cellX + 0.5f, cellY + 0.5f, cellW - 1f, cellH - 1f);
+                        cs.stroke();
+                    }
+                }
+            }
+        }
+    }
+
+    private void buildBookletDocument(PDDocument printDoc, LayerUtility layerUtil,
+                                      List<Integer> pages, PDRectangle sheetBox,
+                                      PrintOptions opts) throws IOException {
+        int total = pages.size();
+        int padded = ((total + 3) / 4) * 4;
+        int sheets = padded / 4;
+
+        float cellW = sheetBox.getWidth() / 2f;
+        float cellH = sheetBox.getHeight();
+        double margin = opts.getEffectiveMarginPoints() * (cellW / sheetBox.getWidth());
+        double availW = Math.max(10.0, cellW - 2.0 * margin);
+        double availH = Math.max(10.0, cellH - 2.0 * margin);
+
+        for (int s = 0; s < sheets; s++) {
+            // Front side
+            if (opts.getBookletSubset() != PrintOptions.BookletSubset.BACK_SIDE_ONLY) {
+                int[] pair = bookletPagePairFor(s, padded);
+                PDPage sheetPage = new PDPage(sheetBox);
+                printDoc.addPage(sheetPage);
+                drawBookletSide(printDoc, sheetPage, layerUtil, pair, pages, cellW, cellH, margin, availW, availH);
+            }
+            // Back side
+            if (opts.getBookletSubset() != PrintOptions.BookletSubset.FRONT_SIDE_ONLY) {
+                int[] backPair = bookletBackPagePairFor(s, padded);
+                PDPage sheetPage = new PDPage(sheetBox);
+                printDoc.addPage(sheetPage);
+                drawBookletSide(printDoc, sheetPage, layerUtil, backPair, pages, cellW, cellH, margin, availW, availH);
+            }
+        }
+    }
+
+    private void drawBookletSide(PDDocument printDoc, PDPage sheetPage, LayerUtility layerUtil,
+                                 int[] pair, List<Integer> pages,
+                                 float cellW, float cellH, double margin,
+                                 double availW, double availH) throws IOException {
+        try (PDPageContentStream cs = new PDPageContentStream(printDoc, sheetPage, PDPageContentStream.AppendMode.OVERWRITE, false)) {
+            for (int k = 0; k < 2; k++) {
+                int pageNum = pair[k];
+                if (pageNum < pages.size()) {
+                    int pageIdx = pages.get(pageNum);
+                    if (pageIdx >= 0 && pageIdx < pdDocument.getNumberOfPages()) {
+                        float cellX = k * cellW;
+                        float cellY = 0f;
+
+                        PDPage srcPage = pdDocument.getPage(pageIdx);
+                        PDRectangle srcBox = srcPage.getMediaBox();
+                        if (srcBox == null) srcBox = PDRectangle.A4;
+
+                        PDFormXObject form = layerUtil.importPageAsForm(pdDocument, srcPage);
+                        double srcW = srcBox.getWidth();
+                        double srcH = srcBox.getHeight();
+
+                        double scale = Math.min(availW / srcW, availH / srcH);
+                        double dw = srcW * scale;
+                        double dh = srcH * scale;
+
+                        double dx = cellX + margin + (availW - dw) / 2.0;
+                        double dy = cellY + margin + (availH - dh) / 2.0;
+
+                        cs.saveGraphicsState();
+                        Matrix matrix = Matrix.getTranslateInstance((float) dx, (float) dy);
+                        matrix.scale((float) scale, (float) scale);
+                        cs.transform(matrix);
+                        cs.drawForm(form);
+                        cs.restoreGraphicsState();
+                    }
+                }
+            }
+        }
+    }
+
+    public static PrintService resolvePrintService(PrintOptions opts) {
+        String name = (opts.getPrinter() != null) ? opts.getPrinter().getName() : null;
+        PrintService[] services = java.awt.print.PrinterJob.lookupPrintServices();
+        if (name != null) {
+            for (PrintService ps : services) {
+                if (ps.getName().equalsIgnoreCase(name)) {
+                    return ps;
+                }
+            }
+        }
+        return java.awt.print.PrinterJob.getPrinterJob().getPrintService();
+    }
+
+    private PrintRequestAttributeSet buildPrintAttributes(PrintOptions opts, PDDocument printDoc) {
+        PrintRequestAttributeSet attr = new HashPrintRequestAttributeSet();
+
+        boolean isLandscape = isLandscapeSheet(opts, resolvePageIndices(opts));
+        if (isLandscape) {
+            attr.add(OrientationRequested.LANDSCAPE);
+        } else {
+            attr.add(OrientationRequested.PORTRAIT);
+        }
+
+        int copies = Math.max(1, opts.getCopies());
+        attr.add(new Copies(copies));
+
+        if (opts.isCollate()) {
+            attr.add(SheetCollate.COLLATED);
+        } else {
+            attr.add(SheetCollate.UNCOLLATED);
+        }
+
+        switch (opts.getDuplexMode()) {
+            case LONG_EDGE  -> attr.add(Sides.TWO_SIDED_LONG_EDGE);
+            case SHORT_EDGE -> attr.add(Sides.TWO_SIDED_SHORT_EDGE);
+            case NONE       -> attr.add(Sides.ONE_SIDED);
+        }
+
+        if (opts.isGrayscale()) {
+            attr.add(Chromaticity.MONOCHROME);
+        } else {
+            attr.add(Chromaticity.COLOR);
+        }
+
+        return attr;
+    }
+
+    private org.apache.pdfbox.printing.Orientation resolvePdfBoxOrientation(PrintOptions opts, PDDocument printDoc) {
+        if (opts.getOrientation() == PrintOptions.OrientationMode.LANDSCAPE) {
+            return org.apache.pdfbox.printing.Orientation.LANDSCAPE;
+        } else if (opts.getOrientation() == PrintOptions.OrientationMode.PORTRAIT) {
+            return org.apache.pdfbox.printing.Orientation.PORTRAIT;
+        }
+        if (isLandscapeSheet(opts, resolvePageIndices(opts))) {
+            return org.apache.pdfbox.printing.Orientation.LANDSCAPE;
+        }
+        return org.apache.pdfbox.printing.Orientation.AUTO;
     }
 
     /**
@@ -251,7 +598,7 @@ public class PdfPrintService {
         int total = pdDocument.getNumberOfPages();
         // Pad to multiple of 4
         int padded = ((total + 3) / 4) * 4;
-        int sheets = padded / 2;
+        int sheets = padded / 4;
 
         for (int copy = 0; copy < opts.getCopies(); copy++) {
             for (int s = 0; s < sheets; s++) {

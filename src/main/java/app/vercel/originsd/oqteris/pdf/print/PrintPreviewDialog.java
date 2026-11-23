@@ -152,6 +152,8 @@ public class PrintPreviewDialog extends Stage {
     private final CheckBox    commentCheck    = new CheckBox("Comments");
     private final CheckBox    grayscaleCheck  = new CheckBox("Grayscale (Black & White)");
 
+    private final Button      printBtn        = new Button("Print");
+
     // =========================================================================
     // Constructor
     // =========================================================================
@@ -641,8 +643,7 @@ public class PrintPreviewDialog extends Stage {
             close();
         });
 
-        Button printBtn = new Button("Print");
-        printBtn.getStyleClass().addAll("action-btn-primary");
+        printBtn.getStyleClass().setAll("button", "action-btn-primary");
         printBtn.setDefaultButton(true);
         printBtn.setGraphic(AppIcons.of(MaterialDesignP.PRINTER, 16));
         printBtn.setOnAction(e -> executePrint());
@@ -1076,28 +1077,45 @@ public class PrintPreviewDialog extends Stage {
             return;
         }
 
-        PrinterJob job = PrinterJob.createPrinterJob(printer);
-        if (job == null) {
-            showError("Could not create print job", "Failed to create a print job for the selected printer.");
-            return;
-        }
-
         List<Integer> pageIndices = printService.resolvePageIndices(opts, currentPage);
         if (pageIndices.isEmpty()) {
             showError("Empty page range", "No pages to print in the specified range.");
             return;
         }
 
-        try {
-            boolean success = printService.print(job, opts);
-            if (success) {
+        final PrintOptions printOpts = snapshotOpts();
+        previewSpinner.setVisible(true);
+        printBtn.setDisable(true);
+
+        Task<Boolean> printTask = new Task<>() {
+            @Override
+            protected Boolean call() throws Exception {
+                return printService.print(printOpts);
+            }
+        };
+
+        printTask.setOnSucceeded(e -> {
+            previewSpinner.setVisible(false);
+            printBtn.setDisable(false);
+            if (Boolean.TRUE.equals(printTask.getValue())) {
+                debounceTimer.stop();
+                previewExecutor.shutdownNow();
                 close();
             } else {
                 showError("Print Failed", "The print job was cancelled or could not be completed.");
             }
-        } catch (Exception ex) {
-            showError("Print Error", "An error occurred while printing: " + ex.getMessage());
-        }
+        });
+
+        printTask.setOnFailed(e -> {
+            previewSpinner.setVisible(false);
+            printBtn.setDisable(false);
+            Throwable ex = printTask.getException();
+            showError("Print Error", "An error occurred while printing: " + (ex != null ? ex.getMessage() : "Unknown error"));
+        });
+
+        Thread th = new Thread(printTask, "oqteris-vector-print-job");
+        th.setDaemon(true);
+        th.start();
     }
 
     // =========================================================================

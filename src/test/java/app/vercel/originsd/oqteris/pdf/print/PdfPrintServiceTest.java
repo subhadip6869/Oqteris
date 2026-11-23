@@ -156,4 +156,52 @@ class PdfPrintServiceTest {
         opts.setCustomMarginMm(25.4); // 25.4 mm = 1 inch = 72 points
         assertEquals(72.0, opts.getEffectiveMarginPoints(), 0.001);
     }
+
+    @Test
+    void testBuildPrintDocumentScale() throws Exception {
+        PdfPrintService service = new PdfPrintService(document, null, 0);
+        PrintOptions opts = new PrintOptions();
+        opts.setPageHandlingMode(PrintOptions.PageHandlingMode.SCALE);
+
+        try (PDDocument printDoc = service.buildPrintDocument(opts)) {
+            assertNotNull(printDoc);
+            assertEquals(10, printDoc.getNumberOfPages());
+        }
+    }
+
+    @Test
+    void testBuildPrintDocumentMultipleNup2Landscape() throws Exception {
+        PdfPrintService service = new PdfPrintService(document, null, 0);
+        PrintOptions opts = new PrintOptions();
+        opts.setPageHandlingMode(PrintOptions.PageHandlingMode.MULTIPLE);
+        opts.setPagesPerSheet(PrintOptions.PagesPerSheet.TWO);
+        opts.setOrientation(PrintOptions.OrientationMode.LANDSCAPE);
+
+        try (PDDocument printDoc = service.buildPrintDocument(opts)) {
+            assertNotNull(printDoc);
+            // 10 pages / 2 per sheet = 5 sheets
+            assertEquals(5, printDoc.getNumberOfPages());
+            PDPage firstSheet = printDoc.getPage(0);
+            // Must physically be landscape orientation (width > height)
+            assertTrue(firstSheet.getMediaBox().getWidth() > firstSheet.getMediaBox().getHeight(),
+                    "N-Up 2-up sheet must be landscape orientation");
+        }
+    }
+
+    @Test
+    void testBuildPrintDocumentBooklet() throws Exception {
+        PdfPrintService service = new PdfPrintService(document, null, 0);
+        PrintOptions opts = new PrintOptions();
+        opts.setPageHandlingMode(PrintOptions.PageHandlingMode.BOOKLET);
+        opts.setBookletSubset(PrintOptions.BookletSubset.BOTH_SIDES);
+
+        try (PDDocument printDoc = service.buildPrintDocument(opts)) {
+            assertNotNull(printDoc);
+            // 10 pages in booklet = padded to 12 pages = 6 sides/sheets
+            assertEquals(6, printDoc.getNumberOfPages());
+            PDPage firstSheet = printDoc.getPage(0);
+            assertTrue(firstSheet.getMediaBox().getWidth() > firstSheet.getMediaBox().getHeight(),
+                    "Booklet sheet must be landscape orientation");
+        }
+    }
 }
