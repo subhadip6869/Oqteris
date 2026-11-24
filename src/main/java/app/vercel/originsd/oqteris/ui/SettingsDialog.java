@@ -92,28 +92,21 @@ public class SettingsDialog extends Stage {
         grid.addRow(4, new Label("Font Size Adjustment:"), fontDeltaBox);
 
         // 5. Document View Mode
-        ComboBox<String> viewModeCombo = new ComboBox<>();
-        viewModeCombo.getItems().addAll("Fit to Width", "Fit to Page", "Actual Size (100%)");
-        ViewMode currentViewMode = current.getViewMode();
-        if (currentViewMode == ViewMode.FIT_PAGE) {
-            viewModeCombo.setValue("Fit to Page");
-        } else if (currentViewMode == ViewMode.ACTUAL_SIZE) {
-            viewModeCombo.setValue("Actual Size (100%)");
-        } else {
-            viewModeCombo.setValue("Fit to Width");
-        }
+        ComboBox<ViewMode> viewModeCombo = new ComboBox<>();
+        viewModeCombo.getItems().addAll(ViewMode.FIT_WIDTH, ViewMode.FIT_PAGE, ViewMode.ACTUAL_SIZE);
+        viewModeCombo.setValue(current.getViewMode());
         grid.addRow(5, new Label("Default View Mode:"), viewModeCombo);
 
         // 6. Page Layout
-        ComboBox<String> pageLayoutCombo = new ComboBox<>();
-        pageLayoutCombo.getItems().addAll("Continuous Vertical", "Single Page");
-        pageLayoutCombo.setValue(current.getPageLayout() == PageLayoutMode.SINGLE_PAGE ? "Single Page" : "Continuous Vertical");
+        ComboBox<PageLayoutMode> pageLayoutCombo = new ComboBox<>();
+        pageLayoutCombo.getItems().addAll(PageLayoutMode.CONTINUOUS, PageLayoutMode.SINGLE_PAGE);
+        pageLayoutCombo.setValue(current.getPageLayout());
         grid.addRow(6, new Label("Default Page Layout:"), pageLayoutCombo);
 
         // 7. Cursor Interaction Mode
-        ComboBox<String> cursorCombo = new ComboBox<>();
-        cursorCombo.getItems().addAll("Select Tool", "Hand (Pan) Tool");
-        cursorCombo.setValue(current.getCursorMode() == CursorMode.HAND ? "Hand (Pan) Tool" : "Select Tool");
+        ComboBox<CursorMode> cursorCombo = new ComboBox<>();
+        cursorCombo.getItems().addAll(CursorMode.SELECT, CursorMode.HAND);
+        cursorCombo.setValue(current.getCursorMode());
         grid.addRow(7, new Label("Default Cursor Tool:"), cursorCombo);
 
         // 8. Navigation Sidebar
@@ -148,13 +141,9 @@ public class SettingsDialog extends Stage {
             String selectedTheme = themeCombo.getValue().toUpperCase();
             int fontDelta = fontDeltaSpinner.getValue();
 
-            String selectedViewMode = switch (viewModeCombo.getValue()) {
-                case "Fit to Page" -> "FIT_PAGE";
-                case "Actual Size (100%)" -> "ACTUAL_SIZE";
-                default -> "FIT_WIDTH";
-            };
-            String selectedPageLayout = "Single Page".equals(pageLayoutCombo.getValue()) ? "SINGLE_PAGE" : "CONTINUOUS";
-            String selectedCursor = "Hand (Pan) Tool".equals(cursorCombo.getValue()) ? "HAND" : "SELECT";
+            ViewMode selectedViewMode = viewModeCombo.getValue() != null ? viewModeCombo.getValue() : ViewMode.FIT_WIDTH;
+            PageLayoutMode selectedPageLayout = pageLayoutCombo.getValue() != null ? pageLayoutCombo.getValue() : PageLayoutMode.CONTINUOUS;
+            CursorMode selectedCursor = cursorCombo.getValue() != null ? cursorCombo.getValue() : CursorMode.SELECT;
             boolean selectedSidebarOpen = sidebarCheck.isSelected();
 
             // Persist to settings.json

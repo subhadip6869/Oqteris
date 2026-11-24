@@ -36,9 +36,10 @@ public class AppConfigTest {
         assertEquals(720.0, settings.getWindowHeight());
         assertTrue(settings.isSidebarOpen());
         assertEquals(0, settings.getSidebarActiveTab());
-        assertEquals("FIT_WIDTH", settings.getViewMode());
-        assertEquals("CONTINUOUS", settings.getPageLayout());
-        assertEquals("SELECT", settings.getCursorMode());
+        assertEquals(SidebarTab.THUMBNAILS, settings.getSidebarTab());
+        assertEquals(ViewMode.FIT_WIDTH, settings.getViewMode());
+        assertEquals(PageLayoutMode.CONTINUOUS, settings.getPageLayout());
+        assertEquals(CursorMode.SELECT, settings.getCursorMode());
         assertTrue(Files.exists(customSettingsPath));
 
         // 2. Modify settings and persist
@@ -49,10 +50,10 @@ public class AppConfigTest {
         settings.setWindowWidth(1440);
         settings.setWindowHeight(900);
         settings.setSidebarOpen(false);
-        settings.setSidebarActiveTab(2);
-        settings.setViewMode("FIT_PAGE");
-        settings.setPageLayout("SINGLE_PAGE");
-        settings.setCursorMode("HAND");
+        settings.setSidebarTab(SidebarTab.SIGNATURES);
+        settings.setViewMode(ViewMode.FIT_PAGE);
+        settings.setPageLayout(PageLayoutMode.SINGLE_PAGE);
+        settings.setCursorMode(CursorMode.HAND);
         service.save(settings);
 
         // 3. Reload in a new service instance to verify persistence
@@ -66,9 +67,18 @@ public class AppConfigTest {
         assertEquals(900.0, reloaded.getWindowHeight());
         assertFalse(reloaded.isSidebarOpen());
         assertEquals(2, reloaded.getSidebarActiveTab());
-        assertEquals("FIT_PAGE", reloaded.getViewMode());
-        assertEquals("SINGLE_PAGE", reloaded.getPageLayout());
-        assertEquals("HAND", reloaded.getCursorMode());
+        assertEquals(SidebarTab.SIGNATURES, reloaded.getSidebarTab());
+        assertEquals(ViewMode.FIT_PAGE, reloaded.getViewMode());
+        assertEquals(PageLayoutMode.SINGLE_PAGE, reloaded.getPageLayout());
+        assertEquals(CursorMode.HAND, reloaded.getCursorMode());
+
+        // 4. Test string overload compatibility and case-insensitivity
+        reloaded.setViewMode("actual_size");
+        assertEquals(ViewMode.ACTUAL_SIZE, reloaded.getViewMode());
+        reloaded.setCursorMode("select");
+        assertEquals(CursorMode.SELECT, reloaded.getCursorMode());
+        reloaded.setPageLayout("continuous");
+        assertEquals(PageLayoutMode.CONTINUOUS, reloaded.getPageLayout());
     }
 
     @Test
