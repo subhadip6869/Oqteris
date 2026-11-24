@@ -17,6 +17,7 @@ import org.apache.pdfbox.text.PDFTextStripperByArea;
 import org.controlsfx.control.textfield.TextFields;
 import com.pixelduke.control.Ribbon;
 import org.kordamp.ikonli.materialdesign2.*;
+import app.vercel.originsd.oqteris.config.*;
 import app.vercel.originsd.oqteris.core.model.DocumentModel;
 import app.vercel.originsd.oqteris.crypto.signature.PdfSignatureInfo;
 import app.vercel.originsd.oqteris.pdf.model.PdfAnnotation;
@@ -76,6 +77,10 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private final Label searchResultLabel = new Label("");
     private int currentMatchIndex = 0;
     private final List<SearchResult> searchResults = new ArrayList<>();
+
+    private ViewMode currentViewMode = ViewMode.FIT_WIDTH;
+    private CursorMode currentCursorMode = CursorMode.SELECT;
+    private PageLayoutMode currentPageLayout = PageLayoutMode.CONTINUOUS;
 
     private double currentZoom = 1.0;
     private int userRotation = 0;
@@ -160,10 +165,18 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         // Lazy viewport rendering to keep large documents responsive
         scrollPane.vvalueProperty().addListener((obs, oldV, newV) -> updateVisiblePages());
-        scrollPane.viewportBoundsProperty().addListener((obs, oldB, newB) -> updateVisiblePages());
+        scrollPane.viewportBoundsProperty().addListener((obs, oldB, newB) -> {
+            updateVisiblePages();
+            if (currentViewMode == ViewMode.FIT_WIDTH && oldB != null && newB != null && Math.abs(oldB.getWidth() - newB.getWidth()) > 4) {
+                fitToWidth();
+            } else if (currentViewMode == ViewMode.FIT_PAGE && oldB != null && newB != null && Math.abs(oldB.getHeight() - newB.getHeight()) > 4) {
+                fitToPage();
+            }
+        });
 
+        UserSettings settings = UserSettingsService.getInstance().getSettings();
         setupHandToolInteractions();
-        setHandToolActive(false);
+        setCursorMode(settings.getCursorMode());
         setCenter(scrollPane);
 
         // Sidebar
@@ -217,17 +230,31 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     public void setHandToolActive(boolean active) {
-        this.handToolActive = active;
+        setCursorMode(active ? CursorMode.HAND : CursorMode.SELECT);
+    }
+
+    public void setCursorMode(CursorMode mode) {
+        this.currentCursorMode = (mode != null) ? mode : CursorMode.SELECT;
+        this.handToolActive = (this.currentCursorMode == CursorMode.HAND);
         for (PdfPageView pv : pageViews) {
-            pv.setHandToolActive(active);
+            pv.setHandToolActive(this.handToolActive);
         }
-        if (active) {
+        if (this.handToolActive) {
             scrollPane.setCursor(javafx.scene.Cursor.OPEN_HAND);
             pagesContainer.setCursor(javafx.scene.Cursor.OPEN_HAND);
         } else {
             scrollPane.setCursor(javafx.scene.Cursor.DEFAULT);
             pagesContainer.setCursor(javafx.scene.Cursor.TEXT);
         }
+        UserSettingsService.getInstance().update(s -> s.setCursorMode(this.currentCursorMode));
+    }
+
+    public CursorMode getCursorMode() {
+        return currentCursorMode;
+    }
+
+    public boolean isHandToolActive() {
+        return handToolActive;
     }
 
     private void setupPageViewSelection(PdfPageView pv) {
@@ -307,6 +334,11 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         sideTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         sideTabPane.setPrefWidth(280);
 
+        UserSettings settings = UserSettingsService.getInstance().getSettings();
+        boolean open = settings.isSidebarOpen();
+        sideTabPane.setVisible(open);
+        sideTabPane.setManaged(open);
+
         // 1. Thumbnails Tab
         thumbScroll = new ScrollPane(thumbnailsBox);
         thumbScroll.getStyleClass().addAll("sidebar-scroll-pane", "thumbnails-scroll-pane");
@@ -319,8 +351,15 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         Tab thumbTab = new Tab("Thumbnails", thumbScroll);
 
         sideTabPane.getSelectionModel().selectedIndexProperty().addListener((obs, oldV, newV) -> {
-            if (newV != null && newV.intValue() == 0) {
-                updateVisibleThumbnails();
+            if (newV != null && newV.intValue() >= 0) {
+                if (newV.intValue() == 0) {
+                    updateVisibleThumbnails();
+                }
+                SidebarTab tab = SidebarTab.fromIndex(newV.intValue());
+                UserSettingsService.getInstance().update(s -> {
+                    s.setSidebarActiveTab(tab.getIndex());
+                    s.setSidebarTab(tab);
+                });
             }
         });
 
@@ -343,9 +382,14 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         sideTabPane.getTabs().addAll(thumbTab, bookmarksTab, sigTab);
 
-        // Auto-select signatures tab if document is signed!
+        // Auto-select signatures tab if document is signed, else select user's saved active tab
         if (!model.getSignatures().isEmpty()) {
             sideTabPane.getSelectionModel().select(sigTab);
+        } else {
+            SidebarTab savedTab = settings.getSidebarTab();
+            if (savedTab.getIndex() >= 0 && savedTab.getIndex() < sideTabPane.getTabs().size()) {
+                sideTabPane.getSelectionModel().select(savedTab.getIndex());
+            }
         }
     }
 
@@ -427,9 +471,16 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         currentKeepFirst = 0;
         currentKeepLast = Math.min(2, count - 1);
 
+        UserSettings settings = UserSettingsService.getInstance().getSettings();
+        this.currentPageLayout = settings.getPageLayout();
+        this.singlePageView = (this.currentPageLayout == PageLayoutMode.SINGLE_PAGE);
+
         for (int i = 0; i < count; i++) {
             PdfPageView pageView = new PdfPageView(i);
             setupPageViewSelection(pageView);
+            boolean visible = !singlePageView || (i == 0);
+            pageView.setVisible(visible);
+            pageView.setManaged(visible);
             pageViews.add(pageView);
             pagesContainer.getChildren().add(pageView);
 
@@ -447,6 +498,16 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         // Load thumbnails lazily for visible slots only
         Platform.runLater(this::updateVisibleThumbnails);
+
+        // Apply user's preferred view mode (fit to width, fit to page, etc.)
+        Platform.runLater(() -> {
+            ViewMode vm = settings.getViewMode();
+            switch (vm) {
+                case FIT_PAGE -> fitToPage();
+                case ACTUAL_SIZE -> setActualSize();
+                default -> fitToWidth();
+            }
+        });
     }
 
     private void renderInitialPages() {
@@ -921,21 +982,36 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     public void setSinglePageView(boolean single) {
-        this.singlePageView = single;
+        setPageLayout(single ? PageLayoutMode.SINGLE_PAGE : PageLayoutMode.CONTINUOUS);
+    }
+
+    public void setPageLayout(PageLayoutMode layout) {
+        this.currentPageLayout = (layout != null) ? layout : PageLayoutMode.CONTINUOUS;
+        this.singlePageView = (this.currentPageLayout == PageLayoutMode.SINGLE_PAGE);
         for (int i = 0; i < pageViews.size(); i++) {
-            boolean visible = !single || (i == currentPage);
+            boolean visible = !singlePageView || (i == currentPage);
             pageViews.get(i).setVisible(visible);
             pageViews.get(i).setManaged(visible);
-            if (single && i != currentPage) {
+            if (singlePageView && i != currentPage) {
                 pageViews.get(i).unload();
             }
         }
-        if (single) {
+        if (singlePageView) {
             scrollPane.setVvalue(0);
             renderPageAsync(currentPage);
         } else {
             updateVisiblePages();
         }
+        UserSettingsService.getInstance().update(s -> s.setPageLayout(this.currentPageLayout));
+    }
+
+    public PageLayoutMode getPageLayout() {
+        return currentPageLayout;
+    }
+
+    public void selectSidebarTab(SidebarTab tab) {
+        if (tab == null) tab = SidebarTab.THUMBNAILS;
+        selectSidebarTab(tab.getIndex());
     }
 
     public void selectSidebarTab(int index) {
@@ -944,12 +1020,70 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         if (index >= 0 && index < sideTabPane.getTabs().size()) {
             sideTabPane.getSelectionModel().select(index);
         }
+        SidebarTab tab = SidebarTab.fromIndex(index);
+        UserSettingsService.getInstance().update(s -> {
+            s.setSidebarOpen(true);
+            s.setSidebarTab(tab);
+        });
     }
 
     public void toggleSidebar() {
         boolean next = !sideTabPane.isVisible();
         sideTabPane.setVisible(next);
         sideTabPane.setManaged(next);
+        UserSettingsService.getInstance().update(s -> s.setSidebarOpen(next));
+    }
+
+    public ViewMode getCurrentViewMode() {
+        return currentViewMode;
+    }
+
+    public void fitToWidth() {
+        this.currentViewMode = ViewMode.FIT_WIDTH;
+        if (model.getPageCount() <= 0) return;
+        try {
+            double vpWidth = scrollPane.getViewportBounds().getWidth();
+            if (vpWidth <= 50) vpWidth = scrollPane.getWidth();
+            if (vpWidth <= 50) vpWidth = 800;
+
+            double availWidth = Math.max(100, vpWidth - 36);
+            PDPage page = model.getPage(Math.max(0, currentPage));
+            PDRectangle mb = page != null ? page.getMediaBox() : null;
+            double pw = mb != null ? mb.getWidth() : 595.0;
+            if ((userRotation % 180) != 0 && mb != null) {
+                pw = mb.getHeight();
+            }
+            double targetZoom = Math.max(0.25, Math.min(4.0, availWidth / Math.max(1.0, pw)));
+            setZoom(targetZoom);
+            UserSettingsService.getInstance().update(s -> s.setViewMode(ViewMode.FIT_WIDTH));
+        } catch (Exception ignored) {}
+    }
+
+    public void fitToPage() {
+        this.currentViewMode = ViewMode.FIT_PAGE;
+        if (model.getPageCount() <= 0) return;
+        try {
+            double vpHeight = scrollPane.getViewportBounds().getHeight();
+            if (vpHeight <= 50) vpHeight = scrollPane.getHeight();
+            if (vpHeight <= 50) vpHeight = 600;
+
+            double availHeight = Math.max(100, vpHeight - 36);
+            PDPage page = model.getPage(Math.max(0, currentPage));
+            PDRectangle mb = page != null ? page.getMediaBox() : null;
+            double ph = mb != null ? mb.getHeight() : 842.0;
+            if ((userRotation % 180) != 0 && mb != null) {
+                ph = mb.getWidth();
+            }
+            double targetZoom = Math.max(0.25, Math.min(4.0, availHeight / Math.max(1.0, ph)));
+            setZoom(targetZoom);
+            UserSettingsService.getInstance().update(s -> s.setViewMode(ViewMode.FIT_PAGE));
+        } catch (Exception ignored) {}
+    }
+
+    public void setActualSize() {
+        this.currentViewMode = ViewMode.ACTUAL_SIZE;
+        setZoom(1.0);
+        UserSettingsService.getInstance().update(s -> s.setViewMode(ViewMode.ACTUAL_SIZE));
     }
 
     public void reverifySignatures() {

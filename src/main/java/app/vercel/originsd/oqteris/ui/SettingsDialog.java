@@ -1,5 +1,12 @@
 package app.vercel.originsd.oqteris.ui;
 
+import app.vercel.originsd.oqteris.config.*;
+import app.vercel.originsd.oqteris.core.recovery.AutosaveService;
+import app.vercel.originsd.oqteris.crypto.trust.CertificateManagerDialog;
+import app.vercel.originsd.oqteris.platform.DefaultViewerService;
+import app.vercel.originsd.oqteris.platform.DefaultViewerServiceFactory;
+import app.vercel.originsd.oqteris.platform.DefaultViewerStatus;
+import app.vercel.originsd.oqteris.platform.RegistrationResult;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -7,14 +14,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import app.vercel.originsd.oqteris.config.UserSettings;
-import app.vercel.originsd.oqteris.config.UserSettingsService;
-import app.vercel.originsd.oqteris.core.recovery.AutosaveService;
-import app.vercel.originsd.oqteris.crypto.trust.CertificateManagerDialog;
-import app.vercel.originsd.oqteris.platform.DefaultViewerService;
-import app.vercel.originsd.oqteris.platform.DefaultViewerServiceFactory;
-import app.vercel.originsd.oqteris.platform.DefaultViewerStatus;
-import app.vercel.originsd.oqteris.platform.RegistrationResult;
 
 /**
  * Preferences dialog for application-wide PDF settings and system defaults,
@@ -92,22 +91,52 @@ public class SettingsDialog extends Stage {
         fontDeltaBox.setAlignment(Pos.CENTER_LEFT);
         grid.addRow(4, new Label("Font Size Adjustment:"), fontDeltaBox);
 
-        // 5. Default PDF Viewer
+        // 5. Document View Mode
+        ComboBox<String> viewModeCombo = new ComboBox<>();
+        viewModeCombo.getItems().addAll("Fit to Width", "Fit to Page", "Actual Size (100%)");
+        ViewMode currentViewMode = current.getViewMode();
+        if (currentViewMode == ViewMode.FIT_PAGE) {
+            viewModeCombo.setValue("Fit to Page");
+        } else if (currentViewMode == ViewMode.ACTUAL_SIZE) {
+            viewModeCombo.setValue("Actual Size (100%)");
+        } else {
+            viewModeCombo.setValue("Fit to Width");
+        }
+        grid.addRow(5, new Label("Default View Mode:"), viewModeCombo);
+
+        // 6. Page Layout
+        ComboBox<String> pageLayoutCombo = new ComboBox<>();
+        pageLayoutCombo.getItems().addAll("Continuous Vertical", "Single Page");
+        pageLayoutCombo.setValue(current.getPageLayout() == PageLayoutMode.SINGLE_PAGE ? "Single Page" : "Continuous Vertical");
+        grid.addRow(6, new Label("Default Page Layout:"), pageLayoutCombo);
+
+        // 7. Cursor Interaction Mode
+        ComboBox<String> cursorCombo = new ComboBox<>();
+        cursorCombo.getItems().addAll("Select Tool", "Hand (Pan) Tool");
+        cursorCombo.setValue(current.getCursorMode() == CursorMode.HAND ? "Hand (Pan) Tool" : "Select Tool");
+        grid.addRow(7, new Label("Default Cursor Tool:"), cursorCombo);
+
+        // 8. Navigation Sidebar
+        CheckBox sidebarCheck = new CheckBox("Open navigation sidebar on document launch");
+        sidebarCheck.setSelected(current.isSidebarOpen());
+        grid.addRow(8, new Label("Navigation Sidebar:"), sidebarCheck);
+
+        // 9. Default PDF Viewer
         updateDefaultViewerStatus();
         setDefaultBtn.setOnAction(e -> handleSetDefaultViewer());
 
         VBox defaultViewerBox = new VBox(6, defaultStatusLabel, setDefaultBtn);
         defaultViewerBox.setAlignment(Pos.CENTER_LEFT);
-        grid.addRow(5, new Label("Default PDF Viewer:"), defaultViewerBox);
+        grid.addRow(9, new Label("Default PDF Viewer:"), defaultViewerBox);
 
-        // 6. Certificate Management Button
+        // 10. Certificate Management Button
         Button openCertMgrBtn = new Button("Manage Trusted Certificates...");
         openCertMgrBtn.setOnAction(e -> {
             CertificateManagerDialog certDialog = new CertificateManagerDialog(this);
             certDialog.sizeToScene();
             certDialog.showAndWait();
         });
-        grid.addRow(6, new Label("Security & Trust:"), openCertMgrBtn);
+        grid.addRow(10, new Label("Security & Trust:"), openCertMgrBtn);
 
         // Buttons
         Button saveBtn = new Button("Save Changes");
@@ -119,6 +148,15 @@ public class SettingsDialog extends Stage {
             String selectedTheme = themeCombo.getValue().toUpperCase();
             int fontDelta = fontDeltaSpinner.getValue();
 
+            String selectedViewMode = switch (viewModeCombo.getValue()) {
+                case "Fit to Page" -> "FIT_PAGE";
+                case "Actual Size (100%)" -> "ACTUAL_SIZE";
+                default -> "FIT_WIDTH";
+            };
+            String selectedPageLayout = "Single Page".equals(pageLayoutCombo.getValue()) ? "SINGLE_PAGE" : "CONTINUOUS";
+            String selectedCursor = "Hand (Pan) Tool".equals(cursorCombo.getValue()) ? "HAND" : "SELECT";
+            boolean selectedSidebarOpen = sidebarCheck.isSelected();
+
             // Persist to settings.json
             settingsService.update(s -> {
                 s.setDefaultAuthor(author.isBlank() ? "Oqteris User" : author);
@@ -126,6 +164,10 @@ public class SettingsDialog extends Stage {
                 s.setAutosaveIntervalMinutes(interval);
                 s.setTheme(selectedTheme);
                 s.setFontSizeDelta(fontDelta);
+                s.setViewMode(selectedViewMode);
+                s.setPageLayout(selectedPageLayout);
+                s.setCursorMode(selectedCursor);
+                s.setSidebarOpen(selectedSidebarOpen);
             });
 
             // Apply immediately to runtime services
@@ -142,7 +184,7 @@ public class SettingsDialog extends Stage {
         cancelBtn.setOnAction(e -> close());
 
         HBox btnBox = new HBox(10, new Region(), cancelBtn, saveBtn);
-        HBox.setHgrow(btnBox.getChildren().get(0), Priority.ALWAYS);
+        HBox.setHgrow(btnBox.getChildren().getFirst(), Priority.ALWAYS);
         btnBox.setAlignment(Pos.CENTER_RIGHT);
 
         root.getChildren().addAll(title, new Separator(), grid, new Separator(), btnBox);

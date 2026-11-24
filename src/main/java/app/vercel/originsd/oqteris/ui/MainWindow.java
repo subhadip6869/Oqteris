@@ -1,5 +1,6 @@
 package app.vercel.originsd.oqteris.ui;
 
+import app.vercel.originsd.oqteris.config.UserSettingsService;
 import app.vercel.originsd.oqteris.core.io.DocumentExporter;
 import app.vercel.originsd.oqteris.core.io.DocumentRegistry;
 import app.vercel.originsd.oqteris.core.model.DocumentModel;
@@ -60,6 +61,7 @@ public class MainWindow extends BorderPane implements MainWindowHost {
 
         buildUI();
         setupDragAndDrop();
+        setupWindowStateListeners();
         setupWindowCloseHandler();
     }
 
@@ -91,12 +93,8 @@ public class MainWindow extends BorderPane implements MainWindowHost {
         // Center Area: Welcome Screen or TabPane
         documentTabPane.getStyleClass().add("document-tab-pane");
         documentTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
-        documentTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
-            updateActiveView();
-        });
-        documentTabPane.getTabs().addListener((javafx.collections.ListChangeListener<Tab>) change -> {
-            updateTabVisibility();
-        });
+        documentTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> updateActiveView());
+        documentTabPane.getTabs().addListener((javafx.collections.ListChangeListener<Tab>) change -> updateTabVisibility());
 
         welcomeScreen = new WelcomeScreen(
                 this::showOpenDialog,
@@ -319,7 +317,7 @@ public class MainWindow extends BorderPane implements MainWindowHost {
     }
 
     public void setZoom(double percentage) {
-        zoomSlider.setValue(Math.max(25, Math.min(400, percentage)));
+        zoomSlider.setValue(Math.clamp(percentage, 25, 400));
     }
 
     private void setupDragAndDrop() {
@@ -347,8 +345,34 @@ public class MainWindow extends BorderPane implements MainWindowHost {
         });
     }
 
+    private void setupWindowStateListeners() {
+        primaryStage.maximizedProperty().addListener((obs, oldVal, isMax) -> UserSettingsService.getInstance().update(s -> s.setWindowMaximized(isMax)));
+        primaryStage.widthProperty().addListener((obs, oldVal, newW) -> {
+            if (!primaryStage.isMaximized() && newW.doubleValue() >= 400) {
+                UserSettingsService.getInstance().update(s -> s.setWindowWidth(newW.doubleValue()));
+            }
+        });
+        primaryStage.heightProperty().addListener((obs, oldVal, newH) -> {
+            if (!primaryStage.isMaximized() && newH.doubleValue() >= 300) {
+                UserSettingsService.getInstance().update(s -> s.setWindowHeight(newH.doubleValue()));
+            }
+        });
+    }
+
+    private void persistWindowState() {
+        boolean max = primaryStage.isMaximized();
+        UserSettingsService.getInstance().update(s -> {
+            s.setWindowMaximized(max);
+            if (!max && primaryStage.getWidth() >= 400 && primaryStage.getHeight() >= 300) {
+                s.setWindowWidth(primaryStage.getWidth());
+                s.setWindowHeight(primaryStage.getHeight());
+            }
+        });
+    }
+
     private void setupWindowCloseHandler() {
         primaryStage.setOnCloseRequest(event -> {
+            persistWindowState();
             for (Tab tab : new ArrayList<>(documentTabPane.getTabs())) {
                 DocumentView view = (DocumentView) tab.getUserData();
                 if (view != null && view.getDocument().isModified()) {
@@ -472,11 +496,9 @@ public class MainWindow extends BorderPane implements MainWindowHost {
                         saveDocument(view, false);
                     } else if (res.get() == ButtonType.CANCEL) {
                         e.consume();
-                        return;
                     }
                 } else {
                     e.consume();
-                    return;
                 }
             }
         });

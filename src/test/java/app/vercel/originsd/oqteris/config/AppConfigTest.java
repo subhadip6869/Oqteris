@@ -31,12 +31,28 @@ public class AppConfigTest {
         assertEquals(0, settings.getFontSizeDelta());
         assertTrue(settings.isAutosaveEnabled());
         assertEquals(2, settings.getAutosaveIntervalMinutes());
+        assertFalse(settings.isWindowMaximized());
+        assertEquals(1200.0, settings.getWindowWidth());
+        assertEquals(720.0, settings.getWindowHeight());
+        assertTrue(settings.isSidebarOpen());
+        assertEquals(0, settings.getSidebarActiveTab());
+        assertEquals("FIT_WIDTH", settings.getViewMode());
+        assertEquals("CONTINUOUS", settings.getPageLayout());
+        assertEquals("SELECT", settings.getCursorMode());
         assertTrue(Files.exists(customSettingsPath));
 
         // 2. Modify settings and persist
         settings.setTheme("DARK");
         settings.setFontSizeDelta(2);
         settings.setDefaultAuthor("Test Author");
+        settings.setWindowMaximized(true);
+        settings.setWindowWidth(1440);
+        settings.setWindowHeight(900);
+        settings.setSidebarOpen(false);
+        settings.setSidebarActiveTab(2);
+        settings.setViewMode("FIT_PAGE");
+        settings.setPageLayout("SINGLE_PAGE");
+        settings.setCursorMode("HAND");
         service.save(settings);
 
         // 3. Reload in a new service instance to verify persistence
@@ -45,6 +61,14 @@ public class AppConfigTest {
         assertEquals("DARK", reloaded.getTheme());
         assertEquals(2, reloaded.getFontSizeDelta());
         assertEquals("Test Author", reloaded.getDefaultAuthor());
+        assertTrue(reloaded.isWindowMaximized());
+        assertEquals(1440.0, reloaded.getWindowWidth());
+        assertEquals(900.0, reloaded.getWindowHeight());
+        assertFalse(reloaded.isSidebarOpen());
+        assertEquals(2, reloaded.getSidebarActiveTab());
+        assertEquals("FIT_PAGE", reloaded.getViewMode());
+        assertEquals("SINGLE_PAGE", reloaded.getPageLayout());
+        assertEquals("HAND", reloaded.getCursorMode());
     }
 
     @Test

@@ -23,6 +23,23 @@ public class UserSettings {
     private boolean promptDefaultViewerOnStartup = true;
     private List<String> recentFilePaths = new ArrayList<>();
 
+    // Window state & layout
+    private boolean windowMaximized = false;
+    private double windowWidth = 1200;
+    private double windowHeight = 720;
+
+    // Sidebar state
+    private boolean sidebarOpen = true;
+    private int sidebarActiveTab = 0; // 0 = Thumbnails, 1 = Bookmarks, 2 = Signatures
+
+    // Document View & Zoom mode
+    private ViewMode viewMode = ViewMode.FIT_WIDTH;
+    private PageLayoutMode pageLayout = PageLayoutMode.CONTINUOUS;
+    private double defaultZoom = 1.0;
+
+    // Cursor / Interaction mode
+    private CursorMode cursorMode = CursorMode.SELECT;
+
     public UserSettings() {}
 
     public String getTheme() {
@@ -90,5 +107,101 @@ public class UserSettings {
 
     public void setRecentFilePaths(List<String> recentFilePaths) {
         this.recentFilePaths = recentFilePaths != null ? recentFilePaths : new ArrayList<>();
+    }
+
+    public boolean isWindowMaximized() {
+        return windowMaximized;
+    }
+
+    public void setWindowMaximized(boolean windowMaximized) {
+        this.windowMaximized = windowMaximized;
+    }
+
+    public double getWindowWidth() {
+        return windowWidth;
+    }
+
+    public void setWindowWidth(double windowWidth) {
+        if (windowWidth >= 400) {
+            this.windowWidth = windowWidth;
+        }
+    }
+
+    public double getWindowHeight() {
+        return windowHeight;
+    }
+
+    public void setWindowHeight(double windowHeight) {
+        if (windowHeight >= 300) {
+            this.windowHeight = windowHeight;
+        }
+    }
+
+    public boolean isSidebarOpen() {
+        return sidebarOpen;
+    }
+
+    public void setSidebarOpen(boolean sidebarOpen) {
+        this.sidebarOpen = sidebarOpen;
+    }
+
+    public int getSidebarActiveTab() {
+        return sidebarActiveTab;
+    }
+
+    public void setSidebarActiveTab(int sidebarActiveTab) {
+        this.sidebarActiveTab = Math.max(0, sidebarActiveTab);
+    }
+
+    public SidebarTab getSidebarTab() {
+        return SidebarTab.fromIndex(sidebarActiveTab);
+    }
+
+    public void setSidebarTab(SidebarTab tab) {
+        this.sidebarActiveTab = tab != null ? tab.getIndex() : 0;
+    }
+
+    public ViewMode getViewMode() {
+        return viewMode != null ? viewMode : ViewMode.FIT_WIDTH;
+    }
+
+    public void setViewMode(ViewMode viewMode) {
+        this.viewMode = viewMode != null ? viewMode : ViewMode.FIT_WIDTH;
+    }
+
+    public void setViewMode(String viewMode) {
+        this.viewMode = ViewMode.fromString(viewMode);
+    }
+
+    public PageLayoutMode getPageLayout() {
+        return pageLayout != null ? pageLayout : PageLayoutMode.CONTINUOUS;
+    }
+
+    public void setPageLayout(PageLayoutMode pageLayout) {
+        this.pageLayout = pageLayout != null ? pageLayout : PageLayoutMode.CONTINUOUS;
+    }
+
+    public void setPageLayout(String pageLayout) {
+        this.pageLayout = PageLayoutMode.fromString(pageLayout);
+    }
+
+    public double getDefaultZoom() {
+        return defaultZoom;
+    }
+
+    public void setDefaultZoom(double defaultZoom) {
+        this.defaultZoom = Math.clamp(defaultZoom, 0.25, 4.0);
+    }
+
+    public CursorMode getCursorMode() {
+        return cursorMode != null ? cursorMode : CursorMode.SELECT;
+    }
+
+    public void setCursorMode(CursorMode cursorMode) {
+        this.cursorMode = cursorMode != null ? cursorMode : CursorMode.SELECT;
+    }
+
+    public void setCursorMode(String cursorMode) {
+        this.cursorMode = CursorMode.fromString(cursorMode);
     }
 }
