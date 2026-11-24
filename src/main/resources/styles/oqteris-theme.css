@@ -200,6 +200,36 @@
     -fx-effect: dropshadow(three-pass-box, -color-focus-ring, 4, 0.2, 0, 0);
 }
 
+.text-area .content {
+    -fx-background-color: -color-surface-secondary;
+    -fx-background-radius: 6px;
+}
+
+.tree-view {
+    -fx-background-color: -color-surface-secondary;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.tree-view .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-text-primary;
+}
+
+.tree-view .tree-cell:hover {
+    -fx-background-color: -color-selected;
+}
+
+.tree-view .tree-cell:selected {
+    -fx-background-color: -color-selected;
+    -fx-text-fill: -color-primary;
+}
+
+.tab-pane > .tab-content-area {
+    -fx-background-color: -color-surface;
+}
+
 /* CheckBox */
 .check-box {
     -fx-text-fill: -color-text-primary;

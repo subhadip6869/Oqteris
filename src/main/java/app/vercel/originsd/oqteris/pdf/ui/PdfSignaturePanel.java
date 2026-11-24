@@ -162,9 +162,10 @@ public class PdfSignaturePanel extends VBox {
 
         // Certificate Chain Hierarchy
         Label chainLbl = new Label("Certificate Chain:");
-        chainLbl.setStyle("-fx-font-weight: bold;");
+        chainLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: -color-text-primary;");
 
         TreeView<String> chainTree = new TreeView<>();
+        chainTree.getStyleClass().add("signature-chain-tree");
         TreeItem<String> root = new TreeItem<>("Certification Path");
         root.setExpanded(true);
 
@@ -184,6 +185,7 @@ public class PdfSignaturePanel extends VBox {
 
         // Details Text
         TextArea certText = new TextArea();
+        certText.getStyleClass().add("signature-cert-area");
         certText.setEditable(false);
         certText.setWrapText(true);
         certText.setPrefRowCount(9);
@@ -205,10 +207,14 @@ public class PdfSignaturePanel extends VBox {
             );
         }
 
-        content.getChildren().addAll(chainLbl, chainTree, new Label("Leaf Certificate Attributes:"), certText);
+        Label leafLbl = new Label("Leaf Certificate Attributes:");
+        leafLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: -color-text-primary;");
+
+        content.getChildren().addAll(chainLbl, chainTree, leafLbl, certText);
 
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        app.vercel.originsd.oqteris.ui.ThemeManager.getInstance().applyTheme(dialog);
         dialog.showAndWait();
     }
 

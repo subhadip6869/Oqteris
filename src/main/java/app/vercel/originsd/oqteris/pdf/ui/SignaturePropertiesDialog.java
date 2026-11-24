@@ -51,6 +51,8 @@ public class SignaturePropertiesDialog extends Stage {
 
     private void buildUI() {
         VBox root = new VBox(14);
+        root.getStyleClass().add("signature-properties-dialog");
+        root.setStyle("-fx-background-color: -color-surface;");
         root.setPadding(new Insets(18));
         root.setPrefWidth(620);
         root.setPrefHeight(560);
@@ -71,6 +73,8 @@ public class SignaturePropertiesDialog extends Stage {
 
         // 2. Tab Pane
         TabPane tabPane = new TabPane();
+        tabPane.getStyleClass().add("signature-tab-pane");
+        tabPane.setStyle("-fx-background-color: -color-surface;");
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         VBox.setVgrow(tabPane, Priority.ALWAYS);
 
@@ -171,11 +175,11 @@ public class SignaturePropertiesDialog extends Stage {
         titleRow.getChildren().addAll(iconLbl, statusLbl);
 
         Label signerSub = new Label("Signed by " + sig.getSignerName() + " on " + sdf.format(sig.getSigningTime()));
-        signerSub.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
+        signerSub.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -color-text-primary;");
 
         Label desc = new Label(sig.getStatusDetails());
         desc.setWrapText(true);
-        desc.setStyle("-fx-font-size: 11px; -fx-text-fill: #475569;");
+        desc.setStyle("-fx-font-size: 11px; -fx-text-fill: -color-text-muted;");
 
         banner.getChildren().addAll(titleRow, signerSub, desc);
         return banner;
@@ -183,9 +187,11 @@ public class SignaturePropertiesDialog extends Stage {
 
     private Node createSummaryTab(PdfSignatureInfo sig, SimpleDateFormat sdf) {
         GridPane grid = new GridPane();
+        grid.getStyleClass().add("signature-summary-grid");
         grid.setPadding(new Insets(14));
         grid.setHgap(14);
         grid.setVgap(10);
+        grid.setStyle("-fx-background-color: -color-surface;");
 
         int row = 0;
         addDetailRow(grid, row++, "Signer Common Name:", sig.getSignerName());
@@ -201,14 +207,17 @@ public class SignaturePropertiesDialog extends Stage {
         addDetailRow(grid, row++, "Signature SubFilter:", sig.getSubFilter() != null ? sig.getSubFilter() : "adbe.pkcs7.detached");
 
         ScrollPane sp = new ScrollPane(grid);
+        sp.getStyleClass().add("signature-summary-scroll");
         sp.setFitToWidth(true);
-        sp.setStyle("-fx-background-color: transparent;");
+        sp.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
         return sp;
     }
 
     private Node createDocumentTab(PdfSignatureInfo sig) {
         VBox box = new VBox(12);
+        box.getStyleClass().add("signature-doc-tab");
         box.setPadding(new Insets(14));
+        box.setStyle("-fx-background-color: -color-surface;");
 
         GridPane grid = new GridPane();
         grid.setHgap(14);
@@ -247,12 +256,15 @@ public class SignaturePropertiesDialog extends Stage {
 
     private Node createCertificateTab(PdfSignatureInfo sig) {
         VBox box = new VBox(10);
+        box.getStyleClass().add("signature-cert-tab");
         box.setPadding(new Insets(14));
+        box.setStyle("-fx-background-color: -color-surface;");
 
         Label chainLbl = new Label("Certificate Chain:");
-        chainLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
+        chainLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: -color-text-primary;");
 
         TreeView<String> chainTree = new TreeView<>();
+        chainTree.getStyleClass().add("signature-chain-tree");
         TreeItem<String> root = new TreeItem<>("Certification Path");
         root.setExpanded(true);
 
@@ -273,12 +285,13 @@ public class SignaturePropertiesDialog extends Stage {
             root.getChildren().add(new TreeItem<>(cd.getCommonName()));
         }
         chainTree.setRoot(root);
-        chainTree.setPrefHeight(100);
+        chainTree.setPrefHeight(110);
 
         Label leafLbl = new Label("Signer Certificate Attributes:");
-        leafLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
+        leafLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: -color-text-primary;");
 
         TextArea certText = new TextArea();
+        certText.getStyleClass().add("signature-cert-area");
         certText.setEditable(false);
         certText.setWrapText(true);
         certText.setPrefRowCount(9);
@@ -309,10 +322,10 @@ public class SignaturePropertiesDialog extends Stage {
 
     private void addDetailRow(GridPane grid, int row, String label, String value) {
         Label lbl = new Label(label);
-        lbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
+        lbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: -color-text-secondary;");
         Label val = new Label(value != null ? value : "");
         val.setWrapText(true);
-        val.setStyle("-fx-font-size: 11px;");
+        val.setStyle("-fx-font-size: 11px; -fx-text-fill: -color-text-primary;");
         grid.addRow(row, lbl, val);
     }
 
