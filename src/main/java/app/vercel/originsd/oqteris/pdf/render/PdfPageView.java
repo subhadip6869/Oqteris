@@ -110,6 +110,14 @@ public class PdfPageView extends StackPane {
             double normY = (e.getY() - offY) / ph;
 
             ensurePageContent();
+
+            // 1. Signature fields always take precedence and show HAND cursor
+            if (hitTestSignature(normX, normY) != null) {
+                setCursor(javafx.scene.Cursor.HAND);
+                return;
+            }
+
+            // 2. Text lines show TEXT cursor
             if (pageContent != null) {
                 PdfPageContent.TextLine line = pageContent.hitTestLine(normX, normY);
                 if (line != null) {
@@ -120,14 +128,6 @@ public class PdfPageView extends StackPane {
                 if (obj != null) {
                     setCursor(javafx.scene.Cursor.HAND);
                     return;
-                }
-            } else if (!pageSignatures.isEmpty()) {
-                for (PdfSignatureInfo s : pageSignatures) {
-                    double[] r = signatureRect(s);
-                    if (normX >= r[0] && normX <= r[0] + r[2] && normY >= r[1] && normY <= r[1] + r[3]) {
-                        setCursor(javafx.scene.Cursor.HAND);
-                        return;
-                    }
                 }
             }
             setCursor(javafx.scene.Cursor.TEXT);
@@ -239,7 +239,19 @@ public class PdfPageView extends StackPane {
 
                 ensurePageContent();
 
-                // 1. Text lines are TEXT, NEVER objects! If clicked over text:
+                // 1. Digital Signatures: Click opens signature properties dialog, NEVER select signature as object!
+                PdfSignatureInfo hitSig = hitTestSignature(normX, normY);
+                if (hitSig != null) {
+                    selectedObject = null;
+                    clearSelection();
+                    if (onSignatureClicked != null) {
+                        onSignatureClicked.accept(hitSig);
+                    }
+                    e.consume();
+                    return;
+                }
+
+                // 2. Text lines are TEXT, NEVER objects! If clicked over text:
                 PdfPageContent.TextLine hitLine = pageContent != null ? pageContent.hitTestLine(normX, normY) : null;
                 if (hitLine != null) {
                     selectedObject = null;
@@ -276,22 +288,26 @@ public class PdfPageView extends StackPane {
                     return;
                 }
 
-                // 2. If NOT text, check if an actual object was clicked (Image, Shape, Signature)
+                // 3. If NOT signature and NOT text, check if an actual selectable object was clicked (Image, Shape)
                 PdfPageContent.PageObject hitObj = pageContent != null ? pageContent.hitTestObject(normX, normY) : null;
                 if (hitObj != null) {
-                    selectedObject = hitObj;
-                    selectedLineRects.clear();
-                    selectedText = hitObj.title;
-                    selectionRect = hitObj.getBounds();
-                    redrawOverlay();
-
-                    if (hitObj.type == PdfPageContent.ObjectType.SIGNATURE && hitObj.payload instanceof PdfSignatureInfo sig) {
-                        if (onSignatureClicked != null) {
+                    if (hitObj.type == PdfPageContent.ObjectType.SIGNATURE) {
+                        // Safety fallback: if hitObj is a signature, do NOT select it
+                        selectedObject = null;
+                        clearSelection();
+                        if (onSignatureClicked != null && hitObj.payload instanceof PdfSignatureInfo sig) {
                             onSignatureClicked.accept(sig);
                         }
-                    }
-                    if (onObjectSelected != null) {
-                        onObjectSelected.accept(hitObj);
+                    } else {
+                        selectedObject = hitObj;
+                        selectedLineRects.clear();
+                        selectedText = hitObj.title;
+                        selectionRect = hitObj.getBounds();
+                        redrawOverlay();
+
+                        if (onObjectSelected != null) {
+                            onObjectSelected.accept(hitObj);
+                        }
                     }
                 } else {
                     // Clicked empty page space: clear selection
@@ -449,6 +465,27 @@ public class PdfPageView extends StackPane {
     private double[] signatureRect(PdfSignatureInfo s) {
         double[] v = s.getVisualRect();
         return PdfSignatureVerifier.rotateNormRect(v[0], v[1], v[2], v[3], viewRotation);
+    }
+
+    /**
+     * Hit tests digital signatures on this page at normalized coordinates.
+     */
+    public PdfSignatureInfo hitTestSignature(double normX, double normY) {
+        if (!pageSignatures.isEmpty()) {
+            for (PdfSignatureInfo s : pageSignatures) {
+                double[] r = signatureRect(s);
+                if (normX >= r[0] && normX <= r[0] + r[2] && normY >= r[1] && normY <= r[1] + r[3]) {
+                    return s;
+                }
+            }
+        }
+        if (pageContent != null) {
+            PdfPageContent.PageObject sigObj = pageContent.hitTestSignature(normX, normY);
+            if (sigObj != null && sigObj.payload instanceof PdfSignatureInfo sig) {
+                return sig;
+            }
+        }
+        return null;
     }
 
     public void redrawOverlay() {

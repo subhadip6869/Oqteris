@@ -241,7 +241,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             }
         });
         pv.setOnSignatureClicked(sig -> {
-            sideTabPane.getSelectionModel().select(2);
+            showSignatureProperties(sig);
         });
     }
 
@@ -402,9 +402,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private void applySignatures(PdfPageView pv) {
         pv.setSignatures(model.getSignatures(), userRotation, layeredSignatures);
         pv.setOnSignatureClicked(sig -> {
-            sideTabPane.setVisible(true);
-            sideTabPane.setManaged(true);
-            sideTabPane.getSelectionModel().select(2); // Signatures tab
+            showSignatureProperties(sig);
         });
     }
 
@@ -964,7 +962,23 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     public void showSignatureDetails() {
-        selectSidebarTab(2);
+        showSignatureProperties(null);
+    }
+
+    public void showSignatureProperties(PdfSignatureInfo sig) {
+        if (sig == null) {
+            List<PdfSignatureInfo> sigs = model.getSignatures();
+            if (!sigs.isEmpty()) {
+                sig = sigs.get(0);
+            }
+        }
+        if (sig != null) {
+            Stage owner = (getScene() != null && getScene().getWindow() instanceof Stage s) ? s : null;
+            SignaturePropertiesDialog dialog = new SignaturePropertiesDialog(owner, sig, model, this::reverifySignatures);
+            dialog.show();
+        } else {
+            selectSidebarTab(2);
+        }
     }
 
     public void showPageProperties() {

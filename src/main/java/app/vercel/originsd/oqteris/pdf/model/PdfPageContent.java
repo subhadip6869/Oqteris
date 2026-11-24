@@ -162,8 +162,23 @@ public class PdfPageContent {
     }
 
     /**
-     * Hit tests all clickable objects on this page (images, shapes, signatures, annotations).
+     * Hit tests signature objects on this page.
+     * Takes precedence over text or other background elements within the signature boundary.
+     */
+    public PageObject hitTestSignature(double normX, double normY) {
+        for (int i = pageObjects.size() - 1; i >= 0; i--) {
+            PageObject obj = pageObjects.get(i);
+            if (obj.type == ObjectType.SIGNATURE && obj.contains(normX, normY)) {
+                return obj;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Hit tests selectable objects on this page (images, shapes, annotations).
      * If the coordinates hit a text line, returns null because lines of text are text, NOT objects.
+     * Digital signatures are excluded from object selection (signatures open properties instead of selecting).
      */
     public PageObject hitTestObject(double normX, double normY) {
         // Text lines are text, NEVER objects. If mouse is over text, do not select as object.
@@ -171,10 +186,10 @@ public class PdfPageContent {
             return null;
         }
 
-        // Hit-test in reverse order so topmost objects take priority
+        // Hit-test in reverse order so topmost objects take priority (excluding signatures)
         for (int i = pageObjects.size() - 1; i >= 0; i--) {
             PageObject obj = pageObjects.get(i);
-            if (obj.contains(normX, normY)) {
+            if (obj.type != ObjectType.SIGNATURE && obj.contains(normX, normY)) {
                 return obj;
             }
         }

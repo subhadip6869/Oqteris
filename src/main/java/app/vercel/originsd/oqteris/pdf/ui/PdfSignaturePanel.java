@@ -4,6 +4,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.Stage;
 import app.vercel.originsd.oqteris.crypto.signature.PdfSignatureInfo;
 import app.vercel.originsd.oqteris.crypto.signature.SignatureVerificationStatus;
 import app.vercel.originsd.oqteris.crypto.trust.CertificateDetails;
@@ -112,11 +113,15 @@ public class PdfSignaturePanel extends VBox {
             HBox actions = new HBox(6);
             actions.setAlignment(Pos.CENTER_LEFT);
 
+            Button propsBtn = new Button("Signature Properties...");
+            propsBtn.setStyle("-fx-font-size: 11px;");
+            propsBtn.setOnAction(e -> showSignatureProperties(sig));
+
             Button inspectBtn = new Button("Inspect Certificate...");
             inspectBtn.setStyle("-fx-font-size: 11px;");
             inspectBtn.setOnAction(e -> showCertificateDetails(sig));
 
-            actions.getChildren().add(inspectBtn);
+            actions.getChildren().addAll(propsBtn, inspectBtn);
 
             // If valid but untrusted, offer "Trust Certificate" button
             if (sig.getStatus() == SignatureVerificationStatus.VALID_BUT_UNTRUSTED && sig.getSignerCertificate() != null) {
@@ -126,9 +131,24 @@ public class PdfSignaturePanel extends VBox {
                 actions.getChildren().add(trustBtn);
             }
 
+            card.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2) {
+                    showSignatureProperties(sig);
+                }
+            });
+
             card.getChildren().addAll(badge, signer, statusDesc, date, coverage, actions);
             signatureCardsBox.getChildren().add(card);
         }
+    }
+
+    public void showSignatureProperties(PdfSignatureInfo sig) {
+        if (sig == null) return;
+        Stage owner = (getScene() != null && getScene().getWindow() instanceof Stage s) ? s : null;
+        new SignaturePropertiesDialog(owner, sig, model, () -> {
+            model.reVerifySignatures();
+            refreshSignatures();
+        }).show();
     }
 
     private void showCertificateDetails(PdfSignatureInfo sig) {
