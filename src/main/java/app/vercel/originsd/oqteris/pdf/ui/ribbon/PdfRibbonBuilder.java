@@ -1,5 +1,6 @@
 package app.vercel.originsd.oqteris.pdf.ui.ribbon;
 
+import app.vercel.originsd.oqteris.config.*;
 import app.vercel.originsd.oqteris.crypto.signature.PdfSignatureInfo;
 import app.vercel.originsd.oqteris.crypto.signature.SignatureVerificationStatus;
 import app.vercel.originsd.oqteris.pdf.model.PdfDocumentModel;
@@ -144,71 +145,46 @@ public class PdfRibbonBuilder {
     private RibbonTab buildHomeTab() {
         RibbonTab tab = new RibbonTab("Home");
 
-        // 1. File Group
+        // 1. File Group (Save and Save As placed in File tab)
         Button openBtn = RibbonControlFactory.createLargeButton(
                 "Open\nPDF", MaterialDesignF.FOLDER_OPEN_OUTLINE,
                 "Open an existing PDF document (Ctrl+O)",
                 e -> getWindowHost().showOpenDialog()
-        );
-        Button saveBtn = RibbonControlFactory.createSmallButton(
-                "Save", MaterialDesignC.CONTENT_SAVE_OUTLINE,
-                "Save changes to document (Ctrl+S)",
-                e -> getWindowHost().saveActiveDocument(false)
-        );
-        Button saveAsBtn = RibbonControlFactory.createSmallButton(
-                "Save As", MaterialDesignC.CONTENT_SAVE_EDIT_OUTLINE,
-                "Save document under a new filename (Ctrl+Shift+S)",
-                e -> getWindowHost().saveActiveDocument(true)
         );
         Button printBtn = RibbonControlFactory.createLargeButton(
                 "Print", MaterialDesignP.PRINTER,
                 "Print the current PDF document (Ctrl+P)",
                 e -> view.print()
         );
-        Column saveCol = RibbonControlFactory.createColumn(saveBtn, saveAsBtn);
-        RibbonGroup fileGroup = RibbonControlFactory.createGroup("File", openBtn, saveCol, printBtn);
+        RibbonGroup fileGroup = RibbonControlFactory.createGroup("File", openBtn, printBtn);
 
-        // 2. Clipboard & History Group
-        Button undoBtn = RibbonControlFactory.createSmallButton(
-                "Undo", MaterialDesignU.UNDO,
-                "Undo the last action (Ctrl+Z)",
-                e -> {
-                    if (model.getUndoRedoManager().canUndo()) model.getUndoRedoManager().undo();
-                }
-        );
-        Button redoBtn = RibbonControlFactory.createSmallButton(
-                "Redo", MaterialDesignR.REDO,
-                "Redo the previously undone action (Ctrl+Y)",
-                e -> {
-                    if (model.getUndoRedoManager().canRedo()) model.getUndoRedoManager().redo();
-                }
-        );
-        Button copyBtn = RibbonControlFactory.createSmallButton(
+        // 2. Clipboard Group (Undo & Redo placed in Edit tab)
+        Button copyBtn = RibbonControlFactory.createLargeButton(
                 "Copy", MaterialDesignC.CONTENT_COPY,
                 "Copy text from current page to clipboard (Ctrl+C)",
                 e -> view.copy()
         );
-        Button selectAllBtn = RibbonControlFactory.createSmallButton(
+        Button selectAllBtn = RibbonControlFactory.createLargeButton(
                 "Select All", MaterialDesignS.SELECT_ALL,
                 "Select all document contents (Ctrl+A)",
                 e -> view.selectAll()
         );
-        Column undoRedoCol = RibbonControlFactory.createColumn(undoBtn, redoBtn);
-        Column copyCol = RibbonControlFactory.createColumn(copyBtn, selectAllBtn);
-        RibbonGroup clipboardGroup = RibbonControlFactory.createGroup("Clipboard", undoRedoCol, copyCol);
+        RibbonGroup clipboardGroup = RibbonControlFactory.createGroup("Clipboard", copyBtn, selectAllBtn);
 
-        // 3. Selection & Interaction Tools Group
+        // 3. Selection & Interaction Tools Group (Unified Select Tool + Hand Tool)
+        UserSettings homeSettings = UserSettingsService.getInstance().getSettings();
+        boolean isHand = homeSettings.getCursorMode() == CursorMode.HAND;
         ToggleButton selectToolBtn = RibbonControlFactory.createLargeToggleButton(
-                "Select\nText", MaterialDesignC.CURSOR_TEXT,
-                "Select text for copying or annotation",
-                selectionToolGroup, true,
-                e -> view.setHandToolActive(false)
+                "Select", MaterialDesignC.CURSOR_DEFAULT,
+                "Select text, objects, and annotations (Ctrl+1)",
+                selectionToolGroup, !isHand,
+                e -> view.setCursorMode(CursorMode.SELECT)
         );
         ToggleButton handToolBtn = RibbonControlFactory.createLargeToggleButton(
                 "Hand\nTool", MaterialDesignH.HAND,
-                "Pan and drag the document pages",
-                selectionToolGroup, false,
-                e -> view.setHandToolActive(true)
+                "Pan and drag the document pages (Ctrl+2)",
+                selectionToolGroup, isHand,
+                e -> view.setCursorMode(CursorMode.HAND)
         );
         RibbonGroup toolsGroup = RibbonControlFactory.createGroup("Tools", selectToolBtn, handToolBtn);
 
@@ -252,17 +228,17 @@ public class PdfRibbonBuilder {
         Button actualSizeBtn = RibbonControlFactory.createLargeButton(
                 "Actual\nSize", MaterialDesignM.MAGNIFY_SCAN,
                 "View at 100% scale (Ctrl+0)",
-                e -> view.setZoom(1.0)
+                e -> view.setActualSize()
         );
         Button fitPageBtn = RibbonControlFactory.createLargeButton(
                 "Fit\nPage", MaterialDesignF.FIT_TO_PAGE_OUTLINE,
                 "Fit entire page in window",
-                e -> view.setZoom(1.0)
+                e -> view.fitToPage()
         );
         Button fitWidthBtn = RibbonControlFactory.createLargeButton(
                 "Fit\nWidth", MaterialDesignA.ARROW_EXPAND_HORIZONTAL,
                 "Fit page width to window width",
-                e -> view.setZoom(1.3)
+                e -> view.fitToWidth()
         );
         Button zoomInBtn = RibbonControlFactory.createSmallButton(
                 "Zoom In", MaterialDesignM.MAGNIFY_PLUS_OUTLINE,
@@ -279,7 +255,7 @@ public class PdfRibbonBuilder {
         MenuButton zoomPresetsBtn = createZoomPresetsMenu("Presets");
         RibbonGroup zoomGroup = RibbonControlFactory.createGroup("Zoom", actualSizeBtn, fitPageBtn, fitWidthBtn, zoomCol, zoomPresetsBtn);
 
-        // 6. Page Tools Group
+        // 6. Page Tools Group (Sidebar moved to View tab)
         SplitMenuButton rotateBtn = RibbonControlFactory.createSplitMenuButton(
                 "Rotate", MaterialDesignR.ROTATE_RIGHT,
                 "Rotate page clockwise 90°",
@@ -289,14 +265,7 @@ public class PdfRibbonBuilder {
                 createMenuItem("Rotate Counter-Clockwise 90°", MaterialDesignR.ROTATE_LEFT, e -> view.rotateCounterClockwise()),
                 createMenuItem("Rotate 180°", MaterialDesignR.ROTATE_3D_VARIANT, e -> view.rotate180())
         );
-
-        ToggleButton sideToggle = RibbonControlFactory.createLargeToggleButton(
-                "Sidebar", MaterialDesignV.VIEW_SPLIT_VERTICAL,
-                "Toggle navigation and bookmarks sidebar",
-                null, true,
-                e -> view.toggleSidebar()
-        );
-        RibbonGroup pageToolsGroup = RibbonControlFactory.createGroup("Page Tools", rotateBtn, sideToggle);
+        RibbonGroup pageToolsGroup = RibbonControlFactory.createGroup("Page Tools", rotateBtn);
 
         // 7. Find Group
         Button findBtn = RibbonControlFactory.createLargeButton(
@@ -321,25 +290,28 @@ public class PdfRibbonBuilder {
     private RibbonTab buildViewTab() {
         RibbonTab tab = new RibbonTab("View");
 
+        UserSettings viewSettings = UserSettingsService.getInstance().getSettings();
+        boolean isContinuous = viewSettings.getPageLayout() == PageLayoutMode.CONTINUOUS;
+
         // 1. Page Display Group
         ToggleButton continuousBtn = RibbonControlFactory.createLargeToggleButton(
                 "Continuous", MaterialDesignV.VIEW_STREAM_OUTLINE,
                 "Continuous vertical scrolling mode",
-                viewModeGroup, true,
-                e -> view.setSinglePageView(false)
+                viewModeGroup, isContinuous,
+                e -> view.setPageLayout(PageLayoutMode.CONTINUOUS)
         );
         ToggleButton singleBtn = RibbonControlFactory.createLargeToggleButton(
                 "Single\nPage", MaterialDesignF.FILE_DOCUMENT_OUTLINE,
                 "View one page at a time",
-                viewModeGroup, false,
-                e -> view.setSinglePageView(true)
+                viewModeGroup, !isContinuous,
+                e -> view.setPageLayout(PageLayoutMode.SINGLE_PAGE)
         );
         MenuButton layoutMenu = RibbonControlFactory.createMenuButton(
                 "Page\nLayout", MaterialDesignV.VIEW_DASHBOARD_OUTLINE,
                 "Configure document page view layouts",
                 true,
-                createMenuItem("Continuous Vertical", MaterialDesignV.VIEW_STREAM_OUTLINE, e -> view.setSinglePageView(false)),
-                createMenuItem("Single Page View", MaterialDesignF.FILE_DOCUMENT_OUTLINE, e -> view.setSinglePageView(true)),
+                createMenuItem("Continuous Vertical", MaterialDesignV.VIEW_STREAM_OUTLINE, e -> view.setPageLayout(PageLayoutMode.CONTINUOUS)),
+                createMenuItem("Single Page View", MaterialDesignF.FILE_DOCUMENT_OUTLINE, e -> view.setPageLayout(PageLayoutMode.SINGLE_PAGE)),
                 createDisabledMenuItem("Facing Pages (Two-Up)", "Facing dual-page layout will be enabled in a future release"),
                 createDisabledMenuItem("Facing Continuous", "Continuous two-up scrolling will be enabled in a future release")
         );
@@ -353,44 +325,50 @@ public class PdfRibbonBuilder {
         );
         RibbonGroup windowGroup = RibbonControlFactory.createGroup("Window", fullScreenBtn);
 
-        // 3. Navigation Panels Group
+        // 3. Navigation Panels Group (including Sidebar toggle)
+        ToggleButton sideToggle = RibbonControlFactory.createLargeToggleButton(
+                "Sidebar", MaterialDesignV.VIEW_SPLIT_VERTICAL,
+                "Toggle navigation and bookmarks sidebar",
+                null, viewSettings.isSidebarOpen(),
+                e -> view.toggleSidebar()
+        );
         Button thumbBtn = RibbonControlFactory.createLargeButton(
                 "Thumbnails", MaterialDesignV.VIEW_GRID_OUTLINE,
                 "Open page thumbnails pane",
-                e -> view.selectSidebarTab(0)
+                e -> view.selectSidebarTab(SidebarTab.THUMBNAILS)
         );
         Button bookmarksBtn = RibbonControlFactory.createLargeButton(
                 "Bookmarks", MaterialDesignB.BOOKMARK_MULTIPLE_OUTLINE,
                 "Open document outline & bookmarks pane",
-                e -> view.selectSidebarTab(1)
+                e -> view.selectSidebarTab(SidebarTab.BOOKMARKS)
         );
         Button signaturesBtn = RibbonControlFactory.createLargeButton(
                 "Signatures", MaterialDesignS.SHIELD_CHECK_OUTLINE,
                 "Open digital signatures validation pane",
-                e -> view.selectSidebarTab(2)
+                e -> view.selectSidebarTab(SidebarTab.SIGNATURES)
         );
         Button attachmentsBtn = RibbonControlFactory.createDisabledButton(
                 "Attachments", MaterialDesignP.PAPERCLIP,
                 "Document contains no embedded file attachments",
                 true
         );
-        RibbonGroup panelsGroup = RibbonControlFactory.createGroup("Panels", thumbBtn, bookmarksBtn, signaturesBtn, attachmentsBtn);
+        RibbonGroup panelsGroup = RibbonControlFactory.createGroup("Panels", sideToggle, thumbBtn, bookmarksBtn, signaturesBtn, attachmentsBtn);
 
         // 4. Zoom Controls Group
         Button actualBtn = RibbonControlFactory.createLargeButton(
                 "100%", MaterialDesignM.MAGNIFY_SCAN,
                 "Actual size (100%)",
-                e -> view.setZoom(1.0)
+                e -> view.setActualSize()
         );
         Button fitWidthBtn = RibbonControlFactory.createLargeButton(
                 "Fit\nWidth", MaterialDesignA.ARROW_EXPAND_HORIZONTAL,
                 "Fit width to window",
-                e -> view.setZoom(1.3)
+                e -> view.fitToWidth()
         );
         Button fitPageBtn = RibbonControlFactory.createLargeButton(
                 "Fit\nPage", MaterialDesignF.FIT_TO_PAGE_OUTLINE,
                 "Fit entire page",
-                e -> view.setZoom(1.0)
+                e -> view.fitToPage()
         );
         MenuButton zoomMenu = createZoomPresetsMenu("Presets");
         RibbonGroup zoomGroup = RibbonControlFactory.createGroup("Zoom", actualBtn, fitWidthBtn, fitPageBtn, zoomMenu);
@@ -432,11 +410,41 @@ public class PdfRibbonBuilder {
     private RibbonTab buildEditTab() {
         RibbonTab tab = new RibbonTab("Edit");
 
-        // 1. Selection & Clipboard Group
+        // 1. History Group (Undo & Redo)
+        Button undoBtn = RibbonControlFactory.createLargeButton(
+                "Undo", MaterialDesignU.UNDO,
+                "Undo the last action (Ctrl+Z)",
+                e -> {
+                    if (model.getUndoRedoManager().canUndo()) model.getUndoRedoManager().undo();
+                }
+        );
+        Button redoBtn = RibbonControlFactory.createLargeButton(
+                "Redo", MaterialDesignR.REDO,
+                "Redo the previously undone action (Ctrl+Y)",
+                e -> {
+                    if (model.getUndoRedoManager().canRedo()) model.getUndoRedoManager().redo();
+                }
+        );
+        RibbonGroup historyGroup = RibbonControlFactory.createGroup("History", undoBtn, redoBtn);
+
+        // 2. Save Group (Save & Save As moved from Home)
+        Button saveBtn = RibbonControlFactory.createLargeButton(
+                "Save", MaterialDesignC.CONTENT_SAVE_OUTLINE,
+                "Save changes to document (Ctrl+S)",
+                e -> getWindowHost().saveActiveDocument(false)
+        );
+        Button saveAsBtn = RibbonControlFactory.createLargeButton(
+                "Save As", MaterialDesignC.CONTENT_SAVE_EDIT_OUTLINE,
+                "Save document under a new filename (Ctrl+Shift+S)",
+                e -> getWindowHost().saveActiveDocument(true)
+        );
+        RibbonGroup saveGroup = RibbonControlFactory.createGroup("Save", saveBtn, saveAsBtn);
+
+        // 3. Selection & Clipboard Group
         Button selectBtn = RibbonControlFactory.createLargeButton(
-                "Select Text", MaterialDesignC.CURSOR_TEXT,
-                "Select text for copying or annotation",
-                e -> view.setHandToolActive(false)
+                "Select Tool", MaterialDesignC.CURSOR_DEFAULT,
+                "Select text, objects, and annotations",
+                e -> view.setCursorMode(CursorMode.SELECT)
         );
         Button copyBtn = RibbonControlFactory.createLargeButton(
                 "Copy Text", MaterialDesignC.CONTENT_COPY,
@@ -486,7 +494,7 @@ public class PdfRibbonBuilder {
                 "Content Editing", editTextBtn, editImagesBtn, addTextBtn, addImageBtn, addLinkBtn, propertiesBtn
         );
 
-        tab.getRibbonGroups().addAll(selectGroup, contentGroup);
+        tab.getRibbonGroups().addAll(historyGroup, saveGroup, selectGroup, contentGroup);
         return tab;
     }
 
@@ -913,15 +921,15 @@ public class PdfRibbonBuilder {
                 createMenuItem("25%", null, e -> view.setZoom(0.25)),
                 createMenuItem("50%", null, e -> view.setZoom(0.50)),
                 createMenuItem("75%", null, e -> view.setZoom(0.75)),
-                createMenuItem("100% (Actual Size)", null, e -> view.setZoom(1.00)),
+                createMenuItem("100% (Actual Size)", null, e -> view.setActualSize()),
                 createMenuItem("125%", null, e -> view.setZoom(1.25)),
                 createMenuItem("150%", null, e -> view.setZoom(1.50)),
                 createMenuItem("200%", null, e -> view.setZoom(2.00)),
                 createMenuItem("300%", null, e -> view.setZoom(3.00)),
                 createMenuItem("400%", null, e -> view.setZoom(4.00)),
                 new SeparatorMenuItem(),
-                createMenuItem("Fit Page", null, e -> view.setZoom(1.00)),
-                createMenuItem("Fit Width", null, e -> view.setZoom(1.30))
+                createMenuItem("Fit Page", null, e -> view.fitToPage()),
+                createMenuItem("Fit Width", null, e -> view.fitToWidth())
         );
         return menu;
     }

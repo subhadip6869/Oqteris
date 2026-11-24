@@ -1,7 +1,8 @@
 package app.vercel.originsd.oqteris.ui;
 
-import app.vercel.originsd.oqteris.platform.PdfFileOpenHelper;
-import app.vercel.originsd.oqteris.platform.SingleInstanceManager;
+import app.vercel.originsd.oqteris.config.UserSettings;
+import app.vercel.originsd.oqteris.config.UserSettingsService;
+import app.vercel.originsd.oqteris.platform.*;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
@@ -27,18 +28,28 @@ public class OqterisApp extends Application {
         // Factory and file handler wired dynamically by module initializer
         AppBootstrap.initialize(mainWindow);
 
-        Scene scene = new Scene(mainWindow, 1200, 720);
+        UserSettings settings =
+                UserSettingsService.getInstance().getSettings();
+        double w = settings.getWindowWidth() > 0 ? settings.getWindowWidth() : 1200;
+        double h = settings.getWindowHeight() > 0 ? settings.getWindowHeight() : 720;
+
+        Scene scene = new Scene(mainWindow, w, h);
         ThemeManager.getInstance().applyTheme(scene);
         primaryStage.setScene(scene);
+
+        if (settings.isWindowMaximized()) {
+            primaryStage.setMaximized(true);
+        }
+
         primaryStage.show();
 
         // Ensure application presence (FriendlyAppName, SupportedTypes, icons) is registered in HKCU on Windows
         if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
             AsyncExecutor.execute(() -> {
                 try {
-                    app.vercel.originsd.oqteris.platform.DefaultViewerService service =
-                            app.vercel.originsd.oqteris.platform.DefaultViewerServiceFactory.getInstance();
-                    if (service instanceof app.vercel.originsd.oqteris.platform.WindowsDefaultViewerService winService) {
+                    DefaultViewerService service =
+                            DefaultViewerServiceFactory.getInstance();
+                    if (service instanceof WindowsDefaultViewerService winService) {
                         winService.registerAppPresence();
                     }
                 } catch (Throwable ignored) {

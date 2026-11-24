@@ -10,15 +10,20 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.PDFTextStripperByArea;
 import org.controlsfx.control.textfield.TextFields;
 import com.pixelduke.control.Ribbon;
 import org.kordamp.ikonli.materialdesign2.*;
+import app.vercel.originsd.oqteris.config.*;
 import app.vercel.originsd.oqteris.core.model.DocumentModel;
 import app.vercel.originsd.oqteris.crypto.signature.PdfSignatureInfo;
 import app.vercel.originsd.oqteris.pdf.model.PdfAnnotation;
 import app.vercel.originsd.oqteris.pdf.model.PdfBookmarkNode;
 import app.vercel.originsd.oqteris.pdf.model.PdfDocumentModel;
+import app.vercel.originsd.oqteris.pdf.model.PdfPageContent;
 import app.vercel.originsd.oqteris.pdf.render.PdfPageRenderer;
 import app.vercel.originsd.oqteris.pdf.render.PdfPageView;
 import app.vercel.originsd.oqteris.pdf.render.SignatureValidityAppearance;
@@ -29,6 +34,9 @@ import app.vercel.originsd.oqteris.ui.icon.AppIcons;
 import app.vercel.originsd.oqteris.ui.ribbon.MainWindowHost;
 import app.vercel.originsd.oqteris.update.UpdateCheckerService;
 
+import app.vercel.originsd.oqteris.pdf.print.PrintPreviewDialog;
+
+import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -69,6 +77,10 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private final Label searchResultLabel = new Label("");
     private int currentMatchIndex = 0;
     private final List<SearchResult> searchResults = new ArrayList<>();
+
+    private ViewMode currentViewMode = ViewMode.FIT_WIDTH;
+    private CursorMode currentCursorMode = CursorMode.SELECT;
+    private PageLayoutMode currentPageLayout = PageLayoutMode.CONTINUOUS;
 
     private double currentZoom = 1.0;
     private int userRotation = 0;
@@ -153,9 +165,18 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         // Lazy viewport rendering to keep large documents responsive
         scrollPane.vvalueProperty().addListener((obs, oldV, newV) -> updateVisiblePages());
-        scrollPane.viewportBoundsProperty().addListener((obs, oldB, newB) -> updateVisiblePages());
+        scrollPane.viewportBoundsProperty().addListener((obs, oldB, newB) -> {
+            updateVisiblePages();
+            if (currentViewMode == ViewMode.FIT_WIDTH && oldB != null && newB != null && Math.abs(oldB.getWidth() - newB.getWidth()) > 4) {
+                fitToWidth();
+            } else if (currentViewMode == ViewMode.FIT_PAGE && oldB != null && newB != null && Math.abs(oldB.getHeight() - newB.getHeight()) > 4) {
+                fitToPage();
+            }
+        });
 
+        UserSettings settings = UserSettingsService.getInstance().getSettings();
         setupHandToolInteractions();
+        setCursorMode(settings.getCursorMode());
         setCenter(scrollPane);
 
         // Sidebar
@@ -201,18 +222,80 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             if (handToolActive) {
                 scrollPane.setCursor(javafx.scene.Cursor.OPEN_HAND);
                 pagesContainer.setCursor(javafx.scene.Cursor.OPEN_HAND);
+            } else {
+                scrollPane.setCursor(javafx.scene.Cursor.DEFAULT);
+                pagesContainer.setCursor(javafx.scene.Cursor.DEFAULT);
             }
         });
     }
 
     public void setHandToolActive(boolean active) {
-        this.handToolActive = active;
-        if (active) {
+        setCursorMode(active ? CursorMode.HAND : CursorMode.SELECT);
+    }
+
+    public void setCursorMode(CursorMode mode) {
+        this.currentCursorMode = (mode != null) ? mode : CursorMode.SELECT;
+        this.handToolActive = (this.currentCursorMode == CursorMode.HAND);
+        for (PdfPageView pv : pageViews) {
+            pv.setHandToolActive(this.handToolActive);
+        }
+        if (this.handToolActive) {
             scrollPane.setCursor(javafx.scene.Cursor.OPEN_HAND);
             pagesContainer.setCursor(javafx.scene.Cursor.OPEN_HAND);
         } else {
             scrollPane.setCursor(javafx.scene.Cursor.DEFAULT);
             pagesContainer.setCursor(javafx.scene.Cursor.TEXT);
+        }
+        UserSettingsService.getInstance().update(s -> s.setCursorMode(this.currentCursorMode));
+    }
+
+    public CursorMode getCursorMode() {
+        return currentCursorMode;
+    }
+
+    public boolean isHandToolActive() {
+        return handToolActive;
+    }
+
+    private void setupPageViewSelection(PdfPageView pv) {
+        pv.setDocumentSupplier(() -> model.getPdDocument());
+        pv.setHandToolActive(handToolActive);
+        pv.setOnSelectionStarted(idx -> {
+            for (PdfPageView other : pageViews) {
+                if (other.getPageIndex() != idx) {
+                    other.clearSelection();
+                }
+            }
+        });
+        pv.setOnSignatureClicked(sig -> {
+            showSignatureProperties(sig);
+        });
+    }
+
+    public String extractTextFromPageRect(int pageIndex, double[] normRect) {
+        if (normRect == null || pageIndex < 0 || pageIndex >= model.getPageCount()) return "";
+        try {
+            PDPage page = model.getPdDocument().getPage(pageIndex);
+            PDRectangle mediaBox = page.getMediaBox();
+            if (mediaBox == null) mediaBox = PDRectangle.A4;
+            double pageW = mediaBox.getWidth();
+            double pageH = mediaBox.getHeight();
+
+            double x = Math.max(0, normRect[0] * pageW);
+            double y = Math.max(0, normRect[1] * pageH);
+            double w = Math.min(pageW - x, normRect[2] * pageW);
+            double h = Math.min(pageH - y, normRect[3] * pageH);
+
+            if (w <= 1 || h <= 1) return "";
+
+            PDFTextStripperByArea stripper = new PDFTextStripperByArea();
+            stripper.setSortByPosition(true);
+            stripper.addRegion("sel", new Rectangle2D.Double(x, y, w, h));
+            stripper.extractRegions(page);
+            String text = stripper.getTextForRegion("sel");
+            return text != null ? text.trim() : "";
+        } catch (Exception ex) {
+            return "";
         }
     }
 
@@ -251,6 +334,11 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         sideTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         sideTabPane.setPrefWidth(280);
 
+        UserSettings settings = UserSettingsService.getInstance().getSettings();
+        boolean open = settings.isSidebarOpen();
+        sideTabPane.setVisible(open);
+        sideTabPane.setManaged(open);
+
         // 1. Thumbnails Tab
         thumbScroll = new ScrollPane(thumbnailsBox);
         thumbScroll.getStyleClass().addAll("sidebar-scroll-pane", "thumbnails-scroll-pane");
@@ -263,8 +351,15 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         Tab thumbTab = new Tab("Thumbnails", thumbScroll);
 
         sideTabPane.getSelectionModel().selectedIndexProperty().addListener((obs, oldV, newV) -> {
-            if (newV != null && newV.intValue() == 0) {
-                updateVisibleThumbnails();
+            if (newV != null && newV.intValue() >= 0) {
+                if (newV.intValue() == 0) {
+                    updateVisibleThumbnails();
+                }
+                SidebarTab tab = SidebarTab.fromIndex(newV.intValue());
+                UserSettingsService.getInstance().update(s -> {
+                    s.setSidebarActiveTab(tab.getIndex());
+                    s.setSidebarTab(tab);
+                });
             }
         });
 
@@ -287,9 +382,14 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         sideTabPane.getTabs().addAll(thumbTab, bookmarksTab, sigTab);
 
-        // Auto-select signatures tab if document is signed!
+        // Auto-select signatures tab if document is signed, else select user's saved active tab
         if (!model.getSignatures().isEmpty()) {
             sideTabPane.getSelectionModel().select(sigTab);
+        } else {
+            SidebarTab savedTab = settings.getSidebarTab();
+            if (savedTab.getIndex() >= 0 && savedTab.getIndex() < sideTabPane.getTabs().size()) {
+                sideTabPane.getSelectionModel().select(savedTab.getIndex());
+            }
         }
     }
 
@@ -346,9 +446,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     private void applySignatures(PdfPageView pv) {
         pv.setSignatures(model.getSignatures(), userRotation, layeredSignatures);
         pv.setOnSignatureClicked(sig -> {
-            sideTabPane.setVisible(true);
-            sideTabPane.setManaged(true);
-            sideTabPane.getSelectionModel().select(2); // Signatures tab
+            showSignatureProperties(sig);
         });
     }
 
@@ -373,8 +471,16 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         currentKeepFirst = 0;
         currentKeepLast = Math.min(2, count - 1);
 
+        UserSettings settings = UserSettingsService.getInstance().getSettings();
+        this.currentPageLayout = settings.getPageLayout();
+        this.singlePageView = (this.currentPageLayout == PageLayoutMode.SINGLE_PAGE);
+
         for (int i = 0; i < count; i++) {
             PdfPageView pageView = new PdfPageView(i);
+            setupPageViewSelection(pageView);
+            boolean visible = !singlePageView || (i == 0);
+            pageView.setVisible(visible);
+            pageView.setManaged(visible);
             pageViews.add(pageView);
             pagesContainer.getChildren().add(pageView);
 
@@ -392,6 +498,16 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         // Load thumbnails lazily for visible slots only
         Platform.runLater(this::updateVisibleThumbnails);
+
+        // Apply user's preferred view mode (fit to width, fit to page, etc.)
+        Platform.runLater(() -> {
+            ViewMode vm = settings.getViewMode();
+            switch (vm) {
+                case FIT_PAGE -> fitToPage();
+                case ACTUAL_SIZE -> setActualSize();
+                default -> fitToWidth();
+            }
+        });
     }
 
     private void renderInitialPages() {
@@ -866,21 +982,36 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     public void setSinglePageView(boolean single) {
-        this.singlePageView = single;
+        setPageLayout(single ? PageLayoutMode.SINGLE_PAGE : PageLayoutMode.CONTINUOUS);
+    }
+
+    public void setPageLayout(PageLayoutMode layout) {
+        this.currentPageLayout = (layout != null) ? layout : PageLayoutMode.CONTINUOUS;
+        this.singlePageView = (this.currentPageLayout == PageLayoutMode.SINGLE_PAGE);
         for (int i = 0; i < pageViews.size(); i++) {
-            boolean visible = !single || (i == currentPage);
+            boolean visible = !singlePageView || (i == currentPage);
             pageViews.get(i).setVisible(visible);
             pageViews.get(i).setManaged(visible);
-            if (single && i != currentPage) {
+            if (singlePageView && i != currentPage) {
                 pageViews.get(i).unload();
             }
         }
-        if (single) {
+        if (singlePageView) {
             scrollPane.setVvalue(0);
             renderPageAsync(currentPage);
         } else {
             updateVisiblePages();
         }
+        UserSettingsService.getInstance().update(s -> s.setPageLayout(this.currentPageLayout));
+    }
+
+    public PageLayoutMode getPageLayout() {
+        return currentPageLayout;
+    }
+
+    public void selectSidebarTab(SidebarTab tab) {
+        if (tab == null) tab = SidebarTab.THUMBNAILS;
+        selectSidebarTab(tab.getIndex());
     }
 
     public void selectSidebarTab(int index) {
@@ -889,12 +1020,70 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         if (index >= 0 && index < sideTabPane.getTabs().size()) {
             sideTabPane.getSelectionModel().select(index);
         }
+        SidebarTab tab = SidebarTab.fromIndex(index);
+        UserSettingsService.getInstance().update(s -> {
+            s.setSidebarOpen(true);
+            s.setSidebarTab(tab);
+        });
     }
 
     public void toggleSidebar() {
         boolean next = !sideTabPane.isVisible();
         sideTabPane.setVisible(next);
         sideTabPane.setManaged(next);
+        UserSettingsService.getInstance().update(s -> s.setSidebarOpen(next));
+    }
+
+    public ViewMode getCurrentViewMode() {
+        return currentViewMode;
+    }
+
+    public void fitToWidth() {
+        this.currentViewMode = ViewMode.FIT_WIDTH;
+        if (model.getPageCount() <= 0) return;
+        try {
+            double vpWidth = scrollPane.getViewportBounds().getWidth();
+            if (vpWidth <= 50) vpWidth = scrollPane.getWidth();
+            if (vpWidth <= 50) vpWidth = 800;
+
+            double availWidth = Math.max(100, vpWidth - 36);
+            PDPage page = model.getPage(Math.max(0, currentPage));
+            PDRectangle mb = page != null ? page.getMediaBox() : null;
+            double pw = mb != null ? mb.getWidth() : 595.0;
+            if ((userRotation % 180) != 0 && mb != null) {
+                pw = mb.getHeight();
+            }
+            double targetZoom = Math.max(0.25, Math.min(4.0, availWidth / Math.max(1.0, pw)));
+            setZoom(targetZoom);
+            UserSettingsService.getInstance().update(s -> s.setViewMode(ViewMode.FIT_WIDTH));
+        } catch (Exception ignored) {}
+    }
+
+    public void fitToPage() {
+        this.currentViewMode = ViewMode.FIT_PAGE;
+        if (model.getPageCount() <= 0) return;
+        try {
+            double vpHeight = scrollPane.getViewportBounds().getHeight();
+            if (vpHeight <= 50) vpHeight = scrollPane.getHeight();
+            if (vpHeight <= 50) vpHeight = 600;
+
+            double availHeight = Math.max(100, vpHeight - 36);
+            PDPage page = model.getPage(Math.max(0, currentPage));
+            PDRectangle mb = page != null ? page.getMediaBox() : null;
+            double ph = mb != null ? mb.getHeight() : 842.0;
+            if ((userRotation % 180) != 0 && mb != null) {
+                ph = mb.getWidth();
+            }
+            double targetZoom = Math.max(0.25, Math.min(4.0, availHeight / Math.max(1.0, ph)));
+            setZoom(targetZoom);
+            UserSettingsService.getInstance().update(s -> s.setViewMode(ViewMode.FIT_PAGE));
+        } catch (Exception ignored) {}
+    }
+
+    public void setActualSize() {
+        this.currentViewMode = ViewMode.ACTUAL_SIZE;
+        setZoom(1.0);
+        UserSettingsService.getInstance().update(s -> s.setViewMode(ViewMode.ACTUAL_SIZE));
     }
 
     public void reverifySignatures() {
@@ -907,7 +1096,23 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     public void showSignatureDetails() {
-        selectSidebarTab(2);
+        showSignatureProperties(null);
+    }
+
+    public void showSignatureProperties(PdfSignatureInfo sig) {
+        if (sig == null) {
+            List<PdfSignatureInfo> sigs = model.getSignatures();
+            if (!sigs.isEmpty()) {
+                sig = sigs.get(0);
+            }
+        }
+        if (sig != null) {
+            Stage owner = (getScene() != null && getScene().getWindow() instanceof Stage s) ? s : null;
+            SignaturePropertiesDialog dialog = new SignaturePropertiesDialog(owner, sig, model, this::reverifySignatures);
+            dialog.show();
+        } else {
+            selectSidebarTab(2);
+        }
     }
 
     public void showPageProperties() {
@@ -1205,13 +1410,71 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     @Override
     public void copy() {
         try {
+            for (PdfPageView pv : pageViews) {
+                if (pv.getSelectedObject() != null) {
+                    PdfPageContent.PageObject obj = pv.getSelectedObject();
+                    javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+                    if (obj.type == PdfPageContent.ObjectType.IMAGE && obj.payload instanceof org.apache.pdfbox.pdmodel.graphics.image.PDImage pdImage) {
+                        java.awt.image.BufferedImage bimg = pdImage.getImage();
+                        if (bimg != null) {
+                            // Composite onto pure white background so transparent areas never appear black when pasted
+                            int w = bimg.getWidth();
+                            int h = bimg.getHeight();
+                            java.awt.image.BufferedImage rgbImg = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB);
+                            java.awt.Graphics2D g2 = rgbImg.createGraphics();
+                            g2.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                            g2.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+                            g2.setColor(java.awt.Color.WHITE);
+                            g2.fillRect(0, 0, w, h);
+                            g2.drawImage(bimg, 0, 0, null);
+                            g2.dispose();
+
+                            cc.putImage(javafx.embed.swing.SwingFXUtils.toFXImage(rgbImg, null));
+                        }
+                    } else if (obj.type == PdfPageContent.ObjectType.SHAPE) {
+                        try {
+                            Image pageImg = renderer.renderPage(pv.getPageIndex(), 2.0);
+                            if (pageImg != null) {
+                                double pw = model.getPage(pv.getPageIndex()).getMediaBox().getWidth();
+                                double ph = model.getPage(pv.getPageIndex()).getMediaBox().getHeight();
+                                double scaleX = pageImg.getWidth() / pw;
+                                double scaleY = pageImg.getHeight() / ph;
+                                int sx = (int) Math.max(0, obj.normX * pw * scaleX);
+                                int sy = (int) Math.max(0, obj.normY * ph * scaleY);
+                                int sw = (int) Math.min(pageImg.getWidth() - sx, obj.normW * pw * scaleX);
+                                int sh = (int) Math.min(pageImg.getHeight() - sy, obj.normH * ph * scaleY);
+                                if (sw > 0 && sh > 0) {
+                                    javafx.scene.image.PixelReader pr = pageImg.getPixelReader();
+                                    javafx.scene.image.WritableImage cropped = new javafx.scene.image.WritableImage(pr, sx, sy, sw, sh);
+                                    cc.putImage(cropped);
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                    if (pv.getSelectedText() != null && !pv.getSelectedText().isBlank()) {
+                        cc.putString(pv.getSelectedText());
+                    } else {
+                        cc.putString(obj.title);
+                    }
+                    javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+                    return;
+                }
+                if (pv.getSelectedText() != null && !pv.getSelectedText().isBlank()) {
+                    javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+                    cc.putString(pv.getSelectedText());
+                    javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+                    return;
+                }
+            }
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setStartPage(currentPage + 1);
             stripper.setEndPage(currentPage + 1);
             String pageText = stripper.getText(model.getPdDocument());
-            javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
-            cc.putString(pageText);
-            javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+            if (pageText != null && !pageText.isBlank()) {
+                javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+                cc.putString(pageText);
+                javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+            }
         } catch (Exception ignored) {
         }
     }
@@ -1219,6 +1482,24 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     @Override
     public void selectAll() {
         try {
+            if (currentPage >= 0 && currentPage < pageViews.size()) {
+                PdfPageView pv = pageViews.get(currentPage);
+                pv.ensurePageContent();
+                if (pv.getPageContent() != null && !pv.getPageContent().getTextLines().isEmpty()) {
+                    List<double[]> lineRects = new ArrayList<>();
+                    StringBuilder sb = new StringBuilder();
+                    for (PdfPageContent.TextLine line : pv.getPageContent().getTextLines()) {
+                        lineRects.add(new double[]{ line.normX, line.normY, line.normW, line.normH });
+                        if (sb.length() > 0) sb.append("\n");
+                        sb.append(line.text);
+                    }
+                    pv.setSelectedLineRects(lineRects, sb.toString());
+                    javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+                    cc.putString(sb.toString());
+                    javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+                    return;
+                }
+            }
             PDFTextStripper stripper = new PDFTextStripper();
             String fullText = stripper.getText(model.getPdDocument());
             javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
@@ -1230,26 +1511,15 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
     @Override
     public void print() {
-        javafx.print.PrinterJob job = javafx.print.PrinterJob.createPrinterJob();
-        if (job != null && job.showPrintDialog(getScene() != null ? getScene().getWindow() : null)) {
-            boolean success = true;
-            for (int p = 0; p < model.getPageCount(); p++) {
-                try {
-                    Image pageImg = renderer.renderPage(p, 2.0, userRotation);
-                    ImageView iv = new ImageView(pageImg);
-                    if (!job.printPage(iv)) {
-                        success = false;
-                        break;
-                    }
-                } catch (Exception ex) {
-                    success = false;
-                    break;
-                }
-            }
-            if (success) {
-                job.endJob();
-            }
-        }
+        javafx.stage.Window owner = (getScene() != null) ? getScene().getWindow() : null;
+        PrintPreviewDialog dialog = new PrintPreviewDialog(
+                owner,
+                model.getPdDocument(),
+                renderer,
+                userRotation,
+                currentPage
+        );
+        dialog.showAndWait();
     }
 
     @Override
