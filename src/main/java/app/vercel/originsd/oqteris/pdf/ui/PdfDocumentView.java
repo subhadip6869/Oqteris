@@ -22,6 +22,7 @@ import app.vercel.originsd.oqteris.crypto.signature.PdfSignatureInfo;
 import app.vercel.originsd.oqteris.pdf.model.PdfAnnotation;
 import app.vercel.originsd.oqteris.pdf.model.PdfBookmarkNode;
 import app.vercel.originsd.oqteris.pdf.model.PdfDocumentModel;
+import app.vercel.originsd.oqteris.pdf.model.PdfPageContent;
 import app.vercel.originsd.oqteris.pdf.render.PdfPageRenderer;
 import app.vercel.originsd.oqteris.pdf.render.PdfPageView;
 import app.vercel.originsd.oqteris.pdf.render.SignatureValidityAppearance;
@@ -230,6 +231,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     }
 
     private void setupPageViewSelection(PdfPageView pv) {
+        pv.setDocumentSupplier(() -> model.getPdDocument());
         pv.setHandToolActive(handToolActive);
         pv.setOnSelectionStarted(idx -> {
             for (PdfPageView other : pageViews) {
@@ -238,9 +240,8 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
                 }
             }
         });
-        pv.setOnSelectionChanged((idx, normRect) -> {
-            String text = extractTextFromPageRect(idx, normRect);
-            pv.setSelectedText(text);
+        pv.setOnSignatureClicked(sig -> {
+            sideTabPane.getSelectionModel().select(2);
         });
     }
 
@@ -1262,23 +1263,70 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     public void copy() {
         try {
             for (PdfPageView pv : pageViews) {
-                if (pv.getSelectionRect() != null) {
-                    String selected = pv.getSelectedText();
-                    if (selected != null && !selected.isBlank()) {
-                        javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
-                        cc.putString(selected);
-                        javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
-                        return;
+                if (pv.getSelectedObject() != null) {
+                    PdfPageContent.PageObject obj = pv.getSelectedObject();
+                    javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+                    if (obj.type == PdfPageContent.ObjectType.IMAGE && obj.payload instanceof org.apache.pdfbox.pdmodel.graphics.image.PDImage pdImage) {
+                        java.awt.image.BufferedImage bimg = pdImage.getImage();
+                        if (bimg != null) {
+                            // Composite onto pure white background so transparent areas never appear black when pasted
+                            int w = bimg.getWidth();
+                            int h = bimg.getHeight();
+                            java.awt.image.BufferedImage rgbImg = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB);
+                            java.awt.Graphics2D g2 = rgbImg.createGraphics();
+                            g2.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                            g2.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+                            g2.setColor(java.awt.Color.WHITE);
+                            g2.fillRect(0, 0, w, h);
+                            g2.drawImage(bimg, 0, 0, null);
+                            g2.dispose();
+
+                            cc.putImage(javafx.embed.swing.SwingFXUtils.toFXImage(rgbImg, null));
+                        }
+                    } else if (obj.type == PdfPageContent.ObjectType.SHAPE) {
+                        try {
+                            Image pageImg = renderer.renderPage(pv.getPageIndex(), 2.0);
+                            if (pageImg != null) {
+                                double pw = model.getPage(pv.getPageIndex()).getMediaBox().getWidth();
+                                double ph = model.getPage(pv.getPageIndex()).getMediaBox().getHeight();
+                                double scaleX = pageImg.getWidth() / pw;
+                                double scaleY = pageImg.getHeight() / ph;
+                                int sx = (int) Math.max(0, obj.normX * pw * scaleX);
+                                int sy = (int) Math.max(0, obj.normY * ph * scaleY);
+                                int sw = (int) Math.min(pageImg.getWidth() - sx, obj.normW * pw * scaleX);
+                                int sh = (int) Math.min(pageImg.getHeight() - sy, obj.normH * ph * scaleY);
+                                if (sw > 0 && sh > 0) {
+                                    javafx.scene.image.PixelReader pr = pageImg.getPixelReader();
+                                    javafx.scene.image.WritableImage cropped = new javafx.scene.image.WritableImage(pr, sx, sy, sw, sh);
+                                    cc.putImage(cropped);
+                                }
+                            }
+                        } catch (Exception ignored) {}
                     }
+                    if (pv.getSelectedText() != null && !pv.getSelectedText().isBlank()) {
+                        cc.putString(pv.getSelectedText());
+                    } else {
+                        cc.putString(obj.title);
+                    }
+                    javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+                    return;
+                }
+                if (pv.getSelectedText() != null && !pv.getSelectedText().isBlank()) {
+                    javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+                    cc.putString(pv.getSelectedText());
+                    javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+                    return;
                 }
             }
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setStartPage(currentPage + 1);
             stripper.setEndPage(currentPage + 1);
             String pageText = stripper.getText(model.getPdDocument());
-            javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
-            cc.putString(pageText);
-            javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+            if (pageText != null && !pageText.isBlank()) {
+                javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+                cc.putString(pageText);
+                javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+            }
         } catch (Exception ignored) {
         }
     }
@@ -1286,17 +1334,29 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     @Override
     public void selectAll() {
         try {
+            if (currentPage >= 0 && currentPage < pageViews.size()) {
+                PdfPageView pv = pageViews.get(currentPage);
+                pv.ensurePageContent();
+                if (pv.getPageContent() != null && !pv.getPageContent().getTextLines().isEmpty()) {
+                    List<double[]> lineRects = new ArrayList<>();
+                    StringBuilder sb = new StringBuilder();
+                    for (PdfPageContent.TextLine line : pv.getPageContent().getTextLines()) {
+                        lineRects.add(new double[]{ line.normX, line.normY, line.normW, line.normH });
+                        if (sb.length() > 0) sb.append("\n");
+                        sb.append(line.text);
+                    }
+                    pv.setSelectedLineRects(lineRects, sb.toString());
+                    javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+                    cc.putString(sb.toString());
+                    javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+                    return;
+                }
+            }
             PDFTextStripper stripper = new PDFTextStripper();
             String fullText = stripper.getText(model.getPdDocument());
             javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
             cc.putString(fullText);
             javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
-
-            if (currentPage >= 0 && currentPage < pageViews.size()) {
-                PdfPageView pv = pageViews.get(currentPage);
-                pv.setSelectionRect(new double[]{0.0, 0.0, 1.0, 1.0});
-                pv.setSelectedText(fullText);
-            }
         } catch (Exception ignored) {
         }
     }
