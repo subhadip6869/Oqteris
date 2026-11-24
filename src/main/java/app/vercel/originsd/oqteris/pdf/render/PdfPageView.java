@@ -18,12 +18,16 @@ import app.vercel.originsd.oqteris.crypto.signature.PdfSignatureInfo;
 import app.vercel.originsd.oqteris.crypto.signature.PdfSignatureVerifier;
 import app.vercel.originsd.oqteris.crypto.signature.SignatureVerificationStatus;
 import app.vercel.originsd.oqteris.pdf.model.PdfAnnotation;
+import app.vercel.originsd.oqteris.pdf.model.PdfPageContent;
+import org.apache.pdfbox.pdmodel.PDDocument;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Visual node representing an individual PDF page on the document surface.
@@ -52,6 +56,21 @@ public class PdfPageView extends StackPane {
     // Signatures whose own appearance already shows the validity mark (layered appearance); no overlay needed
     private Set<PdfSignatureInfo> layeredSignatures = Collections.emptySet();
 
+    // Selection state
+    private double dragStartX;
+    private double dragStartY;
+    private boolean isDraggingSelection = false;
+    private final List<double[]> selectedLineRects = new ArrayList<>();
+    private PdfPageContent.PageObject selectedObject = null;
+    private double[] selectionRect = null; // Legacy [x, y, w, h]
+    private String selectedText = null;
+    private boolean handToolActive = false;
+    private Consumer<Integer> onSelectionStarted;
+    private BiConsumer<Integer, double[]> onSelectionChanged;
+    private Consumer<PdfPageContent.PageObject> onObjectSelected;
+    private Supplier<PDDocument> documentSupplier;
+    private PdfPageContent pageContent;
+
     public PdfPageView(int pageIndex) {
         this.pageIndex = pageIndex;
         this.loadingLabel = new Label("Loading page " + (pageIndex + 1) + "...");
@@ -64,6 +83,7 @@ public class PdfPageView extends StackPane {
         setStyle("-fx-background-color: #f8fafc; -fx-border-color: #cbd5e1; -fx-border-width: 1px;");
 
         loadingLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #888888;");
+        setCursor(javafx.scene.Cursor.TEXT);
 
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
@@ -72,24 +92,230 @@ public class PdfPageView extends StackPane {
         // Only ImageView and label are permanent children; Canvas is attached lazily
         getChildren().addAll(loadingLabel, imageView);
 
-        // Clicking a signature field opens its details
-        setOnMouseClicked(e -> {
-            if (onSignatureClicked == null || overlayCanvas == null) return;
-            double pw = overlayCanvas.getWidth();
-            double ph = overlayCanvas.getHeight();
-            // The canvas is centered in the StackPane; convert to canvas coordinates
+        // Hovering over page: dynamic cursor (HAND over clickable objects/signatures, TEXT over text)
+        setOnMouseMoved(e -> {
+            if (handToolActive) {
+                setCursor(javafx.scene.Cursor.OPEN_HAND);
+                return;
+            }
+            double pw = overlayCanvas != null ? overlayCanvas.getWidth() : getWidth();
+            double ph = overlayCanvas != null ? overlayCanvas.getHeight() : getHeight();
+            if (pw <= 0 || ph <= 0) {
+                setCursor(javafx.scene.Cursor.TEXT);
+                return;
+            }
             double offX = (getWidth() - pw) / 2.0;
             double offY = (getHeight() - ph) / 2.0;
-            double mx = e.getX() - offX;
-            double my = e.getY() - offY;
-            for (PdfSignatureInfo s : pageSignatures) {
-                double[] r = signatureRect(s);
-                if (mx >= r[0] * pw && mx <= (r[0] + r[2]) * pw
-                        && my >= r[1] * ph && my <= (r[1] + r[3]) * ph) {
-                    onSignatureClicked.accept(s);
+            double normX = (e.getX() - offX) / pw;
+            double normY = (e.getY() - offY) / ph;
+
+            ensurePageContent();
+
+            // 1. Signature fields always take precedence and show HAND cursor
+            if (hitTestSignature(normX, normY) != null) {
+                setCursor(javafx.scene.Cursor.HAND);
+                return;
+            }
+
+            // 2. Text lines show TEXT cursor
+            if (pageContent != null) {
+                PdfPageContent.TextLine line = pageContent.hitTestLine(normX, normY);
+                if (line != null) {
+                    setCursor(javafx.scene.Cursor.TEXT);
+                    return;
+                }
+                PdfPageContent.PageObject obj = pageContent.hitTestObject(normX, normY);
+                if (obj != null) {
+                    setCursor(javafx.scene.Cursor.HAND);
                     return;
                 }
             }
+            setCursor(javafx.scene.Cursor.TEXT);
+        });
+
+        setOnMouseExited(e -> {
+            if (!handToolActive && !isDraggingSelection) {
+                setCursor(javafx.scene.Cursor.TEXT);
+            }
+        });
+
+        // Mouse pressed: records origin and prepares for selection or object click
+        setOnMousePressed(e -> {
+            if (handToolActive) return;
+            if (e.getButton() != javafx.scene.input.MouseButton.PRIMARY) return;
+
+            double pw = overlayCanvas != null ? overlayCanvas.getWidth() : getWidth();
+            double ph = overlayCanvas != null ? overlayCanvas.getHeight() : getHeight();
+            double offX = (getWidth() - pw) / 2.0;
+            double offY = (getHeight() - ph) / 2.0;
+
+            dragStartX = e.getX() - offX;
+            dragStartY = e.getY() - offY;
+            isDraggingSelection = false;
+
+            ensurePageContent();
+
+            if (onSelectionStarted != null) {
+                onSelectionStarted.accept(pageIndex);
+            }
+
+            e.consume();
+        });
+
+        // Mouse dragged: line-by-line text selection highlight in real time
+        setOnMouseDragged(e -> {
+            if (handToolActive) return;
+            if (e.getButton() != javafx.scene.input.MouseButton.PRIMARY) return;
+
+            double pw = overlayCanvas != null ? overlayCanvas.getWidth() : getWidth();
+            double ph = overlayCanvas != null ? overlayCanvas.getHeight() : getHeight();
+            if (pw <= 0 || ph <= 0) return;
+
+            double offX = (getWidth() - pw) / 2.0;
+            double offY = (getHeight() - ph) / 2.0;
+
+            double curX = e.getX() - offX;
+            double curY = e.getY() - offY;
+
+            double dist = Math.hypot(curX - dragStartX, curY - dragStartY);
+            if (dist > 3.0) {
+                isDraggingSelection = true;
+                selectedObject = null; // Dragging text clears object selection
+
+                ensurePageContent();
+                if (pageContent != null) {
+                    double normStartX = Math.max(0.0, Math.min(1.0, dragStartX / pw));
+                    double normStartY = Math.max(0.0, Math.min(1.0, dragStartY / ph));
+                    double normCurX = Math.max(0.0, Math.min(1.0, curX / pw));
+                    double normCurY = Math.max(0.0, Math.min(1.0, curY / ph));
+
+                    PdfPageContent.SelectionResult res = pageContent.computeSelection(normStartX, normStartY, normCurX, normCurY);
+                    selectedLineRects.clear();
+                    selectedLineRects.addAll(res.lineRects);
+                    selectedText = res.text;
+                    selectionRect = !selectedLineRects.isEmpty() ? selectedLineRects.get(0) : null;
+                } else {
+                    double minX = Math.max(0, Math.min(dragStartX, curX));
+                    double maxX = Math.min(pw, Math.max(dragStartX, curX));
+                    double minY = Math.max(0, Math.min(dragStartY, curY));
+                    double maxY = Math.min(ph, Math.max(dragStartY, curY));
+                    selectedLineRects.clear();
+                    selectedLineRects.add(new double[]{ minX / pw, minY / ph, (maxX - minX) / pw, (maxY - minY) / ph });
+                    selectionRect = selectedLineRects.get(0);
+                }
+                redrawOverlay();
+            }
+
+            setCursor(javafx.scene.Cursor.TEXT);
+            e.consume();
+        });
+
+        // Mouse released: finalizes line-by-line selection or handles object selection on click
+        setOnMouseReleased(e -> {
+            if (handToolActive) return;
+            if (e.getButton() != javafx.scene.input.MouseButton.PRIMARY) return;
+
+            double pw = overlayCanvas != null ? overlayCanvas.getWidth() : getWidth();
+            double ph = overlayCanvas != null ? overlayCanvas.getHeight() : getHeight();
+            if (pw <= 0 || ph <= 0) return;
+
+            double offX = (getWidth() - pw) / 2.0;
+            double offY = (getHeight() - ph) / 2.0;
+
+            if (isDraggingSelection) {
+                isDraggingSelection = false;
+                if (!selectedLineRects.isEmpty()) {
+                    selectionRect = selectedLineRects.get(0);
+                    if (onSelectionChanged != null) {
+                        onSelectionChanged.accept(pageIndex, selectionRect);
+                    }
+                }
+            } else {
+                // Click (drag distance <= 3px): select object on click or word on double click
+                double clickX = e.getX() - offX;
+                double clickY = e.getY() - offY;
+                double normX = clickX / pw;
+                double normY = clickY / ph;
+
+                ensurePageContent();
+
+                // 1. Digital Signatures: Click opens signature properties dialog, NEVER select signature as object!
+                PdfSignatureInfo hitSig = hitTestSignature(normX, normY);
+                if (hitSig != null) {
+                    selectedObject = null;
+                    clearSelection();
+                    if (onSignatureClicked != null) {
+                        onSignatureClicked.accept(hitSig);
+                    }
+                    e.consume();
+                    return;
+                }
+
+                // 2. Text lines are TEXT, NEVER objects! If clicked over text:
+                PdfPageContent.TextLine hitLine = pageContent != null ? pageContent.hitTestLine(normX, normY) : null;
+                if (hitLine != null) {
+                    selectedObject = null;
+                    if (e.getClickCount() == 2) {
+                        // Double click: select word as text highlight
+                        PdfPageContent.WordBox wb = pageContent.hitTestWord(normX, normY);
+                        if (wb != null) {
+                            selectedLineRects.clear();
+                            selectedLineRects.add(new double[]{ wb.normX, wb.normY, wb.normW, wb.normH });
+                            selectedText = wb.word;
+                            selectionRect = selectedLineRects.get(0);
+                            redrawOverlay();
+                            if (onSelectionChanged != null) {
+                                onSelectionChanged.accept(pageIndex, selectionRect);
+                            }
+                        } else {
+                            clearSelection();
+                        }
+                    } else if (e.getClickCount() == 3) {
+                        // Triple click: select line as text highlight
+                        selectedLineRects.clear();
+                        selectedLineRects.add(new double[]{ hitLine.normX, hitLine.normY, hitLine.normW, hitLine.normH });
+                        selectedText = hitLine.text;
+                        selectionRect = selectedLineRects.get(0);
+                        redrawOverlay();
+                        if (onSelectionChanged != null) {
+                            onSelectionChanged.accept(pageIndex, selectionRect);
+                        }
+                    } else {
+                        // Single click on text: clear any object or text selection
+                        clearSelection();
+                    }
+                    e.consume();
+                    return;
+                }
+
+                // 3. If NOT signature and NOT text, check if an actual selectable object was clicked (Image, Shape)
+                PdfPageContent.PageObject hitObj = pageContent != null ? pageContent.hitTestObject(normX, normY) : null;
+                if (hitObj != null) {
+                    if (hitObj.type == PdfPageContent.ObjectType.SIGNATURE) {
+                        // Safety fallback: if hitObj is a signature, do NOT select it
+                        selectedObject = null;
+                        clearSelection();
+                        if (onSignatureClicked != null && hitObj.payload instanceof PdfSignatureInfo sig) {
+                            onSignatureClicked.accept(sig);
+                        }
+                    } else {
+                        selectedObject = hitObj;
+                        selectedLineRects.clear();
+                        selectedText = hitObj.title;
+                        selectionRect = hitObj.getBounds();
+                        redrawOverlay();
+
+                        if (onObjectSelected != null) {
+                            onObjectSelected.accept(hitObj);
+                        }
+                    }
+                } else {
+                    // Clicked empty page space: clear selection
+                    clearSelection();
+                }
+            }
+
+            e.consume();
         });
     }
 
@@ -128,6 +354,11 @@ public class PdfPageView extends StackPane {
 
             searchHighlights.clear();
             pageSignatures.clear();
+            pageContent = null;
+            selectedObject = null;
+            selectedLineRects.clear();
+            selectionRect = null;
+            selectedText = null;
 
             setStyle("-fx-background-color: #f8fafc; -fx-border-color: #cbd5e1; -fx-border-width: 1px;");
         }
@@ -183,10 +414,12 @@ public class PdfPageView extends StackPane {
             overlayCanvas.setWidth(w);
             overlayCanvas.setHeight(h);
         }
+        overlayCanvas.toFront();
     }
 
     public void setAnnotations(List<PdfAnnotation> annots) {
         annotations.clear();
+        pageContent = null;
         if (annots != null) {
             for (PdfAnnotation a : annots) {
                 if (a.getPageIndex() == pageIndex) {
@@ -212,6 +445,7 @@ public class PdfPageView extends StackPane {
      */
     public void setSignatures(List<PdfSignatureInfo> sigs, int userRotation, Set<PdfSignatureInfo> layered) {
         pageSignatures.clear();
+        pageContent = null;
         layeredSignatures = layered != null ? layered : Collections.emptySet();
         viewRotation = ((userRotation % 360) + 360) % 360;
         if (sigs != null) {
@@ -233,9 +467,38 @@ public class PdfPageView extends StackPane {
         return PdfSignatureVerifier.rotateNormRect(v[0], v[1], v[2], v[3], viewRotation);
     }
 
+    /**
+     * Hit tests digital signatures on this page at normalized coordinates.
+     */
+    public PdfSignatureInfo hitTestSignature(double normX, double normY) {
+        if (!pageSignatures.isEmpty()) {
+            for (PdfSignatureInfo s : pageSignatures) {
+                double[] r = signatureRect(s);
+                if (normX >= r[0] && normX <= r[0] + r[2] && normY >= r[1] && normY <= r[1] + r[3]) {
+                    return s;
+                }
+            }
+        }
+        if (pageContent != null) {
+            PdfPageContent.PageObject sigObj = pageContent.hitTestSignature(normX, normY);
+            if (sigObj != null && sigObj.payload instanceof PdfSignatureInfo sig) {
+                return sig;
+            }
+        }
+        return null;
+    }
+
     public void redrawOverlay() {
         // Canvas might not exist yet (page not loaded) or was removed on unload
-        if (overlayCanvas == null) return;
+        if (overlayCanvas == null) {
+            double w = getWidth() > 0 ? getWidth() : getPrefWidth();
+            double h = getHeight() > 0 ? getHeight() : getPrefHeight();
+            if (w > 0 && h > 0) {
+                ensureCanvas(w, h);
+            } else {
+                return;
+            }
+        }
 
         GraphicsContext gc = overlayCanvas.getGraphicsContext2D();
         double pageW = overlayCanvas.getWidth();
@@ -329,5 +592,186 @@ public class PdfPageView extends StackPane {
                 gc.strokeLine(cx - u, cy + u, cx + u, cy - u);
             }
         }
+
+        // 4. Draw active line-by-line text selection highlights
+        if (!selectedLineRects.isEmpty()) {
+            gc.setFill(Color.rgb(37, 99, 235, 0.35));
+            for (double[] rect : selectedLineRects) {
+                if (rect != null && rect.length >= 4 && rect[2] > 0 && rect[3] > 0) {
+                    double sx = rect[0] * pageW;
+                    double sy = rect[1] * pageH;
+                    double sw = rect[2] * pageW;
+                    double sh = rect[3] * pageH;
+                    gc.fillRect(sx, sy, sw, sh);
+                }
+            }
+        } else if (selectionRect != null && selectionRect.length >= 4 && selectionRect[2] > 0 && selectionRect[3] > 0) {
+            double sx = selectionRect[0] * pageW;
+            double sy = selectionRect[1] * pageH;
+            double sw = selectionRect[2] * pageW;
+            double sh = selectionRect[3] * pageH;
+
+            // Semi-transparent blue selection fill
+            gc.setFill(Color.rgb(37, 99, 235, 0.35));
+            gc.fillRect(sx, sy, sw, sh);
+
+            // Crisp selection border
+            gc.setStroke(Color.rgb(37, 99, 235, 0.90));
+            gc.setLineWidth(1.0);
+            gc.strokeRect(sx, sy, sw, sh);
+        }
+
+        // 5. Draw active object selection (with outline, 8 handles, and title badge)
+        if (selectedObject != null) {
+            double ox = selectedObject.normX * pageW;
+            double oy = selectedObject.normY * pageH;
+            double ow = selectedObject.normW * pageW;
+            double oh = selectedObject.normH * pageH;
+
+            // Semi-transparent blue fill
+            gc.setFill(Color.rgb(37, 99, 235, 0.12));
+            gc.fillRect(ox, oy, ow, oh);
+
+            // Crisp selection border
+            gc.setStroke(Color.rgb(37, 99, 235, 0.95));
+            gc.setLineWidth(1.5);
+            gc.strokeRect(ox, oy, ow, oh);
+
+            // 8 Selection Handles
+            double hw = 6;
+            double hh = 6;
+            double[] hx = { ox, ox + ow / 2, ox + ow, ox, ox + ow, ox, ox + ow / 2, ox + ow };
+            double[] hy = { oy, oy, oy, oy + oh / 2, oy + oh / 2, oy + oh, oy + oh, oy + oh };
+            for (int k = 0; k < 8; k++) {
+                gc.setFill(Color.WHITE);
+                gc.fillRect(hx[k] - hw / 2, hy[k] - hh / 2, hw, hh);
+                gc.setStroke(Color.rgb(37, 99, 235));
+                gc.setLineWidth(1.2);
+                gc.strokeRect(hx[k] - hw / 2, hy[k] - hh / 2, hw, hh);
+            }
+
+            // Object title badge above the selection
+            if (selectedObject.title != null && !selectedObject.title.isBlank()) {
+                gc.setFont(Font.font("System", FontWeight.BOLD, 10));
+                double textWidth = selectedObject.title.length() * 6.5 + 14;
+                double badgeX = ox;
+                double badgeY = Math.max(2, oy - 18);
+                gc.setFill(Color.rgb(37, 99, 235, 0.90));
+                gc.fillRoundRect(badgeX, badgeY, textWidth, 16, 4, 4);
+                gc.setFill(Color.WHITE);
+                gc.setTextAlign(TextAlignment.LEFT);
+                gc.setTextBaseline(VPos.CENTER);
+                gc.fillText(selectedObject.title, badgeX + 6, badgeY + 8);
+            }
+        }
+    }
+
+    public void setDocumentSupplier(Supplier<PDDocument> supplier) {
+        this.documentSupplier = supplier;
+    }
+
+    public void ensurePageContent() {
+        if (pageContent == null && documentSupplier != null) {
+            PDDocument doc = documentSupplier.get();
+            if (doc != null) {
+                pageContent = PdfPageContent.extract(doc, pageIndex, pageSignatures, annotations);
+            }
+        }
+    }
+
+    public PdfPageContent getPageContent() {
+        return pageContent;
+    }
+
+    public void setPageContent(PdfPageContent content) {
+        this.pageContent = content;
+    }
+
+    public PdfPageContent.PageObject getSelectedObject() {
+        return selectedObject;
+    }
+
+    public void setSelectedObject(PdfPageContent.PageObject obj) {
+        this.selectedObject = obj;
+        this.selectedLineRects.clear();
+        this.selectedText = obj != null ? obj.title : null;
+        this.selectionRect = obj != null ? obj.getBounds() : null;
+        redrawOverlay();
+    }
+
+    public List<double[]> getSelectedLineRects() {
+        return Collections.unmodifiableList(selectedLineRects);
+    }
+
+    public void setSelectedLineRects(List<double[]> rects, String text) {
+        this.selectedObject = null;
+        this.selectedLineRects.clear();
+        if (rects != null) {
+            this.selectedLineRects.addAll(rects);
+        }
+        this.selectedText = text;
+        this.selectionRect = !this.selectedLineRects.isEmpty() ? this.selectedLineRects.get(0) : null;
+        redrawOverlay();
+    }
+
+    public void setOnObjectSelected(Consumer<PdfPageContent.PageObject> callback) {
+        this.onObjectSelected = callback;
+    }
+
+    public double[] getSelectionRect() {
+        if (selectedObject != null) {
+            return selectedObject.getBounds();
+        }
+        if (!selectedLineRects.isEmpty()) {
+            return selectedLineRects.get(0);
+        }
+        return selectionRect;
+    }
+
+    public void setSelectionRect(double[] rect) {
+        this.selectedObject = null;
+        this.selectedLineRects.clear();
+        this.selectionRect = rect;
+        if (rect != null) {
+            this.selectedLineRects.add(rect);
+        }
+        redrawOverlay();
+    }
+
+    public String getSelectedText() {
+        return selectedText;
+    }
+
+    public void setSelectedText(String text) {
+        this.selectedText = text;
+    }
+
+    public void clearSelection() {
+        this.selectedObject = null;
+        this.selectedLineRects.clear();
+        this.selectionRect = null;
+        this.selectedText = null;
+        redrawOverlay();
+    }
+
+    public void setHandToolActive(boolean active) {
+        this.handToolActive = active;
+        if (active) {
+            setCursor(javafx.scene.Cursor.OPEN_HAND);
+        } else {
+            setCursor(javafx.scene.Cursor.TEXT);
+        }
+    }
+
+    public boolean isHandToolActive() {
+        return handToolActive;
+    }
+
+    public void setOnSelectionStarted(Consumer<Integer> callback) {
+        this.onSelectionStarted = callback;
+    }
+
+    public void setOnSelectionChanged(BiConsumer<Integer, double[]> callback) {
+        this.onSelectionChanged = callback;
     }
 }

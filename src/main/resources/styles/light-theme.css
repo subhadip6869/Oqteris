@@ -27,6 +27,14 @@
 
     -color-badge-offline-bg: #E6F7ED;
     -color-badge-offline-text: #166534;
+
+    /* JavaFX Base & Inner Background tokens for universal Light Mode */
+    -fx-base: #F5F7FB;
+    -fx-background: #F5F7FB;
+    -fx-control-inner-background: #FFFFFF;
+    -fx-control-inner-background-alt: #EDF1F8;
+    -fx-text-base-color: #172033;
+    -fx-text-inner-color: #172033;
 }
 
 /* --- Ribbon Toolbar (Light Theme) --- */
@@ -504,4 +512,82 @@
     -fx-border-color: #DCE2EC;
     -fx-border-width: 1px 0 0 0;
     -fx-text-fill: #64748B;
+}
+
+/* --- Universal ScrollPane, TreeView & TextArea (Light Mode) --- */
+.tab-pane > .tab-content-area {
+    -fx-background-color: #FFFFFF !important;
+}
+
+.scroll-pane {
+    -fx-background-color: transparent !important;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: transparent !important;
+}
+
+.tree-view {
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: #DCE2EC !important;
+    -fx-border-radius: 6px !important;
+    -fx-background-radius: 6px !important;
+}
+
+.tree-view .tree-cell {
+    -fx-background-color: transparent !important;
+    -fx-text-fill: #172033 !important;
+}
+
+.tree-view .tree-cell:hover {
+    -fx-background-color: #E8EEFF !important;
+}
+
+.tree-view .tree-cell:selected {
+    -fx-background-color: #E8EEFF !important;
+    -fx-text-fill: #3659C9 !important;
+}
+
+.text-area {
+    -fx-background-color: #FFFFFF !important;
+    -fx-text-fill: #172033 !important;
+    -fx-border-color: #DCE2EC !important;
+    -fx-border-radius: 6px !important;
+    -fx-background-radius: 6px !important;
+}
+
+.text-area .content {
+    -fx-background-color: #FFFFFF !important;
+    -fx-background-radius: 6px !important;
+}
+
+/* --- Signature Properties Dialog (Light Mode) --- */
+.signature-properties-dialog {
+    -fx-background-color: #FFFFFF !important;
+}
+
+.signature-properties-dialog .tab-pane,
+.signature-properties-dialog .tab-pane > .tab-content-area {
+    -fx-background-color: #FFFFFF !important;
+}
+
+.signature-summary-scroll,
+.signature-summary-scroll > .viewport,
+.signature-summary-grid,
+.signature-doc-tab,
+.signature-cert-tab {
+    -fx-background-color: #FFFFFF !important;
+    -fx-background: #FFFFFF !important;
+}
+
+.signature-chain-tree,
+.signature-chain-tree .tree-cell {
+    -fx-background-color: #F8FAFC !important;
+    -fx-text-fill: #172033 !important;
+}
+
+.signature-cert-area,
+.signature-cert-area .content {
+    -fx-background-color: #F8FAFC !important;
+    -fx-text-fill: #172033 !important;
 }

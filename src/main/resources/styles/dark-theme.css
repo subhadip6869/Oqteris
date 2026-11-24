@@ -27,6 +27,14 @@
 
     -color-badge-offline-bg: #133D29;
     -color-badge-offline-text: #4ADE80;
+
+    /* JavaFX Base & Inner Background tokens for universal Dark Mode */
+    -fx-base: #0f172a;
+    -fx-background: #090d16;
+    -fx-control-inner-background: #0f172a;
+    -fx-control-inner-background-alt: #1e293b;
+    -fx-text-base-color: #EDF2FA;
+    -fx-text-inner-color: #EDF2FA;
 }
 
 /* --- Menu Bar & Menus (Dark) --- */
@@ -265,6 +273,11 @@
 .document-tab-pane,
 .tab-pane {
     -fx-background-color: #0b0f19;
+}
+
+.document-tab-pane > .tab-content-area,
+.tab-pane > .tab-content-area {
+    -fx-background-color: #0f172a !important;
 }
 
 .document-tab-pane > .tab-header-area,
@@ -591,4 +604,90 @@
     -fx-border-color: #1e293b;
     -fx-border-width: 1px 0 0 0;
     -fx-text-fill: #94a3b8;
+}
+
+/* --- Universal ScrollPane, TreeView & TextArea (Dark Mode) --- */
+.scroll-pane {
+    -fx-background-color: transparent !important;
+    -fx-background: transparent !important;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: transparent !important;
+    -fx-background: transparent !important;
+}
+
+.tree-view {
+    -fx-background-color: #1e293b !important;
+    -fx-border-color: #334157 !important;
+    -fx-border-radius: 6px !important;
+    -fx-background-radius: 6px !important;
+}
+
+.tree-view .tree-cell {
+    -fx-background-color: transparent !important;
+    -fx-text-fill: #EDF2FA !important;
+}
+
+.tree-view .tree-cell:hover {
+    -fx-background-color: #24355E !important;
+}
+
+.tree-view .tree-cell:selected {
+    -fx-background-color: #24355E !important;
+    -fx-text-fill: #7B9CF8 !important;
+}
+
+.text-area {
+    -fx-background-color: #1e293b !important;
+    -fx-text-fill: #EDF2FA !important;
+    -fx-border-color: #334157 !important;
+    -fx-border-radius: 6px !important;
+    -fx-background-radius: 6px !important;
+}
+
+.text-area .content {
+    -fx-background-color: #1e293b !important;
+    -fx-background-radius: 6px !important;
+}
+
+.text-area:focused {
+    -fx-border-color: #5B82F6 !important;
+}
+
+/* --- Signature Properties Dialog (Dark Mode) --- */
+.signature-properties-dialog {
+    -fx-background-color: #0f172a !important;
+}
+
+.signature-properties-dialog .tab-pane,
+.signature-properties-dialog .tab-pane > .tab-content-area {
+    -fx-background-color: #0f172a !important;
+}
+
+.signature-summary-scroll,
+.signature-summary-scroll > .viewport,
+.signature-summary-grid,
+.signature-doc-tab,
+.signature-cert-tab {
+    -fx-background-color: #0f172a !important;
+    -fx-background: #0f172a !important;
+}
+
+.signature-chain-tree,
+.signature-chain-tree .tree-cell {
+    -fx-background-color: #1e293b !important;
+    -fx-text-fill: #EDF2FA !important;
+}
+
+.signature-chain-tree .tree-cell:hover,
+.signature-chain-tree .tree-cell:selected {
+    -fx-background-color: #24355E !important;
+    -fx-text-fill: #7B9CF8 !important;
+}
+
+.signature-cert-area,
+.signature-cert-area .content {
+    -fx-background-color: #1e293b !important;
+    -fx-text-fill: #EDF2FA !important;
 }
