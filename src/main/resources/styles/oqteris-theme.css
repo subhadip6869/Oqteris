@@ -105,6 +105,31 @@
     -fx-icon-color: -color-text-primary;
 }
 
+.button.welcome-icon-btn,
+.button.welcome-icon-btn:focused {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
+    -fx-border-width: 0;
+    -fx-cursor: hand;
+    -fx-padding: 4px;
+    -fx-background-radius: 6px;
+}
+
+.button.welcome-icon-btn:hover,
+.button.welcome-icon-btn:pressed {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.button.welcome-icon-btn .ikonli-font-icon {
+    -fx-icon-color: -color-text-secondary;
+}
+
+.button.welcome-icon-btn:hover .ikonli-font-icon {
+    -fx-icon-color: -color-primary;
+}
+
 .favorite-star-btn.favorited .ikonli-font-icon {
     -fx-icon-color: #F59E0B;
 }

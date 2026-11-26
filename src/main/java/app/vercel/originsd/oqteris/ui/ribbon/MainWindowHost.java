@@ -13,4 +13,5 @@ public interface MainWindowHost {
     void showCertificateManager();
     void setDefaultViewer();
     void toggleFullScreen();
+    default void onZoomChanged(double zoomFactor) {}
 }
