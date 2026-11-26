@@ -121,21 +121,24 @@ public class UpdateDialog extends Stage {
 
         // Progress Controls (hidden initially)
         progressBar.setMaxWidth(Double.MAX_VALUE);
+        progressBar.setPrefHeight(10);
+        progressBar.setMinHeight(Region.USE_PREF_SIZE);
         progressBar.setVisible(false);
         progressBar.setManaged(false);
 
         progressLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #0284c7; -fx-font-weight: bold;");
         progressLabel.setVisible(false);
         progressLabel.setManaged(false);
-        progressLabel.setWrapText(true);
+        progressLabel.setMinWidth(Region.USE_PREF_SIZE);
 
         statusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #475569;");
         statusLabel.setVisible(false);
         statusLabel.setManaged(false);
         statusLabel.setWrapText(true);
         statusLabel.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(statusLabel, Priority.ALWAYS);
 
-        VBox progressBox = new VBox(4, progressBar, new HBox(10, statusLabel, progressLabel));
+        VBox progressBox = new VBox(6, progressBar, new HBox(10, statusLabel, progressLabel));
         progressBox.setAlignment(Pos.CENTER_LEFT);
 
         // Buttons
@@ -193,6 +196,7 @@ public class UpdateDialog extends Stage {
         browserBtn.setDisable(true);
         closeBtn.setText("Cancel");
 
+        progressBar.setProgress(0);
         progressBar.setVisible(true);
         progressBar.setManaged(true);
         progressLabel.setVisible(true);
@@ -202,6 +206,7 @@ public class UpdateDialog extends Stage {
 
         statusLabel.setText("Connecting to GitHub asset CDN...");
         progressLabel.setText("0%");
+        sizeToScene();
 
         UpdateCheckerService.getInstance().downloadAsset(selectedAsset, progress -> {
             if (progress < 0) {
