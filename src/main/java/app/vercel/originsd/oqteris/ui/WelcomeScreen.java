@@ -21,11 +21,14 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.stage.Stage;
 import org.kordamp.ikonli.Ikon;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignC;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignF;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignI;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignS;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignW;
 
 /**
  * Modern Start Center / Welcome Screen for Oqteris PDF Reader and Editor.
@@ -95,7 +98,32 @@ public class WelcomeScreen extends BorderPane {
         subtitle.setStyle("-fx-text-fill: #64748b;");
 
         titleBox.getChildren().addAll(titleRow, subtitle);
-        heroHeader.getChildren().addAll(logoView, titleBox);
+
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+
+        Button themeToggleBtn = new Button();
+        themeToggleBtn.getStyleClass().add("welcome-icon-btn");
+        themeToggleBtn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        updateThemeToggleButton(themeToggleBtn, ThemeManager.getInstance().isDarkTheme());
+        ThemeManager.getInstance().darkThemeProperty().addListener((obs, oldVal, isDark) ->
+                updateThemeToggleButton(themeToggleBtn, isDark));
+        themeToggleBtn.setOnAction(e -> ThemeManager.getInstance().toggleTheme());
+
+        Button aboutBtn = new Button();
+        aboutBtn.setGraphic(AppIcons.of(MaterialDesignI.INFORMATION_OUTLINE, 20));
+        aboutBtn.getStyleClass().add("welcome-icon-btn");
+        aboutBtn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        aboutBtn.setTooltip(new Tooltip("About Oqteris"));
+        aboutBtn.setOnAction(e -> {
+            Stage ownerStage = (getScene() != null && getScene().getWindow() instanceof Stage s) ? s : null;
+            new AboutDialog(ownerStage).showAndWait();
+        });
+
+        HBox topRightActions = new HBox(10, themeToggleBtn, aboutBtn);
+        topRightActions.setAlignment(Pos.CENTER_RIGHT);
+
+        heroHeader.getChildren().addAll(logoView, titleBox, headerSpacer, topRightActions);
 
         // Check default PDF viewer status banner
         checkDefaultViewerStatus();
@@ -204,6 +232,11 @@ public class WelcomeScreen extends BorderPane {
                 });
             }
         });
+    }
+
+    private void updateThemeToggleButton(Button btn, boolean isDark) {
+        btn.setGraphic(AppIcons.of(isDark ? MaterialDesignW.WEATHER_SUNNY : MaterialDesignW.WEATHER_NIGHT, 20));
+        btn.setTooltip(new Tooltip(isDark ? "Switch to Light Mode" : "Switch to Dark Mode"));
     }
 
     public void checkDefaultViewerStatus() {

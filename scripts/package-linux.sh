@@ -8,7 +8,7 @@
 set -euo pipefail
 
 APP_NAME="Oqteris"
-APP_VERSION="1.4.1"
+APP_VERSION="1.4.2"
 APP_VENDOR="OriginSD"
 APP_DESCRIPTION="Oqteris PDF Reader"
 MAIN_CLASS="app.vercel.originsd.oqteris.ui.OqterisLauncher"

@@ -8,6 +8,8 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.ScrollEvent;
+import javafx.scene.input.ZoomEvent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -176,6 +178,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         UserSettings settings = UserSettingsService.getInstance().getSettings();
         setupHandToolInteractions();
+        setupMouseWheelZoom();
         setCursorMode(settings.getCursorMode());
         setCenter(scrollPane);
 
@@ -194,6 +197,29 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         // Redesigned Professional Ribbon
         ribbonBuilder = new PdfRibbonBuilder(this, model, ribbon);
         ribbonBuilder.buildRibbon();
+    }
+
+    private void setupMouseWheelZoom() {
+        scrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            if (event.isControlDown() || event.isShortcutDown()) {
+                double deltaY = event.getDeltaY();
+                if (Math.abs(deltaY) > 0) {
+                    double scaleFactor = Math.pow(1.0025, deltaY);
+                    this.currentViewMode = ViewMode.ACTUAL_SIZE;
+                    setZoom(currentZoom * scaleFactor);
+                }
+                event.consume();
+            }
+        });
+
+        scrollPane.addEventFilter(ZoomEvent.ZOOM, event -> {
+            double factor = event.getZoomFactor();
+            if (factor > 0 && Math.abs(factor - 1.0) > 1e-4) {
+                this.currentViewMode = ViewMode.ACTUAL_SIZE;
+                setZoom(currentZoom * factor);
+            }
+            event.consume();
+        });
     }
 
     private void setupHandToolInteractions() {
@@ -1046,14 +1072,10 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             if (vpWidth <= 50) vpWidth = scrollPane.getWidth();
             if (vpWidth <= 50) vpWidth = 800;
 
-            double availWidth = Math.max(100, vpWidth - 36);
-            PDPage page = model.getPage(Math.max(0, currentPage));
-            PDRectangle mb = page != null ? page.getMediaBox() : null;
-            double pw = mb != null ? mb.getWidth() : 595.0;
-            if ((userRotation % 180) != 0 && mb != null) {
-                pw = mb.getHeight();
-            }
-            double targetZoom = Math.max(0.25, Math.min(4.0, availWidth / Math.max(1.0, pw)));
+            // Account for pagesContainer horizontal padding (24px each side) and page border (2px)
+            double availWidth = Math.max(100, vpWidth - 52);
+            double displayWidthAt100 = getDisplayedPageDimension(currentPage, true);
+            double targetZoom = Math.max(0.25, Math.min(4.0, availWidth / Math.max(1.0, displayWidthAt100)));
             setZoom(targetZoom);
             UserSettingsService.getInstance().update(s -> s.setViewMode(ViewMode.FIT_WIDTH));
         } catch (Exception ignored) {}
@@ -1067,17 +1089,29 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
             if (vpHeight <= 50) vpHeight = scrollPane.getHeight();
             if (vpHeight <= 50) vpHeight = 600;
 
-            double availHeight = Math.max(100, vpHeight - 36);
-            PDPage page = model.getPage(Math.max(0, currentPage));
-            PDRectangle mb = page != null ? page.getMediaBox() : null;
-            double ph = mb != null ? mb.getHeight() : 842.0;
-            if ((userRotation % 180) != 0 && mb != null) {
-                ph = mb.getWidth();
-            }
-            double targetZoom = Math.max(0.25, Math.min(4.0, availHeight / Math.max(1.0, ph)));
+            // Account for pagesContainer vertical padding (24px each side) and page border (2px)
+            double availHeight = Math.max(100, vpHeight - 52);
+            double displayHeightAt100 = getDisplayedPageDimension(currentPage, false);
+            double targetZoom = Math.max(0.25, Math.min(4.0, availHeight / Math.max(1.0, displayHeightAt100)));
             setZoom(targetZoom);
             UserSettingsService.getInstance().update(s -> s.setViewMode(ViewMode.FIT_PAGE));
         } catch (Exception ignored) {}
+    }
+
+    /**
+     * Returns the displayed width or height (in JavaFX pixels at 100% zoom) of the given page,
+     * accounting for PDF points-to-SCREEN_DPI scaling and both intrinsic page rotation and user rotation.
+     */
+    private double getDisplayedPageDimension(int pageIndex, boolean width) {
+        PDPage page = model.getPage(Math.max(0, pageIndex));
+        PDRectangle box = page != null ? page.getCropBox() : null;
+        if (box == null && page != null) box = page.getMediaBox();
+        double pw = box != null ? box.getWidth() : 595.0;
+        double ph = box != null ? box.getHeight() : 842.0;
+        int pageRot = page != null ? page.getRotation() : 0;
+        boolean swapped = ((pageRot + userRotation) % 180) != 0;
+        double points = width ? (swapped ? ph : pw) : (swapped ? pw : ph);
+        return points * (PdfPageRenderer.SCREEN_DPI / 72.0);
     }
 
     public void setActualSize() {
@@ -1400,6 +1434,9 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     public void setZoom(double zoom) {
         this.currentZoom = Math.max(0.25, Math.min(4.0, zoom));
         refreshPageViews();
+        if (windowHost != null) {
+            windowHost.onZoomChanged(this.currentZoom);
+        }
     }
 
     @Override

@@ -5,8 +5,16 @@
   <h3>Dedicated Cross-Platform Desktop PDF Reader and Editor</h3>
 </div>
 
-> [!NOTE]
-> **Java 21 LTS &bull; JavaFX 21 &bull; Apache PDFBox 3.0.5 &bull; Bouncy Castle 1.86 &bull; OriginSD Architecture**
+<p align="center">
+  <a href="https://github.com/subhadip6869/Oqteris/actions/workflows/build-and-release.yml"><img src="https://img.shields.io/github/actions/workflow/status/subhadip6869/Oqteris/build-and-release.yml?branch=main&label=Build%20%26%20Release" alt="Build Status"></a>
+  <a href="https://github.com/subhadip6869/Oqteris/releases"><img src="https://img.shields.io/github/v/release/subhadip6869/Oqteris?label=Release" alt="Latest Release"></a>
+  <a href="https://openjdk.org/projects/jdk/21/"><img src="https://img.shields.io/badge/Java-21_LTS-ED8B00.svg" alt="Java 21 LTS"></a>
+  <a href="https://openjfx.io/"><img src="https://img.shields.io/badge/JavaFX-21.0.6-3B82F6.svg" alt="JavaFX 21.0.6"></a>
+  <a href="https://pdfbox.apache.org/"><img src="https://img.shields.io/badge/Apache_PDFBox-3.0.5-D22128.svg" alt="Apache PDFBox 3.0.5"></a>
+  <a href="https://www.bouncycastle.org/"><img src="https://img.shields.io/badge/Bouncy_Castle-1.86-6D28D9.svg" alt="Bouncy Castle 1.86"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
+  <a href="https://originsd.vercel.app"><img src="https://img.shields.io/badge/Organization-OriginSD-0078D4.svg" alt="Organization: OriginSD"></a>
+</p>
 
 ---
 
