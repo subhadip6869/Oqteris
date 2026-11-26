@@ -8,6 +8,8 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.ScrollEvent;
+import javafx.scene.input.ZoomEvent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -176,6 +178,7 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
 
         UserSettings settings = UserSettingsService.getInstance().getSettings();
         setupHandToolInteractions();
+        setupMouseWheelZoom();
         setCursorMode(settings.getCursorMode());
         setCenter(scrollPane);
 
@@ -194,6 +197,29 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
         // Redesigned Professional Ribbon
         ribbonBuilder = new PdfRibbonBuilder(this, model, ribbon);
         ribbonBuilder.buildRibbon();
+    }
+
+    private void setupMouseWheelZoom() {
+        scrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            if (event.isControlDown() || event.isShortcutDown()) {
+                double deltaY = event.getDeltaY();
+                if (Math.abs(deltaY) > 0) {
+                    double scaleFactor = Math.pow(1.0025, deltaY);
+                    this.currentViewMode = ViewMode.ACTUAL_SIZE;
+                    setZoom(currentZoom * scaleFactor);
+                }
+                event.consume();
+            }
+        });
+
+        scrollPane.addEventFilter(ZoomEvent.ZOOM, event -> {
+            double factor = event.getZoomFactor();
+            if (factor > 0 && Math.abs(factor - 1.0) > 1e-4) {
+                this.currentViewMode = ViewMode.ACTUAL_SIZE;
+                setZoom(currentZoom * factor);
+            }
+            event.consume();
+        });
     }
 
     private void setupHandToolInteractions() {
@@ -1408,6 +1434,9 @@ public class PdfDocumentView extends BorderPane implements DocumentView {
     public void setZoom(double zoom) {
         this.currentZoom = Math.max(0.25, Math.min(4.0, zoom));
         refreshPageViews();
+        if (windowHost != null) {
+            windowHost.onZoomChanged(this.currentZoom);
+        }
     }
 
     @Override

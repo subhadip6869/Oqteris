@@ -46,6 +46,7 @@ public class MainWindow extends BorderPane implements MainWindowHost {
     private final StackPane contextualStatusContainer = new StackPane();
     private final Slider zoomSlider = new Slider(25, 400, 100);
     private final Label zoomLabel = new Label("100%");
+    private boolean syncingZoomSlider = false;
     private final ProgressBar backgroundProgress = new ProgressBar();
 
     private WelcomeScreen welcomeScreen;
@@ -289,9 +290,11 @@ public class MainWindow extends BorderPane implements MainWindowHost {
         zoomSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             int rounded = (int) Math.round(newVal.doubleValue());
             zoomLabel.setText(rounded + "%");
-            DocumentView view = getActiveView();
-            if (view != null) {
-                view.setZoom(newVal.doubleValue() / 100.0);
+            if (!syncingZoomSlider) {
+                DocumentView view = getActiveView();
+                if (view != null) {
+                    view.setZoom(newVal.doubleValue() / 100.0);
+                }
             }
         });
 
@@ -318,6 +321,19 @@ public class MainWindow extends BorderPane implements MainWindowHost {
 
     public void setZoom(double percentage) {
         zoomSlider.setValue(Math.clamp(percentage, 25, 400));
+    }
+
+    @Override
+    public void onZoomChanged(double zoomFactor) {
+        double pct = Math.clamp(zoomFactor * 100.0, 25, 400);
+        if (Math.abs(zoomSlider.getValue() - pct) > 0.25) {
+            syncingZoomSlider = true;
+            try {
+                zoomSlider.setValue(pct);
+            } finally {
+                syncingZoomSlider = false;
+            }
+        }
     }
 
     private void setupDragAndDrop() {
